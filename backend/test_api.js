@@ -39,7 +39,11 @@ async function runTests() {
     const stats = await makeRequest('/api/stats');
     console.log("✅ GET /api/stats:", stats.statusCode, stats.data);
 
-    // 2. Test GET /api/users
+    // 2. Test POST /api/auth/login
+    const loginRes = await makeRequest('/api/auth/login', 'POST', { email: 'admin@kawsay.ec', password: 'admin123' });
+    console.log("✅ POST /api/auth/login (Admin):", loginRes.statusCode, loginRes.data.user ? loginRes.data.user.name : loginRes.data);
+
+    // 3. Test GET /api/users
     const users = await makeRequest('/api/users');
     console.log(`✅ GET /api/users: ${users.statusCode} (${users.data.length} usuarios)`);
 

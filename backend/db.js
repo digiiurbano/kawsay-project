@@ -13,12 +13,14 @@ function initDb() {
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           email TEXT UNIQUE NOT NULL,
+          password TEXT,
           role TEXT CHECK(role IN ('espectador', 'artista', 'espacio', 'admin', 'gestor', 'invitado')),
           avatar TEXT,
           bio TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
+      db.run(`ALTER TABLE users ADD COLUMN password TEXT`, () => {});
 
       // 2. Tabla de Espacios Culturales
       db.run(`
@@ -83,12 +85,12 @@ function seedData() {
     console.log("🌱 Sembrando los 4 perfiles requeridos en la base de datos local SQLite...");
 
     db.serialize(() => {
-      // Sembrar Usuarios con los 4 Perfiles Requeridos
-      const usersStmt = db.prepare(`INSERT OR REPLACE INTO users (id, name, email, role, avatar, bio) VALUES (?, ?, ?, ?, ?, ?)`);
-      usersStmt.run('usr-espectador-1', 'María Fernanda', 'maria@kawsay.ec', 'espectador', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'Amante del arte y espectadora en Quito.');
-      usersStmt.run('usr-artista-1', 'Mateo & La Banda', 'mateo@kawsay.ec', 'artista', 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', 'Colectivo musical y teatral independiente.');
-      usersStmt.run('usr-espacio-1', 'Teatro Nacional Quito', 'teatro@kawsay.ec', 'espacio', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', 'Recinto cultural principal del centro de Quito.');
-      usersStmt.run('usr-admin-1', 'Admin Kawsay', 'admin@kawsay.ec', 'admin', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', 'Administrador principal de la plataforma cultural.');
+      // Sembrar Usuarios con los Perfiles Requeridos y Contraseñas Reales
+      const usersStmt = db.prepare(`INSERT OR REPLACE INTO users (id, name, email, password, role, avatar, bio) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+      usersStmt.run('usr-espectador-1', 'María Fernanda', 'espectador@kawsay.ec', 'espectador123', 'espectador', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'Amante del arte y espectadora en Quito.');
+      usersStmt.run('usr-artista-1', 'Mateo & La Banda', 'artista@kawsay.ec', 'artista123', 'artista', 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', 'Colectivo musical y teatral independiente.');
+      usersStmt.run('usr-espacio-1', 'Teatro Nacional Quito', 'espacio@kawsay.ec', 'espacio123', 'espacio', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', 'Recinto cultural principal del centro de Quito.');
+      usersStmt.run('usr-admin-1', 'Admin Kawsay', 'admin@kawsay.ec', 'admin123', 'admin', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', 'Administrador principal de la plataforma cultural.');
       usersStmt.finalize();
 
       // Sembrar Espacios

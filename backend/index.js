@@ -45,7 +45,45 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// 2. Usuarios / Perfiles
+// 2. Usuarios / Autenticación Real
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Correo y contraseña son requeridos' });
+  }
+
+  db.get(`SELECT id, name, email, role, avatar, bio FROM users WHERE LOWER(email) = LOWER(?) AND (password = ? OR password IS NULL)`, [email.trim(), password], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) {
+      return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu correo y contraseña.' });
+    }
+    res.json({ message: 'Inicio de sesión exitoso', user: row });
+  });
+});
+
+app.post('/api/auth/register', (req, res) => {
+  const { name, email, password, role } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Nombre, correo y contraseña son obligatorios' });
+  }
+
+  const validRole = ['espectador', 'artista', 'espacio', 'admin', 'gestor'].includes(role) ? role : 'espectador';
+  const id = 'usr-' + Date.now();
+  const avatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+
+  const sql = `INSERT INTO users (id, name, email, password, role, avatar, bio) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  db.run(sql, [id, name.trim(), email.trim().toLowerCase(), password, validRole, avatar, `Perfil de ${validRole} en KAWSAY`], function(err) {
+    if (err) {
+      if (err.message.includes('UNIQUE')) {
+        return res.status(400).json({ error: 'Este correo electrónico ya está registrado.' });
+      }
+      return res.status(500).json({ error: err.message });
+    }
+    const newUser = { id, name, email: email.toLowerCase(), role: validRole, avatar, bio: `Perfil de ${validRole} en KAWSAY` };
+    res.status(201).json({ message: 'Usuario registrado exitosamente', user: newUser });
+  });
+});
+
 app.get('/api/users', (req, res) => {
   db.all(`SELECT id, name, email, role, avatar, bio FROM users`, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });

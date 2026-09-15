@@ -60,7 +60,12 @@ const App = (() => {
   const $$ = (sel) => document.querySelectorAll(sel);
 
   async function init() {
-    currentUser = guestUser;
+    const savedUser = localStorage.getItem('kawsay_user');
+    if (savedUser) {
+      try { currentUser = JSON.parse(savedUser); } catch(e) { currentUser = guestUser; }
+    } else {
+      currentUser = guestUser;
+    }
     await loadInitialData();
     renderSidebar();
     renderTopbar();
@@ -283,27 +288,23 @@ const App = (() => {
           </button>
         ` : ''}
 
-        <!-- Botón INGRESAR visible si no está logeado -->
+        <!-- Área de Autenticación / Perfil Real -->
         ${currentUser.role === 'invitado' ? `
-          <button class="btn-primary" id="btn-topbar-login" style="padding:8px 18px; font-size:12px; font-family:var(--font-mono); font-weight:900; background:var(--accent); color:#000;">
-            INGRESAR
+          <button class="btn-primary" id="btn-topbar-login" style="padding:8px 18px; font-size:12px; font-family:var(--font-mono); font-weight:900; background:var(--accent); color:#000; cursor:pointer; border:none; border-radius:6px; display:flex; align-items:center; gap:6px;">
+            🔑 INICIAR SESIÓN / REGISTRO
           </button>
-        ` : ''}
-
-        <!-- SELECTOR DESPLEGABLE CON MODO SIN INICIAR SESIÓN Y PERFILES -->
-        <div class="profile-switcher-wrap" title="Simular Iniciar Sesión / Cambiar Perfil">
-          <select class="profile-select" id="profile-select">
-            ${usersList.map(u => `
-              <option value="${u.id}" ${u.id === currentUser.id ? 'selected' : ''}>
-                ${u.role === 'invitado' ? '🌐 Visitante (Sin Iniciar Sesión)' : u.role === 'espectador' ? '👤 Espectador:' : u.role === 'artista' ? '🎨 Artista:' : u.role === 'espacio' ? '🏛️ Espacio:' : '🛡️ Admin:'} ${u.name}
-              </option>
-            `).join('')}
-          </select>
-        </div>
-
-        ${currentUser.avatar ? `
-          <img src="${currentUser.avatar}" class="avatar" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid var(--accent);">
-        ` : ''}
+        ` : `
+          <div style="display:flex; align-items:center; gap:10px; background:var(--surface2); padding:4px 10px 4px 6px; border-radius:20px; border:1px solid var(--border);">
+            <img src="${currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">
+            <div style="display:flex; flex-direction:column;">
+              <span style="font-size:12px; font-weight:800; color:#fff; max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${currentUser.name}</span>
+              <span style="font-size:9px; font-weight:900; color:var(--primary); text-transform:uppercase;">${currentUser.role}</span>
+            </div>
+            <button id="btn-logout" title="Cerrar Sesión" style="background:transparent; border:none; color:var(--grey1); font-size:14px; cursor:pointer; padding:4px; margin-left:4px;">
+              🚪
+            </button>
+          </div>
+        `}
       </div>
     `;
 
@@ -314,16 +315,18 @@ const App = (() => {
     const loginBtn = $('#btn-topbar-login');
     if (loginBtn) loginBtn.addEventListener('click', openAuthModal);
 
-    $('#profile-select').addEventListener('change', async (e) => {
-      const selectedId = e.target.value;
-      currentUser = usersList.find(u => u.id === selectedId) || guestUser;
-      await loadUserInteractions();
-      showToast(currentUser.role === 'invitado' ? '🌐 Cambiado a Versión Sin Iniciar Sesión' : `Sesión iniciada: ${currentUser.name}`);
-      renderSidebar();
-      renderTopbar();
-      renderHomeView();
-      renderModals();
-    });
+    const logoutBtn = $('#btn-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        localStorage.removeItem('kawsay_user');
+        currentUser = guestUser;
+        await loadUserInteractions();
+        showToast('Sesión cerrada correctamente');
+        renderSidebar();
+        renderTopbar();
+        renderHomeView();
+      });
+    }
 
     $('#location-select').addEventListener('change', (e) => {
       currentLocation = e.target.value;
@@ -1388,46 +1391,76 @@ const App = (() => {
   function renderModals() {
     const container = document.getElementById('modals-container');
     container.innerHTML = `
-      <!-- Modal Auth / Login -->
+      <!-- Modal Auth Real (Login / Registro) -->
       <div class="modal-overlay" id="modal-auth">
-        <div class="cart-modal-box" style="max-width:440px;">
+        <div class="cart-modal-box" style="max-width:460px;">
           <div class="modal-header">
-            <div class="modal-title" style="font-size:18px;">🔑 INICIAR SESIÓN EN KAWSAY</div>
+            <div class="modal-title" style="font-size:18px;">🔐 ACCESO A LA PLATAFORMA</div>
             <button class="modal-close" id="modal-auth-close">×</button>
           </div>
-          <p style="color:var(--grey1); font-size:13px; margin: 12px 0 20px;">
-            Inicia sesión o selecciona tu perfil para reservar entradas, guardar favoritos o publicar eventos:
-          </p>
-          <div style="display:flex; flex-direction:column; gap:12px;">
-            <button class="btn-submit btn-auth-select" data-user="usr-espectador-1" style="background:var(--surface2); color:#fff; border:1px solid var(--border); text-align:left; display:flex; align-items:center; gap:12px;">
-              <span style="font-size:20px;">👤</span>
-              <div>
-                <div style="font-weight:800;">Iniciar Sesión como Espectador / Cliente</div>
-                <div style="font-size:11px; color:var(--grey1);">María Fernanda</div>
-              </div>
-            </button>
-            <button class="btn-submit btn-auth-select" data-user="usr-artista-1" style="background:var(--surface2); color:#fff; border:1px solid var(--border); text-align:left; display:flex; align-items:center; gap:12px;">
-              <span style="font-size:20px;">🎨</span>
-              <div>
-                <div style="font-weight:800;">Iniciar Sesión como Artista / Colectivo</div>
-                <div style="font-size:11px; color:var(--grey1);">Mateo & La Banda</div>
-              </div>
-            </button>
-            <button class="btn-submit btn-auth-select" data-user="usr-espacio-1" style="background:var(--surface2); color:#fff; border:1px solid var(--border); text-align:left; display:flex; align-items:center; gap:12px;">
-              <span style="font-size:20px;">🏛️</span>
-              <div>
-                <div style="font-weight:800;">Iniciar Sesión como Espacio Cultural</div>
-                <div style="font-size:11px; color:var(--grey1);">Teatro Nacional Quito</div>
-              </div>
-            </button>
-            <button class="btn-submit btn-auth-select" data-user="usr-admin-1" style="background:var(--surface2); color:#fff; border:1px solid var(--border); text-align:left; display:flex; align-items:center; gap:12px;">
-              <span style="font-size:20px;">🛡️</span>
-              <div>
-                <div style="font-weight:800;">Iniciar Sesión como Administrador</div>
-                <div style="font-size:11px; color:var(--grey1);">Admin Kawsay</div>
-              </div>
-            </button>
+          
+          <!-- Pestañas Auth -->
+          <div style="display:flex; gap:10px; margin: 16px 0 20px; border-bottom:1px solid var(--border); padding-bottom:8px;">
+            <button id="tab-btn-login" class="tab-btn active" style="flex:1; padding:8px; font-size:13px; font-weight:800; border-radius:6px; cursor:pointer; background:var(--primary); color:#000; border:none;">INICIAR SESIÓN</button>
+            <button id="tab-btn-register" class="tab-btn" style="flex:1; padding:8px; font-size:13px; font-weight:800; border-radius:6px; cursor:pointer; background:transparent; color:var(--text); border:1px solid var(--border);">CREAR CUENTA</button>
           </div>
+
+          <!-- Mensaje de Feedback -->
+          <div id="auth-alert-msg" style="display:none; padding:10px; border-radius:6px; font-size:12px; margin-bottom:14px; font-weight:600;"></div>
+
+          <!-- Formulario 1: Iniciar Sesión -->
+          <form id="form-auth-login" style="display:flex; flex-direction:column; gap:14px;">
+            <div>
+              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">CORREO ELECTRÓNICO</label>
+              <input type="email" id="login-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">CONTRASEÑA</label>
+              <input type="password" id="login-password" required placeholder="••••••••" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+            </div>
+            <button type="submit" class="btn-submit" style="background:var(--primary); color:#000; font-weight:800; padding:12px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:6px;">
+              ENTRAR A MI CUENTA
+            </button>
+
+            <!-- Acceso Rápido / Credenciales de Prueba por Rol -->
+            <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border);">
+              <div style="font-size:11px; font-weight:700; color:var(--grey1); margin-bottom:8px; text-transform:uppercase;">Credenciales preconfiguradas para pruebas de roles:</div>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                <button type="button" class="btn-quick-cred" data-email="admin@kawsay.ec" data-pass="admin123" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); color:#fff; padding:6px 8px; border-radius:4px; font-size:11px; cursor:pointer; text-align:left;">🛡️ Admin<br><span style="color:var(--grey1);">admin@kawsay.ec</span></button>
+                <button type="button" class="btn-quick-cred" data-email="espacio@kawsay.ec" data-pass="espacio123" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); color:#fff; padding:6px 8px; border-radius:4px; font-size:11px; cursor:pointer; text-align:left;">🏛️ Espacio/Gestor<br><span style="color:var(--grey1);">espacio@kawsay.ec</span></button>
+                <button type="button" class="btn-quick-cred" data-email="artista@kawsay.ec" data-pass="artista123" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); color:#fff; padding:6px 8px; border-radius:4px; font-size:11px; cursor:pointer; text-align:left;">🎨 Artista<br><span style="color:var(--grey1);">artista@kawsay.ec</span></button>
+                <button type="button" class="btn-quick-cred" data-email="espectador@kawsay.ec" data-pass="espectador123" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); color:#fff; padding:6px 8px; border-radius:4px; font-size:11px; cursor:pointer; text-align:left;">👤 Espectador<br><span style="color:var(--grey1);">espectador@kawsay.ec</span></button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Formulario 2: Crear Cuenta -->
+          <form id="form-auth-register" style="display:none; flex-direction:column; gap:14px;">
+            <div>
+              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">NOMBRE COMPLETO / ORGANIZACIÓN</label>
+              <input type="text" id="reg-name" required placeholder="Ej. Carlos Andrade" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">CORREO ELECTRÓNICO</label>
+              <input type="email" id="reg-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">CONTRASEÑA</label>
+              <input type="password" id="reg-password" required placeholder="••••••••" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">TIPO DE PERFIL EN KAWSAY</label>
+              <select id="reg-role" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+                <option value="espectador">👤 Espectador / Cliente (Comprar entradas, favoritos)</option>
+                <option value="artista">🎨 Artista / Colectivo (Publicar propuestas artísticas)</option>
+                <option value="espacio">🏛️ Espacio Cultural / Gestor (Gestión de cartelera y salas)</option>
+                <option value="admin">🛡️ Administrador (Gestión total de la plataforma)</option>
+              </select>
+            </div>
+            <button type="submit" class="btn-submit" style="background:var(--primary); color:#000; font-weight:800; padding:12px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:6px;">
+              REGISTRAR MI PERFIL
+            </button>
+          </form>
         </div>
       </div>
 
@@ -1632,18 +1665,116 @@ const App = (() => {
     bindBillboardPreviewEvents();
 
     $('#modal-auth-close').addEventListener('click', closeAuthModal);
-    container.querySelectorAll('.btn-auth-select').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const uId = btn.dataset.user;
-        currentUser = usersList.find(u => u.id === uId) || usersList[1];
-        await loadUserInteractions();
-        showToast(`Sesión iniciada como: ${currentUser.name}`);
-        closeAuthModal();
-        renderSidebar();
-        renderTopbar();
-        renderHomeView();
+
+    // Lógica de Pestañas (Iniciar Sesión vs Registrarse)
+    const tabLogin = $('#tab-btn-login');
+    const tabReg = $('#tab-btn-register');
+    const formLogin = $('#form-auth-login');
+    const formReg = $('#form-auth-register');
+    const authAlert = $('#auth-alert-msg');
+
+    function showAuthAlert(msg, isError = true) {
+      authAlert.style.display = 'block';
+      authAlert.style.background = isError ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)';
+      authAlert.style.border = isError ? '1px solid #ef4444' : '1px solid #22c55e';
+      authAlert.style.color = isError ? '#fca5a5' : '#86efac';
+      authAlert.textContent = msg;
+    }
+
+    if (tabLogin && tabReg) {
+      tabLogin.addEventListener('click', () => {
+        tabLogin.style.background = 'var(--primary)'; tabLogin.style.color = '#000'; tabLogin.style.border = 'none';
+        tabReg.style.background = 'transparent'; tabReg.style.color = 'var(--text)'; tabReg.style.border = '1px solid var(--border)';
+        formLogin.style.display = 'flex';
+        formReg.style.display = 'none';
+        authAlert.style.display = 'none';
+      });
+
+      tabReg.addEventListener('click', () => {
+        tabReg.style.background = 'var(--primary)'; tabReg.style.color = '#000'; tabReg.style.border = 'none';
+        tabLogin.style.background = 'transparent'; tabLogin.style.color = 'var(--text)'; tabLogin.style.border = '1px solid var(--border)';
+        formReg.style.display = 'flex';
+        formLogin.style.display = 'none';
+        authAlert.style.display = 'none';
+      });
+    }
+
+    // Botones de credenciales rápidas por rol
+    container.querySelectorAll('.btn-quick-cred').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $('#login-email').value = btn.dataset.email;
+        $('#login-password').value = btn.dataset.pass;
+        showAuthAlert(`Credenciales cargadas para ${btn.dataset.email}. Haz clic en ENTRAR.`, false);
       });
     });
+
+    // Submit Formulario Iniciar Sesión
+    if (formLogin) {
+      formLogin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = $('#login-email').value.trim();
+        const password = $('#login-password').value;
+
+        try {
+          const res = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            showAuthAlert(data.error || 'Error al iniciar sesión');
+            return;
+          }
+
+          currentUser = data.user;
+          localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
+          await loadUserInteractions();
+          showToast(`¡Bienvenido/a, ${currentUser.name}! (${currentUser.role.toUpperCase()})`);
+          closeAuthModal();
+          renderSidebar();
+          renderTopbar();
+          renderHomeView();
+        } catch (err) {
+          showAuthAlert('Error de conexión con el servidor. Revisa tu conexión.');
+        }
+      });
+    }
+
+    // Submit Formulario Registro
+    if (formReg) {
+      formReg.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = $('#reg-name').value.trim();
+        const email = $('#reg-email').value.trim();
+        const password = $('#reg-password').value;
+        const role = $('#reg-role').value;
+
+        try {
+          const res = await fetch(`${API_BASE}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, password, role })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            showAuthAlert(data.error || 'Error al registrar usuario');
+            return;
+          }
+
+          currentUser = data.user;
+          localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
+          await loadUserInteractions();
+          showToast(`¡Cuenta creada exitosamente! Bienvenido/a ${currentUser.name}`);
+          closeAuthModal();
+          renderSidebar();
+          renderTopbar();
+          renderHomeView();
+        } catch (err) {
+          showAuthAlert('Error al conectar con el servidor.');
+        }
+      });
+    }
 
     $('#modal-cart-close').addEventListener('click', closeCartModal);
     $('#btn-checkout').addEventListener('click', () => {
