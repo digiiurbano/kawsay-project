@@ -1183,7 +1183,7 @@ const App = (() => {
         });
       });
 
-      $('#modal-event-detail').classList.add('open');
+      showModal('#modal-event-detail');
       return;
     }
 
@@ -1373,7 +1373,7 @@ const App = (() => {
       } catch (e) { showToast('Error'); }
     });
 
-    $('#modal-event-detail').classList.add('open');
+    showModal('#modal-event-detail');
   }
 
   function openEditEventModal(eventId) {
@@ -1405,10 +1405,10 @@ const App = (() => {
     const event = new Event('input');
     $('#ev-title').dispatchEvent(event);
 
-    $('#modal-create').classList.add('open');
+    showModal('#modal-create');
   }
 
-  function closeEventDetailModal() { $('#modal-event-detail').classList.remove('open'); }
+  function closeEventDetailModal() { hideModal('#modal-event-detail'); }
 
   function addToCart(title, price) {
     const existing = cartItems.find(item => item.title === title);
@@ -2242,8 +2242,28 @@ const App = (() => {
     });
   }
 
-  function openAuthModal() { $('#modal-auth').classList.add('open'); }
-  function closeAuthModal() { $('#modal-auth').classList.remove('open'); }
+  function showModal(selector) {
+    const el = (typeof selector === 'string') ? $(selector) : selector;
+    if (!el) return;
+    el.style.display = 'flex';
+    el.style.opacity = '1';
+    el.style.visibility = 'visible';
+    el.style.pointerEvents = 'all';
+    el.classList.add('open');
+  }
+
+  function hideModal(selector) {
+    const el = (typeof selector === 'string') ? $(selector) : selector;
+    if (!el) return;
+    el.style.display = 'none';
+    el.style.opacity = '0';
+    el.style.visibility = 'hidden';
+    el.style.pointerEvents = 'none';
+    el.classList.remove('open');
+  }
+
+  function openAuthModal() { showModal('#modal-auth'); }
+  function closeAuthModal() { hideModal('#modal-auth'); }
 
   function openCartModal() {
     const listDiv = $('#cart-items-list');
@@ -2289,10 +2309,10 @@ const App = (() => {
       });
     }
 
-    $('#modal-cart').classList.add('open');
+    showModal('#modal-cart');
   }
 
-  function closeCartModal() { $('#modal-cart').classList.remove('open'); }
+  function closeCartModal() { hideModal('#modal-cart'); }
 
   function openApplyConvocatoriaModal(conv) {
     if (currentUser.role === 'invitado') {
@@ -2310,7 +2330,7 @@ const App = (() => {
     $('#apply-dossier').value = '';
     $('#apply-summary').value = '';
 
-    modal.classList.add('open');
+    showModal(modal);
 
     // Bind event handlers once
     const closeBtn = $('#modal-apply-close');
@@ -2531,7 +2551,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         });
       });
     }
-    $('#modal-admin').classList.add('open');
+    showModal('#modal-admin');
   }
 
   async function setEventStatus(eventId, status) {
@@ -2552,19 +2572,19 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     }
   }
 
-  function closeAdminModal() { $('#modal-admin').classList.remove('open'); }
+  function closeAdminModal() { hideModal('#modal-admin'); }
   function openCreateModal() {
     editingEventId = null;
     $('#modal-create-title').textContent = `📜 GENERADOR DE CARTELERA PROFESIONAL (${currentUser.role.toUpperCase()})`;
     if ($('#btn-submit-billboard')) $('#btn-submit-billboard').textContent = '🚀 PUBLICAR CARTELERA EN VIVO EN SQLITE DB';
-    $('#modal-create').classList.add('open');
+    showModal('#modal-create');
   }
   function closeCreateModal() {
     editingEventId = null;
-    $('#modal-create').classList.remove('open');
+    hideModal('#modal-create');
   }
-  function openTicketsModal() { $('#modal-tickets').classList.add('open'); }
-  function closeTicketsModal() { $('#modal-tickets').classList.remove('open'); }
+  function openTicketsModal() { showModal('#modal-tickets'); }
+  function closeTicketsModal() { hideModal('#modal-tickets'); }
 
   function renderConvocatoriasView() {
     const view = document.getElementById('view-convocatorias');

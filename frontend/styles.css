@@ -1217,15 +1217,15 @@ input, select { font-family: inherit; }
    MODAL — CREAR EVENTO
    ============================================================ */
 .modal-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.85);
-  backdrop-filter: blur(8px);
-  z-index: 9999 !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: fixed !important;
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+  width: 100vw !important; height: 100vh !important;
+  background: rgba(0,0,0,0.85) !important;
+  backdrop-filter: blur(8px) !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -1238,17 +1238,19 @@ input, select { font-family: inherit; }
 }
 
 .modal-box {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  width: 560px;
-  max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  width: 850px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto !important;
   transform: translateY(20px) scale(0.97);
   transition: transform 0.25s ease;
   padding: 32px;
-  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.85);
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.95);
+  position: relative !important;
+  z-index: 1000000 !important;
 }
 .modal-overlay.open .modal-box {
   transform: translateY(0) scale(1) !important;
