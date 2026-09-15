@@ -1218,20 +1218,23 @@ input, select { font-family: inherit; }
    ============================================================ */
 .modal-overlay {
   position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
-  backdrop-filter: blur(6px);
-  z-index: 200;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  z-index: 9999 !important;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 .modal-overlay.open {
-  opacity: 1;
-  pointer-events: all;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: all !important;
 }
 
 .modal-box {
@@ -1240,14 +1243,15 @@ input, select { font-family: inherit; }
   border-radius: var(--radius-lg);
   width: 560px;
   max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 80px);
+  max-height: calc(100vh - 40px);
   overflow-y: auto;
   transform: translateY(20px) scale(0.97);
-  transition: transform 0.3s ease;
+  transition: transform 0.25s ease;
   padding: 32px;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.85);
 }
 .modal-overlay.open .modal-box {
-  transform: translateY(0) scale(1);
+  transform: translateY(0) scale(1) !important;
 }
 
 .modal-header {
