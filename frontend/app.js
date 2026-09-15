@@ -1406,10 +1406,10 @@ const App = (() => {
           
           <!-- Pestañas Auth -->
           <div style="display:flex; gap:10px; margin: 18px 0 22px;">
-            <button id="tab-btn-login" class="tab-btn active" style="flex:1; padding:10px; font-size:13px; font-weight:900; border-radius:6px; cursor:pointer; background:#ffffff; color:#000000; border:none; letter-spacing:0.5px;">
+            <button id="tab-btn-login" class="tab-btn active" style="flex:1; padding:10px; font-size:13px; font-weight:900; border-radius:6px; cursor:pointer; background:var(--accent); color:#000000; border:none; letter-spacing:0.5px;">
               INICIAR SESIÓN
             </button>
-            <button id="tab-btn-register" class="tab-btn" style="flex:1; padding:10px; font-size:13px; font-weight:700; border-radius:6px; cursor:pointer; background:rgba(255,255,255,0.08); color:#cbd5e1; border:1px solid rgba(255,255,255,0.15);">
+            <button id="tab-btn-register" class="tab-btn" style="flex:1; padding:10px; font-size:13px; font-weight:700; border-radius:6px; cursor:pointer; background:rgba(255,255,255,0.08); color:#ffffff; border:1px solid rgba(255,255,255,0.2);">
               CREAR CUENTA
             </button>
           </div>
@@ -1427,7 +1427,7 @@ const App = (() => {
               <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CONTRASEÑA</label>
               <input type="password" id="login-password" required placeholder="••••••••" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
-            <button type="submit" class="btn-submit" style="background:var(--primary); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
+            <button type="submit" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
               ENTRAR A MI CUENTA
             </button>
           </form>
@@ -1455,7 +1455,7 @@ const App = (() => {
                 <option value="admin">Administrador (Gestión total de la plataforma)</option>
               </select>
             </div>
-            <button type="submit" class="btn-submit" style="background:var(--primary); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
+            <button type="submit" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
               REGISTRAR MI PERFIL
             </button>
           </form>
@@ -1681,16 +1681,16 @@ const App = (() => {
 
     if (tabLogin && tabReg) {
       tabLogin.addEventListener('click', () => {
-        tabLogin.style.background = '#ffffff'; tabLogin.style.color = '#000000'; tabLogin.style.fontWeight = '900'; tabLogin.style.border = 'none';
-        tabReg.style.background = 'rgba(255,255,255,0.08)'; tabReg.style.color = '#cbd5e1'; tabReg.style.fontWeight = '700'; tabReg.style.border = '1px solid rgba(255,255,255,0.15)';
+        tabLogin.style.background = 'var(--accent)'; tabLogin.style.color = '#000000'; tabLogin.style.fontWeight = '900'; tabLogin.style.border = 'none';
+        tabReg.style.background = 'rgba(255,255,255,0.08)'; tabReg.style.color = '#ffffff'; tabReg.style.fontWeight = '700'; tabReg.style.border = '1px solid rgba(255,255,255,0.2)';
         formLogin.style.display = 'flex';
         formReg.style.display = 'none';
         authAlert.style.display = 'none';
       });
 
       tabReg.addEventListener('click', () => {
-        tabReg.style.background = '#ffffff'; tabReg.style.color = '#000000'; tabReg.style.fontWeight = '900'; tabReg.style.border = 'none';
-        tabLogin.style.background = 'rgba(255,255,255,0.08)'; tabLogin.style.color = '#cbd5e1'; tabLogin.style.fontWeight = '700'; tabLogin.style.border = '1px solid rgba(255,255,255,0.15)';
+        tabReg.style.background = 'var(--accent)'; tabReg.style.color = '#000000'; tabReg.style.fontWeight = '900'; tabReg.style.border = 'none';
+        tabLogin.style.background = 'rgba(255,255,255,0.08)'; tabLogin.style.color = '#ffffff'; tabLogin.style.fontWeight = '700'; tabLogin.style.border = '1px solid rgba(255,255,255,0.2)';
         formReg.style.display = 'flex';
         formLogin.style.display = 'none';
         authAlert.style.display = 'none';
