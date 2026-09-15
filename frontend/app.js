@@ -164,6 +164,10 @@ const App = (() => {
           <div class="nav-icon-wrap">${ICONS.calendar}</div>
           <span>CALENDARIO MES</span>
         </div>
+        <div class="nav-item" data-view="convocatorias" id="nav-convocatorias" style="font-size:14px; padding:12px 18px;">
+          <div class="nav-icon-wrap" style="color:#eab308;">📢</div>
+          <span>CONVOCATORIAS</span>
+        </div>
         <div class="nav-item" data-view="join" id="nav-join" style="font-size:14px; padding:12px 18px;">
           <div class="nav-icon-wrap">${ICONS.artist}</div>
           <span>ARTISTA & ESPACIO</span>
@@ -855,20 +859,38 @@ const App = (() => {
     }
   }
 
+  function getCategoryClass(category) {
+    if (!category) return 'cat-artes';
+    const c = category.toLowerCase();
+    if (c.includes('músic') || c.includes('music')) return 'cat-musica';
+    if (c.includes('danz')) return 'cat-danza';
+    if (c.includes('teatr')) return 'cat-teatro';
+    if (c.includes('festival') || c.includes('feria')) return 'cat-festivales';
+    if (c.includes('convocatori') || c.includes('fondo') || c.includes('beca')) return 'cat-convocatorias';
+    return 'cat-artes';
+  }
+
   function renderEventCard(ev) {
     const inter = userInteractions[ev.id] || { is_favorite: 0, has_rsvp: 0 };
     const isPending = ev.status === 'pending';
+    const catClass = getCategoryClass(ev.category);
+    const ratingAvg = ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0';
 
     return `
-      <div class="event-card" data-id="${ev.id}" tabindex="0" role="button">
-        <div class="event-card-img-wrap" style="position:relative; height:150px;">
+      <div class="event-card" data-id="${ev.id}" tabindex="0" role="button" style="border-radius:12px; overflow:hidden;">
+        <div class="event-card-img-wrap" style="position:relative; height:170px;">
           <img class="event-card-img" src="${ev.image}" alt="${ev.title}">
-          <span class="card-badge-cat">${ev.category || ev.badge || 'CULTURA'}</span>
-          <span class="card-badge-price">${ev.price || 'Gratis'}</span>
+          <span class="card-badge-cat ${catClass}" style="font-size:11px; font-weight:800; text-transform:uppercase; padding:4px 8px; border-radius:4px;">${ev.category || ev.badge || 'CULTURA'}</span>
+          <span class="card-badge-price" style="font-size:12px; font-weight:800;">${ev.price || 'Gratis'}</span>
           ${isPending ? `<span class="status-badge pending" style="position:absolute; top:36px; right:8px;">PENDIENTE</span>` : ''}
         </div>
-        <div class="event-card-title" style="font-size:13px; font-weight:800;">${ev.title}</div>
-        <div class="event-card-meta" style="font-size:11px;">${ev.date} · ${ev.venue}</div>
+        <div class="event-card-title" style="font-size:17px; font-weight:800; line-height:1.3; margin-top:8px;">${ev.title}</div>
+        <div class="event-card-meta" style="font-size:13px; color:var(--grey1); margin:4px 0 6px;">${ev.date} · ${ev.venue}</div>
+        
+        <!-- Valoración por Estrellas -->
+        <div style="font-size:12px; font-weight:800; color:#eab308; margin-bottom:8px; display:flex; align-items:center; gap:4px;">
+          ⭐ <span>${ratingAvg}</span> <span style="color:var(--grey1); font-weight:500;">(${ev.rating_count || 0} calificaciones)</span>
+        </div>
 
         <div class="event-card-actions">
           <button class="btn-card-action" data-action="edit" data-id="${ev.id}" title="Modificar Evento" style="color:var(--gold); font-weight:900; display:inline-flex; align-items:center; gap:4px;">
@@ -1041,6 +1063,26 @@ const App = (() => {
                   ${inter.has_rsvp ? ICONS.check : ICONS.user} ASISTIRÉ
                 </button>
               </div>
+
+              <!-- Sistema de Calificación con Estrellas (1-5 ⭐) -->
+              <div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--border);">
+                <div style="font-size:12px; font-weight:800; color:#ffffff; margin-bottom:6px;">
+                  CALIFICACIÓN DEL PÚBLICO:
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div class="rating-stars" id="detail-rating-stars">
+                    <span class="star-icon" data-star="1">★</span>
+                    <span class="star-icon" data-star="2">★</span>
+                    <span class="star-icon" data-star="3">★</span>
+                    <span class="star-icon" data-star="4">★</span>
+                    <span class="star-icon" data-star="5">★</span>
+                  </div>
+                  <span id="detail-rating-text" style="font-family:var(--font-mono); font-size:12px; font-weight:800; color:#eab308;">
+                    ⭐ ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'} (${ev.rating_count || 0} calificaciones)
+                  </span>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -1050,6 +1092,31 @@ const App = (() => {
         </div>
       </div>
     `;
+
+    // Listeners de Estrellas de Calificación
+    detailBox.querySelectorAll('.star-icon').forEach(star => {
+      star.addEventListener('click', async () => {
+        const score = parseInt(star.dataset.star);
+        try {
+          const res = await fetch(`${API_BASE}/events/${ev.id}/rate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rating: score })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            ev.rating_sum = (ev.rating_sum || 0) + score;
+            ev.rating_count = (ev.rating_count || 0) + 1;
+            const textSpan = $('#detail-rating-text');
+            if (textSpan) textSpan.textContent = `⭐ ${data.average} (${data.total} calificaciones)`;
+            showToast(`¡Gracias! Has calificado este evento con ${score} estrellas ⭐`);
+            renderHomeView();
+          }
+        } catch (err) {
+          showToast('Error al registrar la calificación.');
+        }
+      });
+    });
 
     $('#modal-detail-close').addEventListener('click', closeEventDetailModal);
     $('#btn-detail-add-cart').addEventListener('click', () => {
@@ -1348,11 +1415,14 @@ const App = (() => {
             ${day} ${isToday ? '• HOY' : ''}
           </div>
           <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
-            ${dayEvents.slice(0, 2).map(e => `
-              <div class="month-event-pill" data-id="${e.id}" style="background:var(--bg); color:var(--accent); font-size:10px; font-weight:800; padding:3px 6px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;">
-                ${e.title}
-              </div>
-            `).join('')}
+            ${dayEvents.slice(0, 2).map(e => {
+              const catClass = getCategoryClass(e.category);
+              return `
+                <div class="month-event-pill ${catClass}" data-id="${e.id}" style="font-size:11px; font-weight:800; padding:4px 6px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+                  ${e.time ? e.time + ' · ' : ''}${e.title}
+                </div>
+              `;
+            }).join('')}
             ${dayEvents.length > 2 ? `<span style="font-size:9px; color:var(--gold); font-weight:800;">+${dayEvents.length - 2} más</span>` : ''}
           </div>
         </div>
@@ -1454,11 +1524,66 @@ const App = (() => {
                 <option value="espacio">Espacio Cultural / Gestor (Gestión de cartelera y salas)</option>
                 <option value="admin">Administrador (Gestión total de la plataforma)</option>
               </select>
+            <div style="margin-top:4px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; color:#ffffff;">
+                <input type="checkbox" id="reg-terms-check" required style="width:16px; height:16px; accent-color:var(--accent);">
+                <span>Acepto los <a href="#" id="link-reg-terms" style="color:var(--accent); text-decoration:underline;">Términos y Condiciones</a> y la <a href="#" id="link-reg-privacy" style="color:var(--accent); text-decoration:underline;">Política de Privacidad</a></span>
+              </label>
             </div>
             <button type="submit" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
               REGISTRAR MI PERFIL
             </button>
           </form>
+        </div>
+      </div>
+
+      <!-- Modal Términos y Condiciones -->
+      <div class="modal-overlay" id="modal-terms">
+        <div class="modal-box" style="max-width: 600px; background:#0f172a; border:1px solid #334155;">
+          <div class="modal-header">
+            <div class="modal-title" style="font-size:18px; color:#ffffff; font-weight:900;">📋 TÉRMINOS Y CONDICIONES DE SERVICIO KAWSAY</div>
+            <button class="modal-close" id="modal-terms-close">×</button>
+          </div>
+          <div class="legal-content-box" style="margin-top:14px;">
+            <h4>1. Aceptación de los Términos</h4>
+            <p>Al utilizar la Plataforma Cultural KAWSAY, garantizas cumplir con las leyes vigentes de la República del Ecuador y los estándares comunitarios para el fomento del arte y la cultura en Quito.</p>
+            <h4>2. Publicación de Eventos y Contenidos</h4>
+            <p>Los artistas, promotores y recintos culturales aseguran contar con los permisos y derechos de autor correspondientes para la difusión de obras y comercialización de entradas.</p>
+            <h4>3. Validación y Confirmaciones</h4>
+            <p>Toda nueva cuenta o publicación enviada a la plataforma requiere validación por correo electrónico para garantizar la seguridad de la comunidad.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Política de Privacidad -->
+      <div class="modal-overlay" id="modal-privacy">
+        <div class="modal-box" style="max-width: 600px; background:#0f172a; border:1px solid #334155;">
+          <div class="modal-header">
+            <div class="modal-title" style="font-size:18px; color:#ffffff; font-weight:900;">🔒 POLÍTICA DE PRIVACIDAD Y DATOS</div>
+            <button class="modal-close" id="modal-privacy-close">×</button>
+          </div>
+          <div class="legal-content-box" style="margin-top:14px;">
+            <h4>1. Protección de Datos Personales (LOPDP)</h4>
+            <p>De acuerdo con la Ley Orgánica de Protección de Datos Personales de Ecuador, tus datos de contacto únicamente se utilizarán para la gestión de boletería digital y comunicación oficial.</p>
+            <h4>2. Seguridad y Transparencia</h4>
+            <p>No compartimos ni vendemos tu información personal a terceros no autorizados. Puedes solicitar la actualización o eliminación de tus datos en cualquier momento.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Confirmación de Enlace por Correo -->
+      <div class="modal-overlay" id="modal-email-confirm">
+        <div class="modal-box" style="max-width: 440px; text-align: center; background:#0f172a; border:1px solid #334155; padding:28px;">
+          <div style="font-size:48px; margin-bottom:12px;">✉️</div>
+          <div class="modal-title" style="font-size:20px; font-weight:900; color:#ffffff; margin-bottom:10px;">
+            ¡ENLACE DE VALIDACIÓN ENVIADO!
+          </div>
+          <p style="color:#cbd5e1; font-size:14px; line-height:1.6; margin-bottom:20px;" id="email-confirm-text">
+            Hemos enviado un enlace de validación a tu dirección de correo electrónico. Por favor ingresa a tu bandeja de entrada para validar la solicitud.
+          </p>
+          <button class="btn-submit" id="modal-email-confirm-close" style="background:var(--accent); color:#000; font-weight:900; width:100%; padding:12px;">
+            ENTENDIDO Y CONTINUAR
+          </button>
         </div>
       </div>
 
@@ -1755,15 +1880,32 @@ const App = (() => {
           localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
           await loadUserInteractions();
           showToast(`¡Cuenta creada exitosamente! Bienvenido/a ${currentUser.name}`);
+          currentUser = data.user;
+          localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
+          await loadUserInteractions();
           closeAuthModal();
           renderSidebar();
           renderTopbar();
           renderHomeView();
+
+          // Mostrar Modal de Validación por Correo
+          const confirmText = $('#email-confirm-text');
+          if (confirmText) {
+            confirmText.textContent = `Hemos enviado un enlace de validación a tu correo (${currentUser.email}). Por favor ingresa a tu bandeja para activar tu cuenta.`;
+          }
+          $('#modal-email-confirm').classList.add('open');
         } catch (err) {
           showAuthAlert('Error al conectar con el servidor.');
         }
       });
     }
+
+    // Modal legal handlers
+    if ($('#link-reg-terms')) $('#link-reg-terms').addEventListener('click', (e) => { e.preventDefault(); $('#modal-terms').classList.add('open'); });
+    if ($('#link-reg-privacy')) $('#link-reg-privacy').addEventListener('click', (e) => { e.preventDefault(); $('#modal-privacy').classList.add('open'); });
+    if ($('#modal-terms-close')) $('#modal-terms-close').addEventListener('click', () => $('#modal-terms').classList.remove('open'));
+    if ($('#modal-privacy-close')) $('#modal-privacy-close').addEventListener('click', () => $('#modal-privacy').classList.remove('open'));
+    if ($('#modal-email-confirm-close')) $('#modal-email-confirm-close').addEventListener('click', () => $('#modal-email-confirm').classList.remove('open'));
 
     $('#modal-cart-close').addEventListener('click', closeCartModal);
     $('#btn-checkout').addEventListener('click', () => {
@@ -2023,6 +2165,62 @@ const App = (() => {
   function openTicketsModal() { $('#modal-tickets').classList.add('open'); }
   function closeTicketsModal() { $('#modal-tickets').classList.remove('open'); }
 
+  function renderConvocatoriasView() {
+    const view = document.getElementById('view-convocatorias');
+    if (!view) return;
+
+    const convocatoriasList = [
+      {
+        id: 'conv-001',
+        title: 'FONDO DE FOMENTO A LAS ARTES QUITO 2026',
+        category: 'Convocatorias',
+        badge: 'FONDO PÚBLICO',
+        date: '2026-12-01',
+        time: 'Hasta las 23:59',
+        price: 'Premio: $10,000',
+        venue: 'Secretaría de Cultura Quito',
+        description: 'Convocatoria abierta para proyectos independientes de artes escénicas, música y gestión comunitaria en la provincia de Pichincha.',
+        image: 'images/event_mural.jpg',
+        rating_count: 14,
+        rating_sum: 70
+      },
+      {
+        id: 'conv-002',
+        title: 'RESIDENCIA ARTÍSTICA Y EXPOSICIÓN NAVE 01',
+        category: 'Convocatorias',
+        badge: 'RESIDENCIA',
+        date: '2026-11-15',
+        time: 'Hasta las 18:00',
+        price: 'Beca Completa + Taller',
+        venue: 'NAVE 01 Centro Histórico',
+        description: 'Beca de residencia para artistas plásticos y visuales emergentes. Incluye estudio de trabajo, materiales y exposición final.',
+        image: 'images/event_portraits.jpg',
+        rating_count: 9,
+        rating_sum: 45
+      }
+    ];
+
+    view.innerHTML = `
+      <div style="padding: 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+          <div>
+            <span class="cat-convocatorias" style="font-family:var(--font-mono); font-size:12px; font-weight:900; padding:6px 12px; border-radius:6px; text-transform:uppercase;">
+              📢 OPORTUNIDADES & BECAS
+            </span>
+            <h1 style="font-size:32px; font-weight:900; margin-top:10px;">CONVOCATORIAS CULTURALES 2026</h1>
+            <p style="color:var(--grey1); font-size:15px;">Fondos de fomento, becas de creación y residencias artísticas abiertas en Quito.</p>
+          </div>
+        </div>
+
+        <div class="events-grid stagger">
+          ${convocatoriasList.map(ev => renderEventCard(ev)).join('')}
+        </div>
+      </div>
+    `;
+
+    bindCardInteractions();
+  }
+
   function navigate(view) {
     currentView = view;
     $$('.view').forEach(v => v.classList.remove('active'));
@@ -2037,6 +2235,7 @@ const App = (() => {
     if (view === 'calendar-week') buildWeekGrid();
     if (view === 'calendar-month') { buildMonthGrid(); buildUpcomingList(); }
     if (view === 'join') renderJoinView();
+    if (view === 'convocatorias') renderConvocatoriasView();
 
     const main = document.getElementById('main');
     if (main) main.scrollTop = 0;

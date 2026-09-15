@@ -182,6 +182,27 @@ app.post('/api/events', (req, res) => {
   });
 });
 
+// Calificar Evento (Sistema de Estrellas 1-5)
+app.post('/api/events/:id/rate', (req, res) => {
+  const { rating } = req.body;
+  const score = parseInt(rating);
+  if (isNaN(score) || score < 1 || score > 5) {
+    return res.status(400).json({ error: 'La calificación debe ser un entero entre 1 y 5' });
+  }
+
+  const sql = `UPDATE events SET rating_sum = COALESCE(rating_sum, 0) + ?, rating_count = COALESCE(rating_count, 0) + 1 WHERE id = ?`;
+  db.run(sql, [score, req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Evento no encontrado' });
+
+    db.get(`SELECT rating_sum, rating_count FROM events WHERE id = ?`, [req.params.id], (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      const avg = row.rating_count > 0 ? (row.rating_sum / row.rating_count).toFixed(1) : '5.0';
+      res.json({ message: 'Calificación registrada', average: avg, total: row.rating_count });
+    });
+  });
+});
+
 // Cambiar estado de evento (Aprobar/Rechazar) - Acción de Admin
 app.put('/api/events/:id/status', (req, res) => {
   const { status } = req.body; // 'approved' o 'rejected'

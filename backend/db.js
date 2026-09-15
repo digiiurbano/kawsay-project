@@ -52,10 +52,14 @@ function initDb() {
           status TEXT CHECK(status IN ('approved', 'pending', 'rejected')) DEFAULT 'pending',
           organizer_id TEXT,
           sold_out INTEGER DEFAULT 0,
+          rating_sum REAL DEFAULT 0,
+          rating_count INTEGER DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (organizer_id) REFERENCES users(id)
         )
       `);
+      db.run(`ALTER TABLE events ADD COLUMN rating_sum REAL DEFAULT 0`, () => {});
+      db.run(`ALTER TABLE events ADD COLUMN rating_count INTEGER DEFAULT 0`, () => {});
 
       // 4. Tabla de Interacciones (Favoritos y RSVP)
       db.run(`

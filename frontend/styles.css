@@ -2169,9 +2169,54 @@ input, select { font-family: inherit; }
   text-transform: uppercase;
 }
 
+/* ============================================================
+   NUEVOS ESTILOS: CATEGORÍAS DE COLORES Y FUENTES AMPLIADAS
+   ============================================================ */
 
+/* Fuentes más grandes para legibilidad */
+h1, .hero-title { font-size: 32px !important; }
+h2, .section-title { font-size: 24px !important; }
+h3, .event-card-title { font-size: 18px !important; }
+p, .event-card-desc { font-size: 14px !important; }
 
+/* Código de Colores por Categoría */
+.badge-cat-musica, .cat-musica { background: #3b82f6 !important; color: #ffffff !important; }
+.badge-cat-danza, .cat-danza { background: #ec4899 !important; color: #ffffff !important; }
+.badge-cat-teatro, .cat-teatro { background: #a855f7 !important; color: #ffffff !important; }
+.badge-cat-artes, .cat-artes, .cat-cine { background: #f97316 !important; color: #ffffff !important; }
+.badge-cat-festivales, .cat-festivales { background: #10b981 !important; color: #ffffff !important; }
+.badge-cat-convocatorias, .cat-convocatorias { background: #eab308 !important; color: #000000 !important; font-weight: 900 !important; }
 
+/* Estrellas de Valoración */
+.rating-stars {
+  display: inline-flex;
+  gap: 4px;
+  color: #eab308;
+  cursor: pointer;
+  font-size: 18px;
+}
+.rating-stars .star-icon {
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.rating-stars .star-icon:hover {
+  transform: scale(1.25);
+  color: #f59e0b;
+}
 
-
-
+/* Modal Legal / Términos & Privacidad */
+.legal-content-box {
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 16px;
+  background: #1e293b;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.legal-content-box h4 {
+  color: #ffffff;
+  margin: 14px 0 6px;
+  font-size: 15px;
+}
