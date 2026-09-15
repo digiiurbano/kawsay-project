@@ -73,6 +73,25 @@ function initDb() {
           FOREIGN KEY (user_id) REFERENCES users(id),
           FOREIGN KEY (event_id) REFERENCES events(id)
         )
+      `);
+
+      // 5. Tabla de Postulaciones a Convocatorias
+      db.run(`
+        CREATE TABLE IF NOT EXISTS applications (
+          id TEXT PRIMARY KEY,
+          convocatoria_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          project_title TEXT NOT NULL,
+          applicant_name TEXT NOT NULL,
+          email TEXT NOT NULL,
+          category TEXT,
+          summary TEXT,
+          requested_amount REAL,
+          dossier_url TEXT,
+          folio TEXT NOT NULL,
+          status TEXT DEFAULT 'submitted',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
       `, (err) => {
         if (err) {
           console.error("Error al crear tablas:", err);

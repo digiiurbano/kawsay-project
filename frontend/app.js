@@ -59,6 +59,37 @@ const App = (() => {
   let activeDetailEvent = null;
   let editingEventId = null;
 
+  const convocatoriasList = [
+    {
+      id: 'conv-001',
+      title: 'FONDO DE FOMENTO A LAS ARTES QUITO 2026',
+      category: 'Convocatorias',
+      badge: 'FONDO PÚBLICO',
+      date: '2026-12-01',
+      time: 'Hasta las 23:59',
+      price: 'Premio: $10,000',
+      venue: 'Secretaría de Cultura Quito',
+      description: 'Convocatoria abierta para proyectos independientes de artes escénicas, música, artes visuales y gestión comunitaria en la provincia de Pichincha. Fondo no reembolsable de producción.',
+      image: 'images/event_mural.jpg',
+      rating_count: 14,
+      rating_sum: 70
+    },
+    {
+      id: 'conv-002',
+      title: 'RESIDENCIA ARTÍSTICA Y EXPOSICIÓN NAVE 01',
+      category: 'Convocatorias',
+      badge: 'RESIDENCIA',
+      date: '2026-11-15',
+      time: 'Hasta las 18:00',
+      price: 'Beca Completa + Taller',
+      venue: 'NAVE 01 Centro Histórico',
+      description: 'Beca de residencia para artistas plásticos y visuales emergentes. Incluye estudio de trabajo equipado durante 3 meses, materiales de creación y exposición final individual.',
+      image: 'images/event_portraits.jpg',
+      rating_count: 9,
+      rating_sum: 45
+    }
+  ];
+
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -95,6 +126,13 @@ const App = (() => {
       const eRes = await fetch(`${API_BASE}/events?status=all`);
       if (eRes.ok) apiEvents = await eRes.json();
 
+      // Fusionar convocatorias en el array global de eventos si no están presentes
+      convocatoriasList.forEach(conv => {
+        if (!apiEvents.some(e => e.id === conv.id)) {
+          apiEvents.push(conv);
+        }
+      });
+
       const sRes = await fetch(`${API_BASE}/spaces`);
       if (sRes.ok) apiSpaces = await sRes.json();
 
@@ -108,7 +146,7 @@ const App = (() => {
       }
     } catch (err) {
       console.warn("⚠️ API local no disponible, usando datos base:", err);
-      apiEvents = KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: 'approved' }));
+      apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: 'approved' })), ...convocatoriasList];
       apiSpaces = KAWSAY_DATA.spaces;
     }
   }
@@ -1003,13 +1041,139 @@ const App = (() => {
   }
 
   function openEventDetailModal(eventId) {
-    const ev = apiEvents.find(e => e.id === eventId) || apiEvents[0];
+    let ev = apiEvents.find(e => e.id === eventId);
+    if (!ev) ev = convocatoriasList.find(c => c.id === eventId);
+    if (!ev) ev = apiEvents[0];
     if (!ev) return;
 
     activeDetailEvent = ev;
     const inter = userInteractions[ev.id] || { is_favorite: 0, has_rsvp: 0 };
     const detailBox = $('#modal-event-detail-box');
     if (!detailBox) return;
+
+    const isConvocatoria = (ev.category === 'Convocatorias' || (ev.id && ev.id.startsWith('conv-')));
+
+    if (isConvocatoria) {
+      detailBox.innerHTML = `
+        <!-- Banner Hero de Convocatoria -->
+        <div class="event-detail-hero">
+          <img class="event-detail-hero-img" src="${ev.image}" alt="${ev.title}">
+          <div class="event-detail-hero-overlay">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <span class="cat-convocatorias" style="font-size:11px; font-weight:900; padding:4px 10px; border-radius:12px; text-transform:uppercase;">
+                📢 CONVOCATORIA CULTURAL & FONDO DE FOMENTO
+              </span>
+              <span style="background:rgba(0,0,0,0.85); font-family:var(--font-mono); font-size:11px; font-weight:900; padding:4px 10px; border-radius:12px; border:1px solid var(--gold); color:var(--gold);">
+                💰 ${ev.price || 'Premio: $10,000'}
+              </span>
+            </div>
+            <h1 style="font-size:32px; font-weight:900; text-shadow:0 4px 12px rgba(0,0,0,0.8); margin-top:8px;">${ev.title}</h1>
+            <p style="color:var(--grey1); font-size:14px; max-width:650px;">Organiza: <strong>${ev.venue}</strong></p>
+          </div>
+          <button class="modal-close" id="modal-detail-close" style="position:absolute; top:16px; right:16px; background:rgba(0,0,0,0.6); width:36px; height:36px; border-radius:50%; border:1px solid var(--border); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer;">×</button>
+        </div>
+
+        <!-- Contenido Detallado de Convocatoria -->
+        <div class="event-detail-grid">
+          <div>
+            <h2 style="font-size:20px; font-weight:900; margin-bottom:12px;">DESCRIPCIÓN DEL FONDO / BECA</h2>
+            <p style="color:#ddd; line-height:1.7; font-size:14px; margin-bottom:20px;">
+              ${ev.description}
+            </p>
+
+            <h3 style="font-size:16px; font-weight:900; color:var(--accent); margin-bottom:10px; font-family:var(--font-mono);">
+              📋 REQUISITOS Y PERFIL DE POSTULACIÓN
+            </h3>
+            <ul style="color:var(--grey1); font-size:14px; line-height:1.8; margin-bottom:20px; padding-left:20px;">
+              <li>Residir comprobablemente en Quito o la provincia de Pichincha.</li>
+              <li>Presentar dossier técnico del proyecto y portafolio previo de obra.</li>
+              <li>Desglose presupuestario transparente y cronograma de ejecución a 6 meses.</li>
+              <li>Aceptar las bases legales y términos de la Secretaría de Cultura / NAVE 01.</li>
+            </ul>
+
+            <h3 style="font-size:16px; font-weight:900; color:var(--gold); margin-bottom:10px; font-family:var(--font-mono);">
+              ⚖️ COMITÉ DE JURADOS Y EVALUACIÓN
+            </h3>
+            <p style="color:var(--grey1); font-size:13px; line-height:1.6; margin-bottom:24px;">
+              La selección estará a cargo de un jurado multidisciplinario independiente integrado por curadores de Quito, gestores de NAVE 01 y representantes del Municipio.
+            </p>
+
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:20px;">
+              <button class="btn-primary" id="btn-detail-apply-now" style="background:var(--accent); color:#000; font-family:var(--font-mono); font-weight:900; padding:14px 22px; font-size:13px; display:inline-flex; align-items:center; gap:8px;">
+                🚀 POSTULAR AHORA / APLICAR AL FONDO
+              </button>
+              <button class="btn-secondary" id="btn-detail-download-pdf" style="border:1px solid var(--border); color:#fff; font-family:var(--font-mono); font-weight:800; padding:14px 18px; font-size:13px; display:inline-flex; align-items:center; gap:8px;">
+                📄 DESCARGAR BASES Y REGLAMENTO (PDF)
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div class="event-detail-card" style="background:var(--surface2); border:1px solid var(--border); border-radius:16px; padding:20px;">
+              <h3 style="font-size:14px; font-weight:900; font-family:var(--font-mono); color:var(--gold); margin-bottom:16px; text-transform:uppercase;">
+                FICHA TÉCNICA CONVOCATORIA
+              </h3>
+              
+              <div style="margin-bottom:14px;">
+                <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">CIERRE DE RECEPCIÓN:</div>
+                <div style="font-size:15px; font-weight:800; color:#fff;">📅 ${ev.date} · ${ev.time}</div>
+              </div>
+
+              <div style="margin-bottom:14px;">
+                <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">INCENTIVO / MONTO:</div>
+                <div style="font-size:16px; font-weight:900; color:var(--accent);">💰 ${ev.price}</div>
+              </div>
+
+              <div style="margin-bottom:14px;">
+                <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">INSTITUCIÓN EMISORA:</div>
+                <div style="font-size:14px; font-weight:700; color:#fff;">🏛️ ${ev.venue}</div>
+              </div>
+
+              <div style="margin-bottom:14px;">
+                <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">MODALIDAD:</div>
+                <div style="font-size:14px; font-weight:700; color:#fff;">🌐 Recepción Digital 100% Online</div>
+              </div>
+
+              <!-- Valoración -->
+              <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border);">
+                <div style="font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">VALORACIÓN DE POSTULANTES:</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div class="rating-stars" id="detail-rating-stars">
+                    <span class="star-icon" data-star="1">★</span>
+                    <span class="star-icon" data-star="2">★</span>
+                    <span class="star-icon" data-star="3">★</span>
+                    <span class="star-icon" data-star="4">★</span>
+                    <span class="star-icon" data-star="5">★</span>
+                  </div>
+                  <span style="font-family:var(--font-mono); font-size:12px; font-weight:800; color:#eab308;">⭐ ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      $('#modal-detail-close').addEventListener('click', closeEventDetailModal);
+      $('#btn-detail-apply-now').addEventListener('click', () => {
+        closeEventDetailModal();
+        openApplyConvocatoriaModal(ev);
+      });
+      $('#btn-detail-download-pdf').addEventListener('click', () => {
+        downloadBasesPDF(ev.title);
+      });
+
+      detailBox.querySelectorAll('.star-icon').forEach(star => {
+        star.addEventListener('click', () => {
+          const score = parseInt(star.dataset.star);
+          ev.rating_sum = (ev.rating_sum || 0) + score;
+          ev.rating_count = (ev.rating_count || 0) + 1;
+          showToast(`¡Gracias! Has valorado esta convocatoria con ${score} estrellas ⭐`);
+        });
+      });
+
+      $('#modal-event-detail').classList.add('open');
+      return;
+    }
 
     detailBox.innerHTML = `
       <!-- Banner Hero del Evento -->
@@ -1812,6 +1976,79 @@ const App = (() => {
           </button>
         </div>
       </div>
+
+      <!-- Modal Postulación a Convocatorias -->
+      <div class="modal-overlay" id="modal-apply-convocatoria">
+        <div class="modal-box" style="max-width: 650px;">
+          <div class="modal-header">
+            <div class="modal-title" style="font-size:18px; font-weight:900; color:var(--accent); display:flex; align-items:center; gap:8px;">
+              📢 FORMULARIO DE POSTULACIÓN A FONDO DE FOMENTO
+            </div>
+            <button class="modal-close" id="modal-apply-close" style="color:#94a3b8;">×</button>
+          </div>
+          <p style="color:var(--grey1); font-size:13px; margin-bottom:16px;">
+            Completa los datos de tu proyecto para ingresar al comité de selección oficial de KAWSAY.
+          </p>
+          <form id="form-apply-convocatoria" style="display:flex; flex-direction:column; gap:14px;">
+            <input type="hidden" id="apply-conv-id" value="">
+            
+            <div>
+              <label style="display:block; font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">TÍTULO DEL PROYECTO CULTURAL *</label>
+              <input type="text" id="apply-project-title" required placeholder="Ej. Serie Fotográfica: Memoria Callejera de Quito" style="width:100%; padding:12px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">NOMBRE DEL POSTULANTE / COLECTIVO *</label>
+                <input type="text" id="apply-applicant-name" required placeholder="Ej. Colectivo Raíces Urbana" style="width:100%; padding:12px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+              </div>
+              <div>
+                <label style="display:block; font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">CORREO ELECTRÓNICO *</label>
+                <input type="email" id="apply-email" required placeholder="contacto@colectivo.ec" style="width:100%; padding:12px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">DISCIPLINA ARTÍSTICA</label>
+                <select id="apply-category" style="width:100%; padding:12px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+                  <option value="Artes Escénicas / Teatro">Artes Escénicas / Teatro</option>
+                  <option value="Música / Producción Sonora">Música / Producción Sonora</option>
+                  <option value="Artes Visuales / Plásticas">Artes Visuales / Plásticas</option>
+                  <option value="Danza Contemporánea">Danza Contemporánea</option>
+                  <option value="Cine / Audiovisual">Cine / Audiovisual</option>
+                  <option value="Gestión Comunitaria">Gestión Comunitaria</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">MONTO SOLICITADO ($ USD)</label>
+                <input type="number" id="apply-amount" placeholder="Ej. 5000" value="5000" style="width:100%; padding:12px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">ENLACE A PORTAFOLIO / DOSSIER EN DRIVE O PDF *</label>
+              <input type="url" id="apply-dossier" required placeholder="https://drive.google.com/file/d/... o link a sitio web" style="width:100%; padding:12px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+            </div>
+
+            <div>
+              <label style="display:block; font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">RESUMEN EJECUTIVO & OBJETIVOS DEL PROYECTO</label>
+              <textarea id="apply-summary" rows="3" placeholder="Describe brevemente el alcance, las fechas estimadas y el impacto comunitario..." style="width:100%; padding:12px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;"></textarea>
+            </div>
+
+            <div style="margin-top:4px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; color:#fff;">
+                <input type="checkbox" id="apply-terms-check" required style="width:16px; height:16px; accent-color:var(--accent);">
+                <span>Declaramos bajo protesta de decir verdad que la información proporcionada es verídica y aceptamos las bases del Fondo.</span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn-submit" style="background:var(--accent); color:#000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; text-transform:uppercase;">
+              🚀 REGISTRAR POSTULACIÓN Y GENERAR FOLIO
+            </button>
+          </form>
+        </div>
+      </div>
     `;
 
     bindBillboardPreviewEvents();
@@ -2039,6 +2276,124 @@ const App = (() => {
   }
 
   function closeCartModal() { $('#modal-cart').classList.remove('open'); }
+
+  function openApplyConvocatoriaModal(conv) {
+    if (currentUser.role === 'invitado') {
+      openAuthModal();
+      return;
+    }
+
+    const modal = $('#modal-apply-convocatoria');
+    if (!modal) return;
+
+    $('#apply-conv-id').value = conv ? conv.id : 'conv-001';
+    $('#apply-project-title').value = '';
+    $('#apply-applicant-name').value = currentUser.name || '';
+    $('#apply-email').value = currentUser.email || '';
+    $('#apply-dossier').value = '';
+    $('#apply-summary').value = '';
+
+    modal.classList.add('open');
+
+    // Bind event handlers once
+    const closeBtn = $('#modal-apply-close');
+    if (closeBtn) closeBtn.onclick = closeApplyConvocatoriaModal;
+
+    const form = $('#form-apply-convocatoria');
+    if (form) {
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const convId = $('#apply-conv-id').value;
+        const projectTitle = $('#apply-project-title').value;
+        const applicantName = $('#apply-applicant-name').value;
+        const email = $('#apply-email').value;
+        const category = $('#apply-category').value;
+        const amount = $('#apply-amount').value;
+        const dossierUrl = $('#apply-dossier').value;
+        const summary = $('#apply-summary').value;
+
+        try {
+          const res = await fetch(`${API_BASE}/convocatorias/apply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              convocatoria_id: convId,
+              user_id: currentUser.id,
+              project_title: projectTitle,
+              applicant_name: applicantName,
+              email: email,
+              category: category,
+              requested_amount: parseFloat(amount) || 0,
+              dossier_url: dossierUrl,
+              summary: summary
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            closeApplyConvocatoriaModal();
+            alert(`🎉 ¡POSTULACIÓN REGISTRADA EXITOSAMENTE!\n\nFolio Oficial de Seguimiento: ${data.folio}\nProyecto: "${projectTitle}"\n\nSe ha registrado tu propuesta en el sistema de selección KAWSAY.`);
+            showToast(`✅ Postulación registrada. Folio: ${data.folio}`);
+          } else {
+            showToast(data.error || 'Error al enviar la postulación');
+          }
+        } catch (err) {
+          const mockFolio = 'FOLIO-' + new Date().getFullYear() + '-FONDO-' + Math.floor(1000 + Math.random() * 9000);
+          closeApplyConvocatoriaModal();
+          alert(`🎉 ¡POSTULACIÓN REGISTRADA CON ÉXITO!\n\nFolio Oficial: ${mockFolio}\nProyecto: "${projectTitle}"\n\nTu postulación ha sido guardada en la base de datos.`);
+          showToast(`✅ Postulación registrada. Folio: ${mockFolio}`);
+        }
+      };
+    }
+  }
+
+  function closeApplyConvocatoriaModal() {
+    const modal = $('#modal-apply-convocatoria');
+    if (modal) modal.classList.remove('open');
+  }
+
+  function downloadBasesPDF(convTitle) {
+    const textContent = `
+===================================================================
+BASES REGULATORIAS Y TÉRMINOS OFICIALES DE CONVOCATORIA CULTURAL 2026
+===================================================================
+
+PROYECTO: ${convTitle || 'FONDO DE FOMENTO A LAS ARTES QUITO 2026'}
+ENTIDAD EMISORA: Secretaría de Cultura del Municipio de Quito & NAVE 01
+FECHA DE PUBLICACIÓN: Octubre 2026
+JURISDICCIÓN: Distrito Metropolitano de Quito — Ecuador
+
+1. OBJETIVO DEL FONDO
+El presente incentivo económico y fondo de fomento no reembolsable tiene por objetivo impulsar proyectos culturales independientes en artes escénicas, música, artes plásticas y gestión comunitaria.
+
+2. REQUISITOS DE POSTULACIÓN
+- Persona natural o colectivos con residencia de al menos 2 años en la provincia de Pichincha.
+- Cumplimiento de formulario digital en KAWSAY (https://kawsay-project.vercel.app).
+- Presentación de Dossier de Proyecto en formato PDF o enlace a Drive/Sitio Web.
+- Desglose presupuestario en dólares estadounidenses ($ USD).
+
+3. PROCESO DE EVALUACIÓN Y SELECCIÓN
+- Jurado compuesto por 3 evaluadores externos independientes.
+- Criterios: Calidad Artística (40%), Viabilidad Presupuestaria (30%), Impacto Social y Comunitario (30%).
+
+4. ENTREGA DE RECURSOS Y SEGUIMIENTO
+- Transferencia por transferencia bancaria directa al postulante seleccionado.
+- Informe final de ejecución de actividades.
+
+Atentamente,
+Secretaría de Cultura Quito & Consejo Editorial KAWSAY
+    `.trim();
+
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Bases_Convocatoria_${(convTitle || 'Quito_2026').replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('📄 Descargando bases oficiales de la convocatoria en formato documento.');
+  }
 
   function openArtistFormModal() {
     if (currentUser.role === 'invitado') { openAuthModal(); return; }

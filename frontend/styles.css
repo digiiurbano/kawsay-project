@@ -2092,7 +2092,7 @@ input, select { font-family: inherit; }
   padding: 4px 8px;
   border-radius: 6px;
   position: absolute;
-  top: 8px;
+  bottom: 8px;
   right: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   z-index: 2;

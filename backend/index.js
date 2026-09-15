@@ -203,6 +203,35 @@ app.post('/api/events/:id/rate', (req, res) => {
   });
 });
 
+// Endpoint: Registrar Postulación a Convocatoria / Fondo de Fomento
+app.post('/api/convocatorias/apply', (req, res) => {
+  const { convocatoria_id, user_id, project_title, applicant_name, email, category, summary, requested_amount, dossier_url } = req.body;
+  if (!convocatoria_id || !project_title || !applicant_name || !email) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios para la postulación.' });
+  }
+
+  const id = 'app-' + Date.now();
+  const folio = 'FOLIO-' + new Date().getFullYear() + '-FONDO-' + Math.floor(1000 + Math.random() * 9000);
+
+  const sql = `
+    INSERT INTO applications (id, convocatoria_id, user_id, project_title, applicant_name, email, category, summary, requested_amount, dossier_url, folio)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.run(sql, [id, convocatoria_id, user_id || 'usr-anon', project_title, applicant_name, email, category || 'Artes', summary || '', requested_amount || 0, dossier_url || '', folio], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Postulación registrada exitosamente', id, folio });
+  });
+});
+
+// Endpoint: Obtener Postulaciones
+app.get('/api/convocatorias/applications', (req, res) => {
+  db.all(`SELECT * FROM applications ORDER BY created_at DESC`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
 // Cambiar estado de evento (Aprobar/Rechazar) - Acción de Admin
 app.put('/api/events/:id/status', (req, res) => {
   const { status } = req.body; // 'approved' o 'rejected'
