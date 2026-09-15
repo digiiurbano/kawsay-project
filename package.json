@@ -1,0 +1,15 @@
+{
+  "name": "kawsay-project",
+  "version": "1.0.0",
+  "description": "Proyecto Cultural KAWSAY con Frontend y Backend separados",
+  "scripts": {
+    "start": "node backend/index.js",
+    "dev": "node backend/index.js",
+    "test": "node backend/test_api.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7"
+  }
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="KAWSAY — Descubre lo que está pasando en Quito. La plataforma definitiva para conectar con la cultura viva, eventos, espacios y artistas de la ciudad.">
+  <meta name="keywords" content="Quito, Ecuador, cultura, eventos, música, teatro, danza, arte, KAWSAY">
+  <meta name="author" content="KAWSAY">
+  <meta property="og:title" content="KAWSAY — Descubre la cultura de Quito">
+  <meta property="og:description" content="Centraliza y descubre la oferta cultural de Quito. Eventos, espacios, artistas y más.">
+  <meta property="og:type" content="website">
+  <title>KAWSAY — Descubre lo que está pasando en Quito</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Preconnect to Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+
+  <!-- ========================================================
+       APP SHELL
+       ======================================================== -->
+  <div id="app">
+
+    <!-- Global Sidebar Navigation -->
+    <aside id="sidebar" aria-label="Navegación principal"></aside>
+
+    <!-- Main Content -->
+    <div id="main" role="main">
+
+      <!-- Top Bar -->
+      <header id="topbar" role="banner"></header>
+
+      <!-- ---- Views ---- -->
+
+      <!-- Home / Explore View -->
+      <div id="view-home" class="view" role="region" aria-label="Inicio — Explorar"></div>
+
+      <!-- Week Calendar View -->
+      <div id="view-calendar-week" class="view" role="region" aria-label="Calendario — Vista Semana"></div>
+
+      <!-- Month Calendar View -->
+      <div id="view-calendar-month" class="view" role="region" aria-label="Calendario — Vista Mes"></div>
+
+      <!-- Únete como Artista o Espacio View -->
+      <div id="view-join" class="view" role="region" aria-label="Únete como Artista o Espacio Cultural"></div>
+
+    </div><!-- /main -->
+
+  </div><!-- /app -->
+
+  <!-- Modals Container -->
+  <div id="modals-container" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>

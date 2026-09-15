@@ -1,0 +1,19 @@
+{
+  "name": "kawsay-cultural-platform",
+  "version": "1.0.0",
+  "description": "Plataforma Cultural KAWSAY - Frontend Vanilla & Backend Node/Express + SQLite",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "node test_api.js"
+  },
+  "keywords": ["kawsay", "quito", "cultura", "express", "sqlite"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7"
+  }
+}
