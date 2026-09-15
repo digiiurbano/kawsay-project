@@ -870,11 +870,25 @@ const App = (() => {
     return 'cat-artes';
   }
 
+  function canEditEvent(ev) {
+    if (!currentUser || currentUser.role === 'invitado' || currentUser.role === 'espectador') {
+      return false;
+    }
+    if (currentUser.role === 'admin') {
+      return true;
+    }
+    if (currentUser.role === 'artista' || currentUser.role === 'espacio') {
+      return ev.organizer_id === currentUser.id || !ev.organizer_id;
+    }
+    return false;
+  }
+
   function renderEventCard(ev) {
     const inter = userInteractions[ev.id] || { is_favorite: 0, has_rsvp: 0 };
     const isPending = ev.status === 'pending';
     const catClass = getCategoryClass(ev.category);
     const ratingAvg = ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0';
+    const showEdit = canEditEvent(ev);
 
     return `
       <div class="event-card" data-id="${ev.id}" tabindex="0" role="button" style="border-radius:12px; overflow:hidden;">
@@ -893,9 +907,11 @@ const App = (() => {
         </div>
 
         <div class="event-card-actions">
-          <button class="btn-card-action" data-action="edit" data-id="${ev.id}" title="Modificar Evento" style="color:var(--gold); font-weight:900; display:inline-flex; align-items:center; gap:4px;">
-            ${ICONS.edit} Editar
-          </button>
+          ${showEdit ? `
+            <button class="btn-card-action" data-action="edit" data-id="${ev.id}" title="Modificar Evento" style="color:var(--gold); font-weight:900; display:inline-flex; align-items:center; gap:4px;">
+              ${ICONS.edit} Editar
+            </button>
+          ` : ''}
           <button class="btn-card-action ${inter.is_favorite ? 'fav-active' : ''}" data-action="fav" data-id="${ev.id}" style="display:inline-flex; align-items:center; gap:4px;">
             ${inter.is_favorite ? ICONS.heartFill : ICONS.heart} ${inter.is_favorite ? 'Guardado' : 'Favorito'}
           </button>
@@ -1047,9 +1063,11 @@ const App = (() => {
             </div>
 
             <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
-              <button class="btn-primary" id="btn-detail-edit-event" style="padding:14px; font-size:13px; font-family:var(--font-mono); font-weight:900; background:var(--gold); color:#000; display:flex; align-items:center; justify-content:center; gap:8px;">
-                ${ICONS.edit} ✏️ MODIFICAR / EDITAR ESTE EVENTO
-              </button>
+              ${canEditEvent(ev) ? `
+                <button class="btn-primary" id="btn-detail-edit-event" style="padding:14px; font-size:13px; font-family:var(--font-mono); font-weight:900; background:var(--gold); color:#000; display:flex; align-items:center; justify-content:center; gap:8px;">
+                  ${ICONS.edit} MODIFICAR / EDITAR ESTE EVENTO
+                </button>
+              ` : ''}
 
               <button class="btn-primary" id="btn-detail-add-cart" style="padding:14px; font-size:13px; font-weight:900; font-family:var(--font-mono); width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--surface3); color:#fff; border:1px solid var(--border);">
                 ${ICONS.cart} AGREGAR ENTRADA AL CARRITO
