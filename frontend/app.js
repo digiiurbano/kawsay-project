@@ -1041,15 +1041,27 @@ const App = (() => {
   }
 
   function openEventDetailModal(eventId) {
-    let ev = apiEvents.find(e => e.id === eventId);
-    if (!ev) ev = convocatoriasList.find(c => c.id === eventId);
+    if (!eventId) return;
+    let ev = apiEvents.find(e => String(e.id) === String(eventId));
+    if (!ev) ev = convocatoriasList.find(c => String(c.id) === String(eventId));
+    if (!ev && KAWSAY_DATA && KAWSAY_DATA.weekEvents) {
+      ev = KAWSAY_DATA.weekEvents.find(e => String(e.id) === String(eventId));
+    }
+    if (!ev && String(eventId).startsWith('conv-')) ev = convocatoriasList[0];
     if (!ev) ev = apiEvents[0];
     if (!ev) return;
 
     activeDetailEvent = ev;
     const inter = userInteractions[ev.id] || { is_favorite: 0, has_rsvp: 0 };
-    const detailBox = $('#modal-event-detail-box');
-    if (!detailBox) return;
+    let detailBox = $('#modal-event-detail-box');
+    let modalDetail = $('#modal-event-detail');
+
+    if (!detailBox || !modalDetail) {
+      renderModals();
+      detailBox = $('#modal-event-detail-box');
+      modalDetail = $('#modal-event-detail');
+    }
+    if (!detailBox || !modalDetail) return;
 
     const isConvocatoria = (ev.category === 'Convocatorias' || (ev.id && ev.id.startsWith('conv-')));
 
@@ -2652,6 +2664,21 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         closeAuthModal();
         closeEventDetailModal();
         closeApplyConvocatoriaModal();
+        return;
+      }
+
+      // Si se hizo clic en un botón de acción o dentro de un modal abierto, no interferir
+      if (e.target.closest('.btn-card-action') || e.target.closest('.modal-overlay.open')) {
+        return;
+      }
+
+      // Delegación global: Capturar clic en cualquier tarjeta de evento, convocatoria o píldora de calendario
+      const card = e.target.closest('.event-card, .month-event-pill');
+      if (card) {
+        const id = card.dataset.id || card.getAttribute('data-id');
+        if (id) {
+          openEventDetailModal(id);
+        }
       }
     });
   }
