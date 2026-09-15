@@ -93,6 +93,19 @@ const App = (() => {
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
 
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 1200) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      throw err;
+    }
+  }
+
   async function init() {
     const savedUser = localStorage.getItem('kawsay_user');
     if (savedUser) {
@@ -100,7 +113,12 @@ const App = (() => {
     } else {
       currentUser = guestUser;
     }
-    await loadInitialData();
+
+    // 1. Inicializar inmediatamente apiEvents y apiSpaces con datos locales KAWSAY
+    apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: 'approved' })), ...convocatoriasList];
+    apiSpaces = KAWSAY_DATA.spaces;
+
+    // 2. Renderizar interfaz e instalar delegación global de eventos de inmediato (0ms de latencia)
     renderSidebar();
     renderTopbar();
     renderHomeView();
@@ -110,21 +128,35 @@ const App = (() => {
     renderModals();
     bindGlobalEvents();
     navigate('home');
+
+    // 3. Intentar sincronizar con la API en segundo plano sin congelar la interfaz
+    loadInitialData().then(() => {
+      renderHomeView();
+      renderSidebar();
+      renderTopbar();
+    }).catch(err => {
+      console.warn("📌 Sincronización en segundo plano: usando base local KAWSAY.");
+    });
   }
 
   // ============================================================
-  // DATA FETCHING
+  // DATA FETCHING (CON TIMEOUT NO BLOQUEANTE DE 1.2 SEGUNDOS)
   // ============================================================
   async function loadInitialData() {
     try {
-      const uRes = await fetch(`${API_BASE}/users`);
+      const uRes = await fetchWithTimeout(`${API_BASE}/users`);
       if (uRes.ok) {
         const fetchedUsers = await uRes.json();
         usersList = [guestUser, ...fetchedUsers];
       }
 
-      const eRes = await fetch(`${API_BASE}/events?status=all`);
-      if (eRes.ok) apiEvents = await eRes.json();
+      const eRes = await fetchWithTimeout(`${API_BASE}/events?status=all`);
+      if (eRes.ok) {
+        const fetchedEvents = await eRes.json();
+        if (fetchedEvents && fetchedEvents.length > 0) {
+          apiEvents = fetchedEvents;
+        }
+      }
 
       // Fusionar convocatorias en el array global de eventos si no están presentes
       convocatoriasList.forEach(conv => {
@@ -133,10 +165,13 @@ const App = (() => {
         }
       });
 
-      const sRes = await fetch(`${API_BASE}/spaces`);
-      if (sRes.ok) apiSpaces = await sRes.json();
+      const sRes = await fetchWithTimeout(`${API_BASE}/spaces`);
+      if (sRes.ok) {
+        const fetchedSpaces = await sRes.json();
+        if (fetchedSpaces && fetchedSpaces.length > 0) apiSpaces = fetchedSpaces;
+      }
 
-      const stRes = await fetch(`${API_BASE}/stats`);
+      const stRes = await fetchWithTimeout(`${API_BASE}/stats`);
       if (stRes.ok) platformStats = await stRes.json();
 
       if (currentUser.role !== 'invitado') {
@@ -145,16 +180,18 @@ const App = (() => {
         userInteractions = {};
       }
     } catch (err) {
-      console.warn("⚠️ API local no disponible, usando datos base:", err);
-      apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: 'approved' })), ...convocatoriasList];
-      apiSpaces = KAWSAY_DATA.spaces;
+      console.warn("⚠️ API remota no respondió dentro del timeout, manteniendo base local:", err);
+      if (!apiEvents || apiEvents.length === 0) {
+        apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: 'approved' })), ...convocatoriasList];
+      }
+      if (!apiSpaces || apiSpaces.length === 0) apiSpaces = KAWSAY_DATA.spaces;
     }
   }
 
   async function loadUserInteractions() {
     if (currentUser.role === 'invitado') return;
     try {
-      const res = await fetch(`${API_BASE}/interactions/${currentUser.id}`);
+      const res = await fetchWithTimeout(`${API_BASE}/interactions/${currentUser.id}`);
       if (res.ok) {
         const rows = await res.json();
         userInteractions = {};
@@ -163,7 +200,7 @@ const App = (() => {
         });
       }
     } catch (e) {
-      console.warn("Error de interacciones:", e);
+      console.warn("Error de interacciones (usando estado local):", e);
     }
   }
 
