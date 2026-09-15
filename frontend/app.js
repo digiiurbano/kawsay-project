@@ -28,7 +28,10 @@ const App = (() => {
     artist: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12c0 3.5 2.5 6.5 6 6.5 1 0 1.5-.5 1.5-1 0-.5-.2-1-.2-1.5 0-1 1-1.5 1.5-1.5H13c4.5 0 8.5-3.5 8.5-8C21.5 6.5 17 2 12 2Z"/><circle cx="13.5" cy="6.5" r="1.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="1.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="1.5" fill="currentColor"/></svg>`,
     music: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
     edit: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`,
-    plus: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y1="12"/></svg>`
+    plus: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y1="12"/></svg>`,
+    lock: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+    key: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>`,
+    logOut: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`
   };
 
   // ---- Dynamic State ----
@@ -291,7 +294,7 @@ const App = (() => {
         <!-- Área de Autenticación / Perfil Real -->
         ${currentUser.role === 'invitado' ? `
           <button class="btn-primary" id="btn-topbar-login" style="padding:8px 18px; font-size:12px; font-family:var(--font-mono); font-weight:900; background:var(--accent); color:#000; cursor:pointer; border:none; border-radius:6px; display:flex; align-items:center; gap:6px;">
-            🔑 INICIAR SESIÓN / REGISTRO
+            ${ICONS.key} INICIAR SESIÓN / REGISTRO
           </button>
         ` : `
           <div style="display:flex; align-items:center; gap:10px; background:var(--surface2); padding:4px 10px 4px 6px; border-radius:20px; border:1px solid var(--border);">
@@ -300,8 +303,8 @@ const App = (() => {
               <span style="font-size:12px; font-weight:800; color:#fff; max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${currentUser.name}</span>
               <span style="font-size:9px; font-weight:900; color:var(--primary); text-transform:uppercase;">${currentUser.role}</span>
             </div>
-            <button id="btn-logout" title="Cerrar Sesión" style="background:transparent; border:none; color:var(--grey1); font-size:14px; cursor:pointer; padding:4px; margin-left:4px;">
-              🚪
+            <button id="btn-logout" title="Cerrar Sesión" style="background:transparent; border:none; color:var(--grey1); font-size:14px; cursor:pointer; padding:4px; margin-left:4px; display:flex; align-items:center;">
+              ${ICONS.logOut}
             </button>
           </div>
         `}
@@ -1393,71 +1396,66 @@ const App = (() => {
     container.innerHTML = `
       <!-- Modal Auth Real (Login / Registro) -->
       <div class="modal-overlay" id="modal-auth">
-        <div class="cart-modal-box" style="max-width:460px;">
-          <div class="modal-header">
-            <div class="modal-title" style="font-size:18px;">🔐 ACCESO A LA PLATAFORMA</div>
-            <button class="modal-close" id="modal-auth-close">×</button>
+        <div class="cart-modal-box" style="max-width:440px; background:#0f172a; border:1px solid #334155; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+          <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px;">
+            <div class="modal-title" style="font-size:18px; font-weight:900; color:#ffffff; display:flex; align-items:center; gap:8px;">
+              ${ICONS.lock} ACCESO A LA PLATAFORMA
+            </div>
+            <button class="modal-close" id="modal-auth-close" style="color:#94a3b8;">×</button>
           </div>
           
           <!-- Pestañas Auth -->
-          <div style="display:flex; gap:10px; margin: 16px 0 20px; border-bottom:1px solid var(--border); padding-bottom:8px;">
-            <button id="tab-btn-login" class="tab-btn active" style="flex:1; padding:8px; font-size:13px; font-weight:800; border-radius:6px; cursor:pointer; background:var(--primary); color:#000; border:none;">INICIAR SESIÓN</button>
-            <button id="tab-btn-register" class="tab-btn" style="flex:1; padding:8px; font-size:13px; font-weight:800; border-radius:6px; cursor:pointer; background:transparent; color:var(--text); border:1px solid var(--border);">CREAR CUENTA</button>
+          <div style="display:flex; gap:10px; margin: 18px 0 22px;">
+            <button id="tab-btn-login" class="tab-btn active" style="flex:1; padding:10px; font-size:13px; font-weight:900; border-radius:6px; cursor:pointer; background:#ffffff; color:#000000; border:none; letter-spacing:0.5px;">
+              INICIAR SESIÓN
+            </button>
+            <button id="tab-btn-register" class="tab-btn" style="flex:1; padding:10px; font-size:13px; font-weight:700; border-radius:6px; cursor:pointer; background:rgba(255,255,255,0.08); color:#cbd5e1; border:1px solid rgba(255,255,255,0.15);">
+              CREAR CUENTA
+            </button>
           </div>
 
           <!-- Mensaje de Feedback -->
-          <div id="auth-alert-msg" style="display:none; padding:10px; border-radius:6px; font-size:12px; margin-bottom:14px; font-weight:600;"></div>
+          <div id="auth-alert-msg" style="display:none; padding:12px; border-radius:6px; font-size:13px; margin-bottom:16px; font-weight:700;"></div>
 
           <!-- Formulario 1: Iniciar Sesión -->
-          <form id="form-auth-login" style="display:flex; flex-direction:column; gap:14px;">
+          <form id="form-auth-login" style="display:flex; flex-direction:column; gap:16px;">
             <div>
-              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">CORREO ELECTRÓNICO</label>
-              <input type="email" id="login-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CORREO ELECTRÓNICO</label>
+              <input type="email" id="login-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
             <div>
-              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">CONTRASEÑA</label>
-              <input type="password" id="login-password" required placeholder="••••••••" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CONTRASEÑA</label>
+              <input type="password" id="login-password" required placeholder="••••••••" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
-            <button type="submit" class="btn-submit" style="background:var(--primary); color:#000; font-weight:800; padding:12px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:6px;">
+            <button type="submit" class="btn-submit" style="background:var(--primary); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
               ENTRAR A MI CUENTA
             </button>
-
-            <!-- Acceso Rápido / Credenciales de Prueba por Rol -->
-            <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border);">
-              <div style="font-size:11px; font-weight:700; color:var(--grey1); margin-bottom:8px; text-transform:uppercase;">Credenciales preconfiguradas para pruebas de roles:</div>
-              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-                <button type="button" class="btn-quick-cred" data-email="admin@kawsay.ec" data-pass="admin123" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); color:#fff; padding:6px 8px; border-radius:4px; font-size:11px; cursor:pointer; text-align:left;">🛡️ Admin<br><span style="color:var(--grey1);">admin@kawsay.ec</span></button>
-                <button type="button" class="btn-quick-cred" data-email="espacio@kawsay.ec" data-pass="espacio123" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); color:#fff; padding:6px 8px; border-radius:4px; font-size:11px; cursor:pointer; text-align:left;">🏛️ Espacio/Gestor<br><span style="color:var(--grey1);">espacio@kawsay.ec</span></button>
-                <button type="button" class="btn-quick-cred" data-email="artista@kawsay.ec" data-pass="artista123" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); color:#fff; padding:6px 8px; border-radius:4px; font-size:11px; cursor:pointer; text-align:left;">🎨 Artista<br><span style="color:var(--grey1);">artista@kawsay.ec</span></button>
-                <button type="button" class="btn-quick-cred" data-email="espectador@kawsay.ec" data-pass="espectador123" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); color:#fff; padding:6px 8px; border-radius:4px; font-size:11px; cursor:pointer; text-align:left;">👤 Espectador<br><span style="color:var(--grey1);">espectador@kawsay.ec</span></button>
-              </div>
-            </div>
           </form>
 
           <!-- Formulario 2: Crear Cuenta -->
-          <form id="form-auth-register" style="display:none; flex-direction:column; gap:14px;">
+          <form id="form-auth-register" style="display:none; flex-direction:column; gap:16px;">
             <div>
-              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">NOMBRE COMPLETO / ORGANIZACIÓN</label>
-              <input type="text" id="reg-name" required placeholder="Ej. Carlos Andrade" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">NOMBRE COMPLETO / ORGANIZACIÓN</label>
+              <input type="text" id="reg-name" required placeholder="Ej. Carlos Andrade" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
             <div>
-              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">CORREO ELECTRÓNICO</label>
-              <input type="email" id="reg-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CORREO ELECTRÓNICO</label>
+              <input type="email" id="reg-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
             <div>
-              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">CONTRASEÑA</label>
-              <input type="password" id="reg-password" required placeholder="••••••••" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
+              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CONTRASEÑA</label>
+              <input type="password" id="reg-password" required placeholder="••••••••" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
             <div>
-              <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--grey1);">TIPO DE PERFIL EN KAWSAY</label>
-              <select id="reg-role" style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:6px; font-size:13px;">
-                <option value="espectador">👤 Espectador / Cliente (Comprar entradas, favoritos)</option>
-                <option value="artista">🎨 Artista / Colectivo (Publicar propuestas artísticas)</option>
-                <option value="espacio">🏛️ Espacio Cultural / Gestor (Gestión de cartelera y salas)</option>
-                <option value="admin">🛡️ Administrador (Gestión total de la plataforma)</option>
+              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">TIPO DE PERFIL EN KAWSAY</label>
+              <select id="reg-role" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
+                <option value="espectador">Espectador / Cliente (Comprar entradas, favoritos)</option>
+                <option value="artista">Artista / Colectivo (Publicar propuestas artísticas)</option>
+                <option value="espacio">Espacio Cultural / Gestor (Gestión de cartelera y salas)</option>
+                <option value="admin">Administrador (Gestión total de la plataforma)</option>
               </select>
             </div>
-            <button type="submit" class="btn-submit" style="background:var(--primary); color:#000; font-weight:800; padding:12px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:6px;">
+            <button type="submit" class="btn-submit" style="background:var(--primary); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
               REGISTRAR MI PERFIL
             </button>
           </form>
@@ -1683,30 +1681,21 @@ const App = (() => {
 
     if (tabLogin && tabReg) {
       tabLogin.addEventListener('click', () => {
-        tabLogin.style.background = 'var(--primary)'; tabLogin.style.color = '#000'; tabLogin.style.border = 'none';
-        tabReg.style.background = 'transparent'; tabReg.style.color = 'var(--text)'; tabReg.style.border = '1px solid var(--border)';
+        tabLogin.style.background = '#ffffff'; tabLogin.style.color = '#000000'; tabLogin.style.fontWeight = '900'; tabLogin.style.border = 'none';
+        tabReg.style.background = 'rgba(255,255,255,0.08)'; tabReg.style.color = '#cbd5e1'; tabReg.style.fontWeight = '700'; tabReg.style.border = '1px solid rgba(255,255,255,0.15)';
         formLogin.style.display = 'flex';
         formReg.style.display = 'none';
         authAlert.style.display = 'none';
       });
 
       tabReg.addEventListener('click', () => {
-        tabReg.style.background = 'var(--primary)'; tabReg.style.color = '#000'; tabReg.style.border = 'none';
-        tabLogin.style.background = 'transparent'; tabLogin.style.color = 'var(--text)'; tabLogin.style.border = '1px solid var(--border)';
+        tabReg.style.background = '#ffffff'; tabReg.style.color = '#000000'; tabReg.style.fontWeight = '900'; tabReg.style.border = 'none';
+        tabLogin.style.background = 'rgba(255,255,255,0.08)'; tabLogin.style.color = '#cbd5e1'; tabLogin.style.fontWeight = '700'; tabLogin.style.border = '1px solid rgba(255,255,255,0.15)';
         formReg.style.display = 'flex';
         formLogin.style.display = 'none';
         authAlert.style.display = 'none';
       });
     }
-
-    // Botones de credenciales rápidas por rol
-    container.querySelectorAll('.btn-quick-cred').forEach(btn => {
-      btn.addEventListener('click', () => {
-        $('#login-email').value = btn.dataset.email;
-        $('#login-password').value = btn.dataset.pass;
-        showAuthAlert(`Credenciales cargadas para ${btn.dataset.email}. Haz clic en ENTRAR.`, false);
-      });
-    });
 
     // Submit Formulario Iniciar Sesión
     if (formLogin) {
