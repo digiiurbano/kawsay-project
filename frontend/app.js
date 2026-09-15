@@ -2676,6 +2676,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     });
 
     document.addEventListener('click', (e) => {
+      // 1. Clic en el fondo oscuro de cualquier modal para cerrarlo
       if (e.target && e.target.classList && e.target.classList.contains('modal-overlay')) {
         closeCreateModal();
         closeAdminModal();
@@ -2687,12 +2688,12 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         return;
       }
 
-      // Si se hizo clic en un botón de acción o dentro de un modal abierto, no interferir
-      if (e.target.closest('.btn-card-action') || e.target.closest('.modal-overlay.open')) {
+      // 2. Si el clic es dentro de un botón de acción de tarjeta, dejar que su propio manejador lo procese
+      if (e.target.closest('.btn-card-action')) {
         return;
       }
 
-      // Delegación global: Capturar clic en cualquier tarjeta de evento, convocatoria o píldora de calendario
+      // 3. Delegación global: Capturar clic en cualquier tarjeta de evento, convocatoria o píldora de calendario
       const card = e.target.closest('.event-card, .month-event-pill');
       if (card) {
         const id = card.dataset.id || card.getAttribute('data-id');
