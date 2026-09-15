@@ -450,9 +450,9 @@ const App = (() => {
         <div class="interests-grid stagger" id="interests-grid">
           ${KAWSAY_DATA.interests.map(int => `
             <div class="interest-card" 
-                 style="background: ${int.color}; color: ${int.dark ? '#000' : '#fff'};"
-                 data-id="${int.id}" tabindex="0" role="button">
-              <span class="interest-label" style="font-weight:900;">${int.name}</span>
+                 style="background: ${int.color}; color: ${int.dark ? '#000000' : '#ffffff'}; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);"
+                 data-id="${int.id}" data-name="${int.name}" tabindex="0" role="button">
+              <span class="interest-label" style="font-weight:900; font-size:15px; letter-spacing:0.5px; text-shadow:${int.dark ? 'none' : '0 2px 4px rgba(0,0,0,0.5)'};">${int.name}</span>
               <span class="interest-icon" style="display:flex; align-items:center;">${ICONS[int.icon] || ICONS.music}</span>
             </div>
           `).join('')}
@@ -467,6 +467,15 @@ const App = (() => {
         $$('.filter-pill').forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
         filterEventsByCategory(pill.dataset.cat);
+      });
+    });
+
+    $$('.interest-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const catName = card.dataset.name;
+        filterEventsByCategory(catName);
+        const grid = document.getElementById('events-grid');
+        if (grid) grid.scrollIntoView({ behavior: 'smooth' });
       });
     });
 
@@ -863,8 +872,10 @@ const App = (() => {
     if (!category) return 'cat-artes';
     const c = category.toLowerCase();
     if (c.includes('músic') || c.includes('music')) return 'cat-musica';
-    if (c.includes('danz')) return 'cat-danza';
     if (c.includes('teatr')) return 'cat-teatro';
+    if (c.includes('danz')) return 'cat-danza';
+    if (c.includes('cine') || c.includes('películ') || c.includes('film')) return 'cat-cine';
+    if (c.includes('foto') || c.includes('fotograf')) return 'cat-foto';
     if (c.includes('festival') || c.includes('feria')) return 'cat-festivales';
     if (c.includes('convocatori') || c.includes('fondo') || c.includes('beca')) return 'cat-convocatorias';
     return 'cat-artes';

@@ -2179,13 +2179,15 @@ h2, .section-title { font-size: 24px !important; }
 h3, .event-card-title { font-size: 18px !important; }
 p, .event-card-desc { font-size: 14px !important; }
 
-/* Código de Colores por Categoría */
-.badge-cat-musica, .cat-musica { background: #3b82f6 !important; color: #ffffff !important; }
-.badge-cat-danza, .cat-danza { background: #ec4899 !important; color: #ffffff !important; }
-.badge-cat-teatro, .cat-teatro { background: #a855f7 !important; color: #ffffff !important; }
-.badge-cat-artes, .cat-artes, .cat-cine { background: #f97316 !important; color: #ffffff !important; }
-.badge-cat-festivales, .cat-festivales { background: #10b981 !important; color: #ffffff !important; }
-.badge-cat-convocatorias, .cat-convocatorias { background: #eab308 !important; color: #000000 !important; font-weight: 900 !important; }
+/* Código de Colores por Categoría (Sincronizado con Explorar por Interés) */
+.badge-cat-musica, .cat-musica { background: #e5383b !important; color: #ffffff !important; }
+.badge-cat-teatro, .cat-teatro { background: #c6f135 !important; color: #000000 !important; font-weight: 800 !important; }
+.badge-cat-danza, .cat-danza { background: #ffffff !important; color: #000000 !important; font-weight: 800 !important; }
+.badge-cat-artes, .cat-artes { background: #18181b !important; color: #ffffff !important; border: 1px solid rgba(255,255,255,0.2) !important; }
+.badge-cat-cine, .cat-cine { background: #e5383b !important; color: #ffffff !important; }
+.badge-cat-foto, .cat-foto { background: #c6f135 !important; color: #000000 !important; font-weight: 800 !important; }
+.badge-cat-festivales, .cat-festivales { background: #c6f135 !important; color: #000000 !important; font-weight: 800 !important; }
+.badge-cat-convocatorias, .cat-convocatorias { background: #e5383b !important; color: #ffffff !important; font-weight: 900 !important; }
 
 /* Estrellas de Valoración */
 .rating-stars {

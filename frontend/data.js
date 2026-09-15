@@ -139,12 +139,12 @@ const KAWSAY_DATA = {
   ],
 
   interests: [
-    { id: 'int-001', name: 'MÚSICA', color: '#e53935', icon: 'music' },
-    { id: 'int-002', name: 'TEATRO', color: '#c6f135', icon: 'theater', dark: true },
-    { id: 'int-003', name: 'DANZA', color: '#ffffff', icon: 'dance', dark: true },
-    { id: 'int-004', name: 'ARTES', color: '#1a1a1a', icon: 'artist' },
-    { id: 'int-005', name: 'CINE', color: '#e53935', icon: 'film' },
-    { id: 'int-006', name: 'FOTO', color: '#c6f135', icon: 'camera', dark: true }
+    { id: 'int-001', name: 'MÚSICA', color: '#e5383b', icon: 'music', dark: false },
+    { id: 'int-002', name: 'TEATRO', color: '#c6f135', icon: 'artist', dark: true },
+    { id: 'int-003', name: 'DANZA', color: '#ffffff', icon: 'user', dark: true },
+    { id: 'int-004', name: 'ARTES', color: '#18181b', icon: 'artist', dark: false },
+    { id: 'int-005', name: 'CINE', color: '#e5383b', icon: 'ticket', dark: false },
+    { id: 'int-006', name: 'FOTO', color: '#c6f135', icon: 'star', dark: true }
   ],
 
   // ---- Calendar Week View Data ----
