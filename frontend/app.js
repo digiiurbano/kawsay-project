@@ -2049,6 +2049,11 @@ const App = (() => {
           </form>
         </div>
       </div>
+
+      <!-- Modal Detalle de Evento / Convocatoria -->
+      <div class="modal-overlay" id="modal-event-detail">
+        <div class="modal-box" id="modal-event-detail-box" style="max-width:850px; width:92vw; padding:0; overflow:hidden;"></div>
+      </div>
     `;
 
     bindBillboardPreviewEvents();
@@ -2634,6 +2639,19 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         closeTicketsModal();
         closeAuthModal();
         closeEventDetailModal();
+        closeApplyConvocatoriaModal();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-overlay')) {
+        closeCreateModal();
+        closeAdminModal();
+        closeCartModal();
+        closeTicketsModal();
+        closeAuthModal();
+        closeEventDetailModal();
+        closeApplyConvocatoriaModal();
       }
     });
   }
