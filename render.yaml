@@ -7,9 +7,3 @@ services:
     envVars:
       - key: PORT
         value: 10000
-      - key: DB_PATH
-        value: /var/data/kawsay.db
-    disk:
-      name: kawsay-disk
-      mountPath: /var/data
-      sizeGB: 1
