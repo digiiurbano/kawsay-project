@@ -2328,20 +2328,21 @@ const App = (() => {
   function showModal(selector) {
     const el = (typeof selector === 'string') ? $(selector) : selector;
     if (!el) return;
-    el.style.display = 'flex';
-    el.style.opacity = '1';
-    el.style.visibility = 'visible';
-    el.style.pointerEvents = 'all';
+    el.style.setProperty('display', 'flex', 'important');
+    el.style.setProperty('opacity', '1', 'important');
+    el.style.setProperty('visibility', 'visible', 'important');
+    el.style.setProperty('pointer-events', 'all', 'important');
+    el.style.setProperty('z-index', '999999', 'important');
     el.classList.add('open');
   }
 
   function hideModal(selector) {
     const el = (typeof selector === 'string') ? $(selector) : selector;
     if (!el) return;
-    el.style.display = 'none';
-    el.style.opacity = '0';
-    el.style.visibility = 'hidden';
-    el.style.pointerEvents = 'none';
+    el.style.setProperty('display', 'none', 'important');
+    el.style.setProperty('opacity', '0', 'important');
+    el.style.setProperty('visibility', 'hidden', 'important');
+    el.style.setProperty('pointer-events', 'none', 'important');
     el.classList.remove('open');
   }
 
@@ -2789,7 +2790,20 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         return;
       }
 
-      // 2. Si el clic es dentro de un botón de acción de tarjeta, dejar que su propio manejador lo procese
+      // 2. Delegación para botones de creación de eventos
+      const createBtn = e.target.closest('#create-event-btn, .create-event-btn, #btn-admin-create-event, #btn-artist-create-event, #btn-artist-new-event-top, #btn-space-create-event, #btn-space-new-event-top');
+      if (createBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentUser.role === 'invitado') {
+          openAuthModal();
+        } else {
+          openCreateModal();
+        }
+        return;
+      }
+
+      // 3. Si el clic es dentro de un botón de acción de tarjeta, dejar que su propio manejador lo procese
       if (e.target.closest('.btn-card-action')) {
         return;
       }
