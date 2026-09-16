@@ -1082,15 +1082,26 @@ const App = (() => {
   }
 
   function openEventDetailModal(eventId) {
-    if (!eventId) return;
+    if (!eventId) eventId = 'fe-001';
     let ev = apiEvents.find(e => String(e.id) === String(eventId));
     if (!ev) ev = convocatoriasList.find(c => String(c.id) === String(eventId));
     if (!ev && KAWSAY_DATA && KAWSAY_DATA.weekEvents) {
       ev = KAWSAY_DATA.weekEvents.find(e => String(e.id) === String(eventId));
     }
+    if (!ev && KAWSAY_DATA && KAWSAY_DATA.featuredEvent && (String(eventId) === 'fe-001' || String(eventId) === 'fe-001')) {
+      ev = KAWSAY_DATA.featuredEvent;
+    }
     if (!ev && String(eventId).startsWith('conv-')) ev = convocatoriasList[0];
-    if (!ev) ev = apiEvents[0];
+    if (!ev) ev = apiEvents[0] || (KAWSAY_DATA && KAWSAY_DATA.featuredEvent);
     if (!ev) return;
+
+    ev = { ...ev };
+    if (ev.title) ev.title = String(ev.title).replace(/\n/g, ' ');
+    if (!ev.full_title) ev.full_title = ev.fullTitle || ev.title;
+    if (!ev.price) ev.price = '$15';
+    if (!ev.venue) ev.venue = 'Teatro Nacional Quito';
+    if (!ev.image) ev.image = 'images/hero_banner.jpg';
+    if (!ev.category) ev.category = 'Danza';
 
     activeDetailEvent = ev;
     const inter = userInteractions[ev.id] || { is_favorite: 0, has_rsvp: 0 };
@@ -1229,112 +1240,105 @@ const App = (() => {
     }
 
     detailBox.innerHTML = `
-      <!-- Banner Hero del Evento -->
-      <div class="event-detail-hero">
-        <img class="event-detail-hero-img" src="${ev.image}" alt="${ev.title}">
-        <div class="event-detail-hero-overlay">
-          <div style="display:flex; gap:10px; align-items:center;">
-            <span class="hero-badge" style="font-size:11px; background:var(--accent); color:#000;">${ev.badge || 'ESTRENO EXCLUSIVO'}</span>
-            <span style="background:rgba(0,0,0,0.7); font-family:var(--font-mono); font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; border:1px solid var(--gold); color:var(--gold);">
+      <!-- Header Hero Off-Canvas -->
+      <div class="offcanvas-hero">
+        <img class="offcanvas-hero-img" src="${ev.image}" alt="${ev.title}">
+        <button class="offcanvas-close-btn" id="modal-detail-close" aria-label="Cerrar">×</button>
+        <div class="offcanvas-hero-overlay">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span class="hero-badge" style="font-size:10px; background:var(--accent); color:#000; font-weight:900;">${ev.badge || 'DESTACADO'}</span>
+            <span style="background:rgba(0,0,0,0.8); font-family:var(--font-mono); font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px; border:1px solid var(--gold); color:var(--gold);">
               ${ev.category.toUpperCase()}
             </span>
           </div>
-          <h1 style="font-size:36px; font-weight:900; text-shadow:0 4px 12px rgba(0,0,0,0.8);">${ev.title}</h1>
-          <p style="color:var(--grey1); font-size:15px; max-width:650px;">${ev.full_title || ev.description}</p>
+          <h2 style="font-size:24px; font-weight:900; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.9); line-height:1.2; margin-top:4px;">${ev.title}</h2>
+          <p style="color:var(--grey1); font-size:12px; font-weight:700;">📍 ${ev.venue}</p>
         </div>
-        <button class="modal-close" id="modal-detail-close" style="position:absolute; top:16px; right:16px; background:rgba(0,0,0,0.6); width:36px; height:36px; border-radius:50%; border:1px solid var(--border); color:#fff; display:flex; align-items:center; justify-content:center;">×</button>
       </div>
 
-      <!-- Ficha Técnica & Contenido -->
-      <div class="event-detail-grid">
+      <!-- Contenido Principal Off-Canvas -->
+      <div class="offcanvas-body">
         <div>
-          <h2 style="font-size:20px; font-weight:900; margin-bottom:12px;">ACERCA DEL ESPECTÁCULO</h2>
-          <p style="color:#ddd; line-height:1.7; font-size:14px; margin-bottom:20px;">
+          <h3 style="font-size:13px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:8px; text-transform:uppercase;">
+            📖 ACERCA DEL ESPECTÁCULO
+          </h3>
+          <p style="color:#e2e8f0; line-height:1.6; font-size:13px;">
             ${ev.description || 'Presentación especial en la agenda multicultural de Quito. Disfruta de un espectáculo de alta calidad artística con el respaldo técnico y la producción del recinto.'}
           </p>
+        </div>
 
-          <div class="event-meta-row">
-            <div class="event-meta-pill">
-              📅 <span>FECHA: <strong>${ev.date}</strong></span>
-            </div>
-            <div class="event-meta-pill">
-              ⏰ <span>INICIO: <strong>${ev.time} (Puertas 19:30)</strong></span>
-            </div>
-            <div class="event-meta-pill">
-              📍 <span>LUGAR: <strong>${ev.venue}</strong></span>
-            </div>
-            <div class="event-meta-pill">
-              👥 <span>AFORO: <strong>250 Personas</strong></span>
-            </div>
+        <!-- Píldoras de Información -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">FECHA</div>
+            <div style="font-size:14px; font-weight:900; color:#fff;">📅 ${ev.date}</div>
           </div>
-
-          <h3 style="font-size:16px; font-weight:900; margin:24px 0 12px; color:var(--accent); font-family:var(--font-mono);">
-            ELENCO & ARTISTAS DESTACADOS
-          </h3>
-          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:16px; display:flex; align-items:center; gap:16px;">
-            <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150" style="width:50px; height:50px; border-radius:50%; object-fit:cover; border:2px solid var(--accent);" alt="Artista">
-            <div>
-              <div style="font-weight:900; font-size:14px;">Mateo & La Banda (Colectivo Invitado)</div>
-              <div style="font-size:12px; color:var(--grey1); font-family:var(--font-mono);">Elenco Principal · Jazz & Artes Escénicas</div>
-            </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">HORA DE INICIO</div>
+            <div style="font-size:14px; font-weight:900; color:#fff;">⏰ ${ev.time}</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">PRECIO ENTRADA</div>
+            <div style="font-size:16px; font-weight:900; color:var(--accent);">💰 ${ev.price}</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">AFORO ESTIMADO</div>
+            <div style="font-size:14px; font-weight:900; color:#fff;">👥 250 Personas</div>
           </div>
         </div>
 
-        <!-- Panel de Compra & Boletería -->
-        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:16px; padding:24px; display:flex; flex-direction:column; justify-content:space-between;">
+        <!-- Elenco & Colectivo -->
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px; display:flex; align-items:center; gap:12px;">
+          <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid var(--accent);" alt="Artista">
           <div>
-            <div style="font-family:var(--font-mono); font-size:12px; color:var(--gold); font-weight:800; margin-bottom:8px;">
-              BOLETERÍA EN VIVO EN QUITO
-            </div>
-            <div style="font-size:32px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:16px;">
-              ${ev.price}
-            </div>
-
-            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
-              ${canEditEvent(ev) ? `
-                <button class="btn-primary" id="btn-detail-edit-event" style="padding:14px; font-size:13px; font-family:var(--font-mono); font-weight:900; background:var(--gold); color:#000; display:flex; align-items:center; justify-content:center; gap:8px;">
-                  ${ICONS.edit} MODIFICAR / EDITAR ESTE EVENTO
-                </button>
-              ` : ''}
-
-              <button class="btn-primary" id="btn-detail-add-cart" style="padding:14px; font-size:13px; font-weight:900; font-family:var(--font-mono); width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--surface3); color:#fff; border:1px solid var(--border);">
-                ${ICONS.cart} AGREGAR ENTRADA AL CARRITO
-              </button>
-
-              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-                <button class="btn-secondary ${inter.is_favorite ? 'fav-active' : ''}" id="btn-detail-fav" style="padding:10px; font-size:11px; font-family:var(--font-mono); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px;">
-                  ${inter.is_favorite ? ICONS.heartFill : ICONS.heart} FAVORITO
-                </button>
-                <button class="btn-secondary ${inter.has_rsvp ? 'active' : ''}" id="btn-detail-rsvp" style="padding:10px; font-size:11px; font-family:var(--font-mono); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px;">
-                  ${inter.has_rsvp ? ICONS.check : ICONS.user} ASISTIRÉ
-                </button>
-              </div>
-
-              <!-- Sistema de Calificación con Estrellas (1-5 ⭐) -->
-              <div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--border);">
-                <div style="font-size:12px; font-weight:800; color:#ffffff; margin-bottom:6px;">
-                  CALIFICACIÓN DEL PÚBLICO:
-                </div>
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <div class="rating-stars" id="detail-rating-stars">
-                    <span class="star-icon" data-star="1">★</span>
-                    <span class="star-icon" data-star="2">★</span>
-                    <span class="star-icon" data-star="3">★</span>
-                    <span class="star-icon" data-star="4">★</span>
-                    <span class="star-icon" data-star="5">★</span>
-                  </div>
-                  <span id="detail-rating-text" style="font-family:var(--font-mono); font-size:12px; font-weight:800; color:#eab308;">
-                    ⭐ ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'} (${ev.rating_count || 0} calificaciones)
-                  </span>
-                </div>
-              </div>
-
-            </div>
+            <div style="font-weight:900; font-size:13px; color:#fff;">Mateo & La Banda (Colectivo Invitado)</div>
+            <div style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">Elenco Principal · Jazz & Artes Escénicas</div>
           </div>
+        </div>
 
-          <div style="border-top:1px solid var(--border); padding-top:16px; font-size:11px; color:var(--grey1); font-family:var(--font-mono);">
-            🔒 Compra protegida por KAWSAY Quito Cultural. Entradas digitales en Tu Biblioteca.
+        <!-- Valoración Públicas -->
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px;">
+          <div style="font-size:12px; font-weight:800; color:#ffffff; margin-bottom:6px;">
+            ⭐ CALIFICACIÓN DEL PÚBLICO:
           </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="rating-stars" id="detail-rating-stars">
+              <span class="star-icon" data-star="1">★</span>
+              <span class="star-icon" data-star="2">★</span>
+              <span class="star-icon" data-star="3">★</span>
+              <span class="star-icon" data-star="4">★</span>
+              <span class="star-icon" data-star="5">★</span>
+            </div>
+            <span id="detail-rating-text" style="font-family:var(--font-mono); font-size:12px; font-weight:800; color:#eab308;">
+              ⭐ ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'} (${ev.rating_count || 0} valoraciones)
+            </span>
+          </div>
+        </div>
+
+        <!-- Botones de Acción Off-Canvas -->
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
+          ${canEditEvent(ev) ? `
+            <button class="btn-primary" id="btn-detail-edit-event" style="padding:12px; font-size:13px; font-family:var(--font-mono); font-weight:900; background:var(--gold); color:#000; display:flex; align-items:center; justify-content:center; gap:8px;">
+              ${ICONS.edit} MODIFICAR / EDITAR ESTE EVENTO
+            </button>
+          ` : ''}
+
+          <button class="btn-primary" id="btn-detail-add-cart" style="padding:14px; font-size:13px; font-weight:900; font-family:var(--font-mono); width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--accent); color:#000;">
+            ${ICONS.cart} AGREGAR ENTRADA AL CARRITO
+          </button>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+            <button class="btn-secondary ${inter.is_favorite ? 'fav-active' : ''}" id="btn-detail-fav" style="padding:10px; font-size:11px; font-family:var(--font-mono); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px;">
+              ${inter.is_favorite ? ICONS.heartFill : ICONS.heart} FAVORITO
+            </button>
+            <button class="btn-secondary ${inter.has_rsvp ? 'active' : ''}" id="btn-detail-rsvp" style="padding:10px; font-size:11px; font-family:var(--font-mono); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px;">
+              ${inter.has_rsvp ? ICONS.check : ICONS.user} ASISTIRÉ
+            </button>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border); padding-top:14px; font-size:11px; color:var(--grey1); font-family:var(--font-mono); text-align:center;">
+          🔒 Compra protegida por KAWSAY Quito Cultural. Entradas en Tu Biblioteca.
         </div>
       </div>
     `;
@@ -1880,9 +1884,9 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- Modal Detalle Completo del Evento (Showcase) -->
-      <div class="modal-overlay" id="modal-event-detail">
-        <div class="event-detail-modal-box" id="modal-event-detail-box"></div>
+      <!-- Off-Canvas Drawer Detalle del Evento (Side Panel) -->
+      <div class="offcanvas-overlay modal-overlay" id="modal-event-detail">
+        <div class="offcanvas-panel" id="modal-event-detail-box"></div>
       </div>
 
       <!-- Modal Carrito -->
@@ -2148,11 +2152,6 @@ const App = (() => {
             </button>
           </form>
         </div>
-      </div>
-
-      <!-- Modal Detalle de Evento / Convocatoria -->
-      <div class="modal-overlay" id="modal-event-detail">
-        <div class="modal-box" id="modal-event-detail-box" style="max-width:850px; width:92vw; padding:0; overflow:hidden;"></div>
       </div>
     `;
 
