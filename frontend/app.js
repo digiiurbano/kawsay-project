@@ -2045,15 +2045,6 @@ const App = (() => {
               <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CONTRASEÑA</label>
               <input type="password" id="reg-password" required placeholder="••••••••" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
-            <div>
-              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">TIPO DE PERFIL EN KAWSAY</label>
-              <select id="reg-role" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
-                <option value="espectador">Espectador / Cliente (Comprar entradas, favoritos)</option>
-                <option value="artista">Artista / Colectivo (Publicar propuestas artísticas)</option>
-                <option value="espacio">Espacio Cultural / Gestor (Gestión de cartelera y salas)</option>
-                <option value="admin">Administrador (Gestión total de la plataforma)</option>
-              </select>
-            </div>
             <div style="margin-top:4px;">
               <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; color:#ffffff;">
                 <input type="checkbox" id="reg-terms-check" required style="width:16px; height:16px; accent-color:var(--accent);">
@@ -2473,7 +2464,8 @@ const App = (() => {
         const name = $('#reg-name').value.trim();
         const email = $('#reg-email').value.trim();
         const password = $('#reg-password').value;
-        const role = $('#reg-role').value;
+        const roleEl = $('#reg-role');
+        const role = roleEl ? roleEl.value : 'espectador';
 
         try {
           const res = await fetch(`${API_BASE}/auth/register`, {
