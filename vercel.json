@@ -1,4 +1,9 @@
 {
-  "outputDirectory": "frontend",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/frontend/$1"
+    }
+  ]
 }
