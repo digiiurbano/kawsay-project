@@ -207,10 +207,10 @@ const App = (() => {
     const sidebar = document.getElementById('sidebar');
 
     let actionBtnText = '';
-    if (currentUser.role === 'invitado') actionBtnText = 'INGRESAR / REGISTRARSE';
-    else if (currentUser.role === 'artista') actionBtnText = '+ GENERAR CARTELERA PRO';
-    else if (currentUser.role === 'espacio') actionBtnText = '+ CREAR EVENTO DE MI ESPACIO';
-    else if (currentUser.role === 'admin') actionBtnText = 'NUEVO EVENTO ADMIN';
+    if (currentUser.role === 'invitado') actionBtnText = '🔐 INICIAR SESIÓN / ELEGIR PERFIL';
+    else if (currentUser.role === 'artista') actionBtnText = '+ PUBLICAR PROYECTO PRO';
+    else if (currentUser.role === 'espacio') actionBtnText = '+ PROGRAMAR EVENTO RECINTO';
+    else if (currentUser.role === 'admin') actionBtnText = '+ NUEVO EVENTO ADMIN';
 
     sidebar.innerHTML = `
       <div class="sidebar-logo" id="sidebar-logo" style="font-size:24px; font-weight:900; display:flex; align-items:center; gap:8px;">
@@ -218,30 +218,48 @@ const App = (() => {
       </div>
 
       <!-- Estado de Autenticación en Sidebar -->
-      <div style="margin: 12px 18px 4px; padding: 8px 12px; background: ${currentUser.role === 'invitado' ? '#222' : 'var(--surface3)'}; border: 1px solid ${currentUser.role === 'invitado' ? 'var(--accent)' : 'var(--border)'}; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; color: ${currentUser.role === 'invitado' ? '#fff' : 'var(--accent)'}; font-weight: 800;">
-        ${currentUser.role === 'invitado' ? '🌐 SIN INICIAR SESIÓN (VISITANTE)' : `ROL: ${currentUser.role.toUpperCase()} (${currentUser.name})`}
+      <div style="margin: 12px 18px 4px; padding: 10px 12px; background: ${currentUser.role === 'invitado' ? '#222' : 'var(--surface3)'}; border: 1px solid ${currentUser.role === 'invitado' ? 'var(--accent)' : 'var(--border)'}; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; color: ${currentUser.role === 'invitado' ? '#fff' : 'var(--accent)'}; font-weight: 800;">
+        ${currentUser.role === 'invitado' ? '🌐 VISITANTE (SIN INICIAR SESIÓN)' : `PERFIL: ${currentUser.role.toUpperCase()} (${currentUser.name})`}
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-item active" data-view="home" id="nav-inicio" style="font-size:14px; padding:12px 18px;">
+        <div class="nav-item ${currentView === 'home' ? 'active' : ''}" data-view="home" id="nav-inicio" style="font-size:14px; padding:12px 18px;">
           <div class="nav-icon-wrap home-icon">${ICONS.home}</div>
-          <span>${currentUser.role === 'artista' ? 'ESTUDIO ARTISTA' : currentUser.role === 'espacio' ? 'MI ESPACIO CULTURAL' : currentUser.role === 'admin' ? 'PANEL ADMIN ANALÍTICAS' : 'INICIO'}</span>
+          <span>CARTELERA PÚBLICA</span>
         </div>
-        <div class="nav-item" data-view="calendar-week" id="nav-explorar" style="font-size:14px; padding:12px 18px;">
-          <div class="nav-icon-wrap">${ICONS.search}</div>
-          <span>EXPLORAR</span>
-        </div>
-        <div class="nav-item" data-view="calendar-month" id="nav-calendario" style="font-size:14px; padding:12px 18px;">
+
+        ${currentUser.role === 'admin' || currentUser.role === 'gestor' ? `
+          <div class="nav-item ${currentView === 'admin' ? 'active' : ''}" data-view="admin" id="nav-admin" style="font-size:14px; padding:12px 18px;">
+            <div class="nav-icon-wrap" style="color:#ef4444;">🛡️</div>
+            <span>PANEL ADMIN & ANALÍTICAS</span>
+          </div>
+        ` : ''}
+
+        ${currentUser.role === 'artista' ? `
+          <div class="nav-item ${currentView === 'artist' ? 'active' : ''}" data-view="artist" id="nav-artist" style="font-size:14px; padding:12px 18px;">
+            <div class="nav-icon-wrap" style="color:var(--accent);">🎨</div>
+            <span>MI ESTUDIO ARTISTA</span>
+          </div>
+        ` : ''}
+
+        ${currentUser.role === 'espacio' ? `
+          <div class="nav-item ${currentView === 'space' ? 'active' : ''}" data-view="space" id="nav-space" style="font-size:14px; padding:12px 18px;">
+            <div class="nav-icon-wrap" style="color:var(--gold);">🏛️</div>
+            <span>MI ESPACIO CULTURAL</span>
+          </div>
+        ` : ''}
+
+        <div class="nav-item ${currentView === 'calendar-month' ? 'active' : ''}" data-view="calendar-month" id="nav-calendario" style="font-size:14px; padding:12px 18px;">
           <div class="nav-icon-wrap">${ICONS.calendar}</div>
           <span>CALENDARIO MES</span>
         </div>
-        <div class="nav-item" data-view="convocatorias" id="nav-convocatorias" style="font-size:14px; padding:12px 18px;">
+        <div class="nav-item ${currentView === 'convocatorias' ? 'active' : ''}" data-view="convocatorias" id="nav-convocatorias" style="font-size:14px; padding:12px 18px;">
           <div class="nav-icon-wrap" style="color:#eab308;">📢</div>
-          <span>CONVOCATORIAS</span>
+          <span>CONVOCATORIAS & FONDOS</span>
         </div>
-        <div class="nav-item" data-view="join" id="nav-join" style="font-size:14px; padding:12px 18px;">
+        <div class="nav-item ${currentView === 'join' ? 'active' : ''}" data-view="join" id="nav-join" style="font-size:14px; padding:12px 18px;">
           <div class="nav-icon-wrap">${ICONS.artist}</div>
-          <span>ARTISTA & ESPACIO</span>
+          <span>PORTAL DE PERFILES</span>
         </div>
       </nav>
 
@@ -428,21 +446,6 @@ const App = (() => {
   // ============================================================
   function renderHomeView() {
     const view = document.getElementById('view-home');
-
-    if (currentUser.role === 'admin') {
-      renderAdminDashboardView(view);
-      return;
-    }
-
-    if (currentUser.role === 'artista') {
-      renderArtistStudioView(view);
-      return;
-    }
-
-    if (currentUser.role === 'espacio') {
-      renderSpaceStudioView(view);
-      return;
-    }
 
     const displayEvents = (currentUser.role === 'invitado' || currentUser.role === 'espectador')
       ? apiEvents.filter(e => e.status === 'approved')
@@ -1504,40 +1507,87 @@ const App = (() => {
     const view = document.getElementById('view-join');
     view.innerHTML = `
       <div class="join-header">
-        <h1 class="join-header-title">Plataforma Cultural KAWSAY</h1>
+        <h1 class="join-header-title">PORTAL DE PERFILES Y PRUEBAS EN VIVO</h1>
         <p class="join-header-desc">
-          Explora la versión pública antes de iniciar sesión o ingresa con los perfiles clave de la ciudad.
+          Selecciona cualquiera de los 4 perfiles requeridos para iniciar sesión al instante y probar la lógica y permisos de la plataforma KAWSAY.
         </p>
       </div>
 
-      <div class="join-options-grid">
-        <div class="join-card" id="card-join-artist">
-          <div class="join-card-icon" style="color:var(--accent);">${ICONS.artist}</div>
-          <h2 class="join-card-title">Perfil Artista / Colectivo</h2>
+      <div class="join-options-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:24px; padding:20px 0;">
+        
+        <!-- Perfil 1: Espectador / Visitante -->
+        <div class="join-card" style="border:1px solid ${currentUser.role === 'espectador' ? 'var(--accent)' : 'var(--border)'}; background:var(--surface);">
+          <div class="join-card-icon" style="color:#60a5fa;">🌐</div>
+          <h2 class="join-card-title">1. Espectador / Visitante</h2>
           <p class="join-card-desc">
-            Regístrate como creador. Publica tus conciertos, obras de teatro o exposiciones y solicita fechas en los espacios culturales de Quito.
+            <strong>María Fernanda</strong> (espectador@kawsay.ec)<br>
+            Acceso a la cartelera pública, consulta de agenda, guardado de favoritos y reserva de entradas. Sin permisos de edición ni administración.
           </p>
-          <button class="btn-join-action" id="btn-open-join-artist">REGISTRAR MI PERFIL DE ARTISTA →</button>
+          <button class="btn-join-action btn-switch-profile" data-role="espectador" style="background:#60a5fa; color:#000; font-weight:900;">
+            ${currentUser.role === 'espectador' ? '✓ PERFIL ACTIVO' : 'INGRESAR COMO ESPECTADOR →'}
+          </button>
         </div>
 
-        <div class="join-card" id="card-join-space">
-          <div class="join-card-icon" style="color:var(--gold);">${ICONS.landmark}</div>
-          <h2 class="join-card-title">Perfil Espacio Cultural</h2>
+        <!-- Perfil 2: Artista / Colectivo -->
+        <div class="join-card" style="border:1px solid ${currentUser.role === 'artista' ? 'var(--accent)' : 'var(--border)'}; background:var(--surface);">
+          <div class="join-card-icon" style="color:var(--accent);">${ICONS.artist}</div>
+          <h2 class="join-card-title">2. Artista / Colectivo</h2>
           <p class="join-card-desc">
-            Registra tu galería, teatro, club de música o centro cultural. Alquila tus instalaciones y gestiona tu cartelera en SQLite.
+            <strong>Mateo & La Banda</strong> (artista@kawsay.ec)<br>
+            Acceso a <em>Mi Estudio Artista</em>. Publica nuevos conciertos o proyectos, edita tus eventos y postula a fondos de fomento.
           </p>
-          <button class="btn-join-action" id="btn-open-join-space">REGISTRAR MI ESPACIO CULTURAL →</button>
+          <button class="btn-join-action btn-switch-profile" data-role="artista" style="background:var(--accent); color:#000; font-weight:900;">
+            ${currentUser.role === 'artista' ? '✓ PERFIL ACTIVO' : 'INGRESAR COMO ARTISTA →'}
+          </button>
         </div>
+
+        <!-- Perfil 3: Espacio Cultural -->
+        <div class="join-card" style="border:1px solid ${currentUser.role === 'espacio' ? 'var(--gold)' : 'var(--border)'}; background:var(--surface);">
+          <div class="join-card-icon" style="color:var(--gold);">${ICONS.landmark}</div>
+          <h2 class="join-card-title">3. Espacio Cultural</h2>
+          <p class="join-card-desc">
+            <strong>Teatro Nacional Quito</strong> (espacio@kawsay.ec)<br>
+            Acceso a <em>Mi Espacio Cultural</em>. Programa fechas en tu recinto, administra recintos de Quito y gestiona tu cartelera.
+          </p>
+          <button class="btn-join-action btn-switch-profile" data-role="espacio" style="background:var(--gold); color:#000; font-weight:900;">
+            ${currentUser.role === 'espacio' ? '✓ PERFIL ACTIVO' : 'INGRESAR COMO ESPACIO →'}
+          </button>
+        </div>
+
+        <!-- Perfil 4: Administrador Global -->
+        <div class="join-card" style="border:1px solid ${currentUser.role === 'admin' ? '#ef4444' : 'var(--border)'}; background:var(--surface);">
+          <div class="join-card-icon" style="color:#ef4444;">🛡️</div>
+          <h2 class="join-card-title">4. Administrador / Gestor</h2>
+          <p class="join-card-desc">
+            <strong>Admin Kawsay</strong> (admin@kawsay.ec)<br>
+            Acceso a <em>Panel Admin & Analíticas</em>. Supervisa la cola de aprobación (Aprobar/Rechazar), revisa postulantes con folios y administra toda la plataforma.
+          </p>
+          <button class="btn-join-action btn-switch-profile" data-role="admin" style="background:#ef4444; color:#fff; font-weight:900;">
+            ${currentUser.role === 'admin' ? '✓ PERFIL ACTIVO' : 'INGRESAR COMO ADMIN →'}
+          </button>
+        </div>
+
       </div>
     `;
 
-    $('#btn-open-join-artist').addEventListener('click', () => {
-      if (currentUser.role === 'invitado') openAuthModal();
-      else openArtistFormModal();
-    });
-    $('#btn-open-join-space').addEventListener('click', () => {
-      if (currentUser.role === 'invitado') openAuthModal();
-      else openSpaceFormModal();
+    view.querySelectorAll('.btn-switch-profile').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const role = btn.dataset.role;
+        const targetUser = usersList.find(u => u.role === role) || usersList[1];
+        if (targetUser) {
+          currentUser = targetUser;
+          localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
+          await loadUserInteractions();
+          showToast(`⚡ Perfil cambiado a: ${currentUser.role.toUpperCase()} (${currentUser.name})`);
+          renderSidebar();
+          renderTopbar();
+          
+          if (role === 'admin') navigate('admin');
+          else if (role === 'artista') navigate('artist');
+          else if (role === 'espacio') navigate('space');
+          else navigate('home');
+        }
+      });
     });
   }
 
@@ -2676,6 +2726,20 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
   }
 
   function navigate(view) {
+    // 🛡️ CONTROL DE ACCESO BASADO EN ROLES (RBAC)
+    if (view === 'admin' && currentUser.role !== 'admin' && currentUser.role !== 'gestor') {
+      showToast('⛔ Acceso restringido: Esta pantalla requiere perfil Administrador');
+      view = 'home';
+    }
+    if (view === 'artist' && currentUser.role === 'invitado') {
+      openAuthModal();
+      return;
+    }
+    if (view === 'space' && currentUser.role === 'invitado') {
+      openAuthModal();
+      return;
+    }
+
     currentView = view;
     $$('.view').forEach(v => v.classList.remove('active'));
     $$('.nav-item').forEach(n => n.classList.remove('active'));
@@ -2686,10 +2750,14 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     const navEl = $(`[data-view="${view}"]`);
     if (navEl) navEl.classList.add('active');
 
+    if (view === 'home') renderHomeView();
     if (view === 'calendar-week') buildWeekGrid();
     if (view === 'calendar-month') { buildMonthGrid(); buildUpcomingList(); }
     if (view === 'join') renderJoinView();
     if (view === 'convocatorias') renderConvocatoriasView();
+    if (view === 'admin' && viewEl) renderAdminDashboardView(viewEl);
+    if (view === 'artist' && viewEl) renderArtistStudioView(viewEl);
+    if (view === 'space' && viewEl) renderSpaceStudioView(viewEl);
 
     const main = document.getElementById('main');
     if (main) main.scrollTop = 0;
