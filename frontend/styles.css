@@ -2414,4 +2414,9 @@ p, .event-card-desc { font-size: 14px !important; }
   flex-grow: 1;
 }
 
+/* Layer legal/confirmation modals cleanly on top of auth modal */
+#modal-terms, #modal-privacy, #modal-email-confirm {
+  z-index: 1000005 !important;
+}
+
 

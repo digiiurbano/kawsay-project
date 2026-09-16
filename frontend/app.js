@@ -470,7 +470,7 @@ const App = (() => {
             </span>
           </div>
           <h1 class="hero-title" style="font-size:48px;">${featured.title}</h1>
-          <p class="hero-desc" style="font-size:16px;">${featured.description}</p>
+          <p class="hero-desc" style="font-size:16px;">${featured.description || featured.subtitle || 'Una experiencia inmersiva de arte, música viva y patrimonio cultural en Quito.'}</p>
           <div class="hero-btns" style="margin-top:16px;">
             <button class="btn-primary" id="btn-conseguir-entradas" style="padding:14px 28px; font-size:14px; display:inline-flex; align-items:center; gap:8px;">
               ${ICONS.ticket} CONSEGUIR ENTRADAS Y AGREGAR AL CARRITO
@@ -1110,100 +1110,90 @@ const App = (() => {
 
     if (isConvocatoria) {
       detailBox.innerHTML = `
-        <!-- Banner Hero de Convocatoria -->
-        <div class="event-detail-hero">
-          <img class="event-detail-hero-img" src="${ev.image}" alt="${ev.title}">
-          <div class="event-detail-hero-overlay">
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <span class="cat-convocatorias" style="font-size:11px; font-weight:900; padding:4px 10px; border-radius:12px; text-transform:uppercase;">
-                📢 CONVOCATORIA CULTURAL & FONDO DE FOMENTO
+        <!-- Header Hero Off-Canvas de Convocatoria -->
+        <div class="offcanvas-hero">
+          <img class="offcanvas-hero-img" src="${ev.image}" alt="${ev.title}">
+          <button class="offcanvas-close-btn" id="modal-detail-close" aria-label="Cerrar">×</button>
+          <div class="offcanvas-hero-overlay">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <span class="cat-convocatorias" style="font-size:10px; font-weight:900; padding:3px 8px; border-radius:10px; text-transform:uppercase;">
+                📢 CONVOCATORIA CULTURAL
               </span>
-              <span style="background:rgba(0,0,0,0.85); font-family:var(--font-mono); font-size:11px; font-weight:900; padding:4px 10px; border-radius:12px; border:1px solid var(--gold); color:var(--gold);">
-                💰 ${ev.price || 'Premio: $10,000'}
+              <span style="background:rgba(0,0,0,0.85); font-family:var(--font-mono); font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px; border:1px solid var(--gold); color:var(--gold);">
+                💰 ${ev.price || 'Fondo: $10,000'}
               </span>
             </div>
-            <h1 style="font-size:32px; font-weight:900; text-shadow:0 4px 12px rgba(0,0,0,0.8); margin-top:8px;">${ev.title}</h1>
-            <p style="color:var(--grey1); font-size:14px; max-width:650px;">Organiza: <strong>${ev.venue}</strong></p>
+            <h2 style="font-size:22px; font-weight:900; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.9); line-height:1.2; margin-top:4px;">${ev.title}</h2>
+            <p style="color:var(--grey1); font-size:12px; font-weight:700;">🏛️ Organiza: ${ev.venue}</p>
           </div>
-          <button class="modal-close" id="modal-detail-close" style="position:absolute; top:16px; right:16px; background:rgba(0,0,0,0.6); width:36px; height:36px; border-radius:50%; border:1px solid var(--border); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer;">×</button>
         </div>
 
-        <!-- Contenido Detallado de Convocatoria -->
-        <div class="event-detail-grid">
+        <div class="offcanvas-body">
           <div>
-            <h2 style="font-size:20px; font-weight:900; margin-bottom:12px;">DESCRIPCIÓN DEL FONDO / BECA</h2>
-            <p style="color:#ddd; line-height:1.7; font-size:14px; margin-bottom:20px;">
+            <h3 style="font-size:13px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:8px; text-transform:uppercase;">
+              📖 DESCRIPCIÓN DEL FONDO / BECA
+            </h3>
+            <p style="color:#e2e8f0; line-height:1.6; font-size:13px;">
               ${ev.description}
             </p>
+          </div>
 
-            <h3 style="font-size:16px; font-weight:900; color:var(--accent); margin-bottom:10px; font-family:var(--font-mono);">
-              📋 REQUISITOS Y PERFIL DE POSTULACIÓN
-            </h3>
-            <ul style="color:var(--grey1); font-size:14px; line-height:1.8; margin-bottom:20px; padding-left:20px;">
-              <li>Residir comprobablemente en Quito o la provincia de Pichincha.</li>
-              <li>Presentar dossier técnico del proyecto y portafolio previo de obra.</li>
-              <li>Desglose presupuestario transparente y cronograma de ejecución a 6 meses.</li>
-              <li>Aceptar las bases legales y términos de la Secretaría de Cultura / NAVE 01.</li>
-            </ul>
-
-            <h3 style="font-size:16px; font-weight:900; color:var(--gold); margin-bottom:10px; font-family:var(--font-mono);">
-              ⚖️ COMITÉ DE JURADOS Y EVALUACIÓN
-            </h3>
-            <p style="color:var(--grey1); font-size:13px; line-height:1.6; margin-bottom:24px;">
-              La selección estará a cargo de un jurado multidisciplinario independiente integrado por curadores de Quito, gestores de NAVE 01 y representantes del Municipio.
-            </p>
-
-            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:20px;">
-              <button class="btn-primary" id="btn-detail-apply-now" style="background:var(--accent); color:#000; font-family:var(--font-mono); font-weight:900; padding:14px 22px; font-size:13px; display:inline-flex; align-items:center; gap:8px;">
-                🚀 POSTULAR AHORA / APLICAR AL FONDO
-              </button>
-              <button class="btn-secondary" id="btn-detail-download-pdf" style="border:1px solid var(--border); color:#fff; font-family:var(--font-mono); font-weight:800; padding:14px 18px; font-size:13px; display:inline-flex; align-items:center; gap:8px;">
-                📄 DESCARGAR BASES Y REGLAMENTO (PDF)
-              </button>
+          <!-- Ficha Técnica Píldoras -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+              <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">CIERRE DE RECEPCIÓN</div>
+              <div style="font-size:13px; font-weight:900; color:#fff;">📅 ${ev.date} · ${ev.time}</div>
+            </div>
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+              <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">INCENTIVO / MONTO</div>
+              <div style="font-size:14px; font-weight:900; color:var(--accent);">💰 ${ev.price}</div>
+            </div>
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+              <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">INSTITUCIÓN EMISORA</div>
+              <div style="font-size:13px; font-weight:900; color:#fff;">🏛️ ${ev.venue}</div>
+            </div>
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+              <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">MODALIDAD</div>
+              <div style="font-size:13px; font-weight:900; color:var(--gold);">🌐 100% Digital</div>
             </div>
           </div>
 
-          <div>
-            <div class="event-detail-card" style="background:var(--surface2); border:1px solid var(--border); border-radius:16px; padding:20px;">
-              <h3 style="font-size:14px; font-weight:900; font-family:var(--font-mono); color:var(--gold); margin-bottom:16px; text-transform:uppercase;">
-                FICHA TÉCNICA CONVOCATORIA
-              </h3>
-              
-              <div style="margin-bottom:14px;">
-                <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">CIERRE DE RECEPCIÓN:</div>
-                <div style="font-size:15px; font-weight:800; color:#fff;">📅 ${ev.date} · ${ev.time}</div>
-              </div>
-
-              <div style="margin-bottom:14px;">
-                <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">INCENTIVO / MONTO:</div>
-                <div style="font-size:16px; font-weight:900; color:var(--accent);">💰 ${ev.price}</div>
-              </div>
-
-              <div style="margin-bottom:14px;">
-                <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">INSTITUCIÓN EMISORA:</div>
-                <div style="font-size:14px; font-weight:700; color:#fff;">🏛️ ${ev.venue}</div>
-              </div>
-
-              <div style="margin-bottom:14px;">
-                <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">MODALIDAD:</div>
-                <div style="font-size:14px; font-weight:700; color:#fff;">🌐 Recepción Digital 100% Online</div>
-              </div>
-
-              <!-- Valoración -->
-              <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border);">
-                <div style="font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">VALORACIÓN DE POSTULANTES:</div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <div class="rating-stars" id="detail-rating-stars">
-                    <span class="star-icon" data-star="1">★</span>
-                    <span class="star-icon" data-star="2">★</span>
-                    <span class="star-icon" data-star="3">★</span>
-                    <span class="star-icon" data-star="4">★</span>
-                    <span class="star-icon" data-star="5">★</span>
-                  </div>
-                  <span style="font-family:var(--font-mono); font-size:12px; font-weight:800; color:#eab308;">⭐ ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'}</span>
-                </div>
-              </div>
+          <!-- Requisitos -->
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px;">
+            <div style="font-size:12px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:8px;">
+              📋 REQUISITOS DE POSTULACIÓN
             </div>
+            <ul style="color:var(--grey1); font-size:12px; line-height:1.7; padding-left:16px; margin:0;">
+              <li>Residir comprobablemente en Quito o Pichincha.</li>
+              <li>Presentar dossier técnico del proyecto y portafolio.</li>
+              <li>Desglose presupuestario y cronograma a 6 meses.</li>
+              <li>Aceptar bases legales de la Secretaría de Cultura / KAWSAY.</li>
+            </ul>
+          </div>
+
+          <!-- Valoración -->
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px;">
+            <div style="font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">VALORACIÓN DE POSTULANTES:</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="rating-stars" id="detail-rating-stars">
+                <span class="star-icon" data-star="1">★</span>
+                <span class="star-icon" data-star="2">★</span>
+                <span class="star-icon" data-star="3">★</span>
+                <span class="star-icon" data-star="4">★</span>
+                <span class="star-icon" data-star="5">★</span>
+              </div>
+              <span style="font-family:var(--font-mono); font-size:12px; font-weight:800; color:#eab308;">⭐ ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'}</span>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
+            <button class="btn-primary" id="btn-detail-apply-now" style="background:var(--accent); color:#000; font-family:var(--font-mono); font-weight:900; padding:14px; font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px;">
+              🚀 POSTULAR AHORA / APLICAR AL FONDO
+            </button>
+            <button class="btn-secondary" id="btn-detail-download-pdf" style="border:1px solid var(--border); color:#fff; font-family:var(--font-mono); font-weight:800; padding:12px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:8px;">
+              📄 DESCARGAR BASES Y REGLAMENTO (PDF)
+            </button>
           </div>
         </div>
       `;
@@ -1243,7 +1233,7 @@ const App = (() => {
             </span>
           </div>
           <h2 style="font-size:24px; font-weight:900; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.9); line-height:1.2; margin-top:4px;">${ev.title}</h2>
-          <p style="color:var(--grey1); font-size:12px; font-weight:700;">📍 ${ev.venue}</p>
+          <p style="color:var(--grey1); font-size:12px; font-weight:700;">📍 ${ev.venue} ${ev.sector ? `· ${ev.sector}` : ''}</p>
         </div>
       </div>
 
@@ -1258,7 +1248,7 @@ const App = (() => {
           </p>
         </div>
 
-        <!-- Píldoras de Información -->
+        <!-- Píldoras de Información Completa -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
             <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">FECHA</div>
@@ -1274,7 +1264,15 @@ const App = (() => {
           </div>
           <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
             <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">AFORO ESTIMADO</div>
-            <div style="font-size:14px; font-weight:900; color:#fff;">👥 250 Personas</div>
+            <div style="font-size:14px; font-weight:900; color:#fff;">👥 ${ev.capacity ? `${ev.capacity} Personas` : '250 Personas'}</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">RECINTO / ESPACIO</div>
+            <div style="font-size:13px; font-weight:900; color:#fff;">🏛️ ${ev.venue}</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">UBICACIÓN / SECTOR</div>
+            <div style="font-size:13px; font-weight:900; color:var(--gold);">📍 ${ev.sector || 'Quito Centro'}</div>
           </div>
         </div>
 
@@ -1282,8 +1280,8 @@ const App = (() => {
         <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px; display:flex; align-items:center; gap:12px;">
           <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid var(--accent);" alt="Artista">
           <div>
-            <div style="font-weight:900; font-size:13px; color:#fff;">Mateo & La Banda (Colectivo Invitado)</div>
-            <div style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">Elenco Principal · Jazz & Artes Escénicas</div>
+            <div style="font-weight:900; font-size:13px; color:#fff;">${ev.cast || 'Mateo & La Banda (Colectivo Invitado)'}</div>
+            <div style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">Elenco Principal · ${ev.category} · Quito</div>
           </div>
         </div>
 
@@ -1812,6 +1810,7 @@ const App = (() => {
                 <option value="espacio">Espacio Cultural / Gestor (Gestión de cartelera y salas)</option>
                 <option value="admin">Administrador (Gestión total de la plataforma)</option>
               </select>
+            </div>
             <div style="margin-top:4px;">
               <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; color:#ffffff;">
                 <input type="checkbox" id="reg-terms-check" required style="width:16px; height:16px; accent-color:var(--accent);">
@@ -2324,33 +2323,40 @@ const App = (() => {
     const el = (typeof selector === 'string') ? $(selector) : selector;
     if (!el) return;
 
+    // Close all other modals/offcanvas panels first, keeping modal-auth open underneath if opening legal terms/privacy
+    const isLegalDialog = el.id === 'modal-terms' || el.id === 'modal-privacy' || el.id === 'modal-email-confirm';
     $$('.modal-overlay, .offcanvas-overlay').forEach(m => {
-      if (m !== el) hideModal(m);
+      if (m !== el) {
+        if (isLegalDialog && m.id === 'modal-auth') return;
+        hideModal(m);
+      }
     });
 
+    // Step 1: make the element visible in DOM (but invisible via CSS opacity:0)
+    el.style.removeProperty('display');
+    el.style.removeProperty('opacity');
+    el.style.removeProperty('visibility');
+    el.style.removeProperty('pointer-events');
     el.style.setProperty('display', 'flex', 'important');
-    el.style.setProperty('opacity', '1', 'important');
-    el.style.setProperty('visibility', 'visible', 'important');
-    el.style.setProperty('pointer-events', 'all', 'important');
-    el.style.setProperty('z-index', '999999', 'important');
 
+    // Step 2: force a reflow so the browser registers display:flex before adding .open
     void el.offsetHeight;
 
+    // Step 3: add .open class — CSS transition kicks in from opacity:0 → opacity:1
     el.classList.add('open');
   }
 
   function hideModal(selector) {
     const el = (typeof selector === 'string') ? $(selector) : selector;
     if (!el) return;
+    // Remove open class — CSS transition handles the fade-out/slide-out
     el.classList.remove('open');
-    el.style.setProperty('opacity', '0', 'important');
-    el.style.setProperty('visibility', 'hidden', 'important');
-    el.style.setProperty('pointer-events', 'none', 'important');
+    // After transition completes, hide from DOM flow
     setTimeout(() => {
       if (!el.classList.contains('open')) {
         el.style.setProperty('display', 'none', 'important');
       }
-    }, 250);
+    }, 350);
   }
 
   function openAuthModal() { showModal('#modal-auth'); }
@@ -2785,15 +2791,13 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     });
 
     document.addEventListener('click', (e) => {
-      // 1. Clic en el fondo oscuro de cualquier modal para cerrarlo
-      if (e.target && e.target.classList && e.target.classList.contains('modal-overlay')) {
-        closeCreateModal();
-        closeAdminModal();
-        closeCartModal();
-        closeTicketsModal();
-        closeAuthModal();
-        closeEventDetailModal();
-        closeApplyConvocatoriaModal();
+      // 1. Clic en el fondo oscuro de cualquier modal o offcanvas para cerrarlo
+      if (e.target && e.target.classList &&
+          (e.target.classList.contains('modal-overlay') || e.target.classList.contains('offcanvas-overlay'))) {
+        if (e.target.id === 'modal-terms') { hideModal('#modal-terms'); return; }
+        if (e.target.id === 'modal-privacy') { hideModal('#modal-privacy'); return; }
+        if (e.target.id === 'modal-email-confirm') { hideModal('#modal-email-confirm'); return; }
+        hideModal(e.target);
         return;
       }
 
@@ -2815,9 +2819,10 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         return;
       }
 
-      // 3. Delegación global única: Capturar clic en cualquier tarjeta de evento, hero button o píldora de calendario
-      const card = e.target.closest('.event-card, .month-event-pill, #btn-mas-info');
+      // 4. Delegación global única: Capturar clic en cualquier tarjeta de evento, hero button, tarjeta de calendario o convocatoria
+      const card = e.target.closest('.event-card, .month-event-pill, .upcoming-event-card, #btn-mas-info');
       if (card) {
+        if (card.id === 'preview-billboard-card' || card.closest('#modal-create')) return;
         const id = card.dataset.id || card.getAttribute('data-id') || (card.id === 'btn-mas-info' ? 'fe-001' : null);
         if (id) {
           openEventDetailModal(id);
