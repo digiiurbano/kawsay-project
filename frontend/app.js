@@ -111,7 +111,7 @@ const App = (() => {
     }
 
     // 1. Inicializar inmediatamente apiEvents y apiSpaces con datos locales KAWSAY
-    apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: 'approved' })), ...convocatoriasList];
+    apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: e.status || 'approved' })), ...convocatoriasList];
     apiSpaces = KAWSAY_DATA.spaces;
 
     // 2. Renderizar interfaz e instalar delegación global de eventos de inmediato (0ms de latencia)
@@ -123,11 +123,31 @@ const App = (() => {
     renderJoinView();
     renderModals();
     bindGlobalEvents();
-    navigate('home');
+
+    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'gestor')) {
+      navigate('admin');
+    } else if (currentUser && currentUser.role === 'artista') {
+      navigate('artist');
+    } else if (currentUser && currentUser.role === 'espacio') {
+      navigate('space');
+    } else {
+      navigate('home');
+    }
 
     // 3. Intentar sincronizar con la API en segundo plano sin congelar la interfaz
     loadInitialData().then(() => {
-      renderHomeView();
+      if (currentView === 'admin') {
+        const viewEl = document.getElementById('view-admin');
+        if (viewEl) renderAdminDashboardView(viewEl);
+      } else if (currentView === 'artist') {
+        const viewEl = document.getElementById('view-artist');
+        if (viewEl) renderArtistStudioView(viewEl);
+      } else if (currentView === 'space') {
+        const viewEl = document.getElementById('view-space');
+        if (viewEl) renderSpaceStudioView(viewEl);
+      } else if (currentView === 'home') {
+        renderHomeView();
+      }
       renderSidebar();
       renderTopbar();
     }).catch(err => {
@@ -183,7 +203,7 @@ const App = (() => {
     } catch (err) {
       console.warn("⚠️ Error al sincronizar con la API Serverless, usando base local:", err);
       if (!apiEvents || apiEvents.length === 0) {
-        apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: 'approved' })), ...convocatoriasList];
+        apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: e.status || 'approved' })), ...convocatoriasList];
       }
       if (!apiSpaces || apiSpaces.length === 0) apiSpaces = KAWSAY_DATA.spaces;
     }
@@ -395,7 +415,7 @@ const App = (() => {
             ${ICONS.key} INICIAR SESIÓN / REGISTRO
           </button>
         ` : `
-          <div style="display:flex; align-items:center; gap:10px; background:var(--surface2); padding:4px 10px 4px 6px; border-radius:20px; border:1px solid var(--border);">
+          <div id="topbar-user-badge" style="display:flex; align-items:center; gap:10px; background:var(--surface2); padding:4px 10px 4px 6px; border-radius:20px; border:1px solid var(--border); cursor:pointer;" title="Abrir mi Panel / Dashboard">
             <img src="${currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">
             <div style="display:flex; flex-direction:column;">
               <span style="font-size:12px; font-weight:800; color:#fff; max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${currentUser.name}</span>
@@ -416,16 +436,28 @@ const App = (() => {
     const loginBtn = $('#btn-topbar-login');
     if (loginBtn) loginBtn.addEventListener('click', openAuthModal);
 
+    const userBadge = $('#topbar-user-badge');
+    if (userBadge) {
+      userBadge.addEventListener('click', (e) => {
+        if (e.target.closest('#btn-logout')) return;
+        if (currentUser.role === 'admin' || currentUser.role === 'gestor') navigate('admin');
+        else if (currentUser.role === 'artista') navigate('artist');
+        else if (currentUser.role === 'espacio') navigate('space');
+        else navigate('join');
+      });
+    }
+
     const logoutBtn = $('#btn-logout');
     if (logoutBtn) {
-      logoutBtn.addEventListener('click', async () => {
+      logoutBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         localStorage.removeItem('kawsay_user');
         currentUser = guestUser;
         await loadUserInteractions();
         showToast('Sesión cerrada correctamente');
         renderSidebar();
         renderTopbar();
-        renderHomeView();
+        navigate('home');
       });
     }
 
@@ -481,6 +513,51 @@ const App = (() => {
           </div>
         </div>
       </section>
+
+      <!-- Spotify-Style Quick Grid (Accesos Rápidos en Móvil) -->
+      <div class="spotify-quick-grid">
+        <div class="quick-grid-card" id="qg-favs">
+          <div class="quick-grid-icon-wrap" style="background: linear-gradient(135deg, #450af5, #c41065);">
+            <span style="font-size: 16px; color: #fff;">💖</span>
+          </div>
+          <span class="quick-grid-title">Mis Favoritos</span>
+        </div>
+
+        <div class="quick-grid-card" id="qg-calendar">
+          <div class="quick-grid-icon-wrap" style="background: linear-gradient(135deg, #059669, #10b981);">
+            <span style="font-size: 16px; color: #fff;">📅</span>
+          </div>
+          <span class="quick-grid-title">Tu Calendario</span>
+        </div>
+
+        <div class="quick-grid-card" id="qg-convocatorias">
+          <div class="quick-grid-icon-wrap" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+            <span style="font-size: 16px; color: #fff;">📢</span>
+          </div>
+          <span class="quick-grid-title">Convocatorias</span>
+        </div>
+
+        <div class="quick-grid-card" id="qg-spaces">
+          <div class="quick-grid-icon-wrap" style="background: linear-gradient(135deg, #2563eb, #60a5fa);">
+            <span style="font-size: 16px; color: #fff;">🏛️</span>
+          </div>
+          <span class="quick-grid-title">Espacios Quito</span>
+        </div>
+
+        <div class="quick-grid-card" id="qg-featured">
+          <div class="quick-grid-icon-wrap" style="background: linear-gradient(135deg, #84cc16, #c6f135); color:#000;">
+            <span style="font-size: 16px;">🌟</span>
+          </div>
+          <span class="quick-grid-title">Destacado Semanal</span>
+        </div>
+
+        <div class="quick-grid-card" id="qg-role">
+          <div class="quick-grid-icon-wrap" style="background: linear-gradient(135deg, #dc2626, #f43f5e);">
+            <span style="font-size: 16px; color: #fff;">${currentUser.role === 'admin' ? '🛡️' : currentUser.role === 'artista' ? '🎨' : currentUser.role === 'espacio' ? '🏛️' : '🔐'}</span>
+          </div>
+          <span class="quick-grid-title">${currentUser.role === 'admin' ? 'Panel Admin' : currentUser.role === 'artista' ? 'Estudio Artista' : currentUser.role === 'espacio' ? 'Espacio Cultural' : 'Iniciar Sesión'}</span>
+        </div>
+      </div>
 
       <!-- Filter Bar -->
       <div class="filter-bar" role="toolbar">
@@ -540,6 +617,26 @@ const App = (() => {
     `;
 
     bindCardInteractions();
+
+    // Quick Grid Clicks
+    const qgFavs = $('#qg-favs');
+    if (qgFavs) qgFavs.addEventListener('click', () => navigate('calendar-month'));
+    const qgCal = $('#qg-calendar');
+    if (qgCal) qgCal.addEventListener('click', () => navigate('calendar-month'));
+    const qgConv = $('#qg-convocatorias');
+    if (qgConv) qgConv.addEventListener('click', () => navigate('convocatorias'));
+    const qgSpaces = $('#qg-spaces');
+    if (qgSpaces) qgSpaces.addEventListener('click', () => {
+      const grid = document.getElementById('spaces-grid');
+      if (grid) grid.scrollIntoView({ behavior: 'smooth' });
+    });
+    const qgFeat = $('#qg-featured');
+    if (qgFeat) qgFeat.addEventListener('click', () => openEventDetailModal(featured.id));
+    const qgRole = $('#qg-role');
+    if (qgRole) qgRole.addEventListener('click', () => {
+      if (currentUser.role === 'invitado') openAuthModal();
+      else navigate(currentUser.role === 'admin' ? 'admin' : currentUser.role === 'artista' ? 'artist' : currentUser.role === 'espacio' ? 'space' : 'join');
+    });
 
     $$('.filter-pill').forEach(pill => {
       pill.addEventListener('click', () => {
@@ -652,14 +749,23 @@ const App = (() => {
               </thead>
               <tbody>
                 ${pendingEvents.map(ev => `
-                  <tr>
-                    <td><strong>${ev.title}</strong></td>
+                  <tr class="admin-pending-row" data-id="${ev.id}" style="cursor:pointer;" title="Haz clic en el evento para abrir y revisar todos los detalles">
+                    <td>
+                      <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="color:var(--accent); font-size:13px;">🔍</span>
+                        <strong class="admin-pending-title" style="color:#fff; text-decoration:underline; text-underline-offset:3px; font-size:14px;">${ev.title}</strong>
+                        <span style="font-size:10px; background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid #ef4444; padding:2px 6px; border-radius:8px; font-weight:800;">PENDIENTE</span>
+                      </div>
+                    </td>
                     <td><span style="color:var(--accent); font-weight:800;">${ev.category}</span></td>
                     <td>${ev.venue}</td>
                     <td>${ev.date} · ${ev.time}</td>
                     <td>
-                      <button class="btn-action-approve" data-id="${ev.id}" style="background:var(--accent); color:#000; font-weight:900; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;">APROBAR ✅</button>
-                      <button class="btn-action-reject" data-id="${ev.id}" style="background:#ef4444; color:#fff; font-weight:800; padding:6px 12px; border-radius:6px; border:none; cursor:pointer; margin-left:6px;">RECHAZAR ❌</button>
+                      <div style="display:flex; gap:6px; align-items:center;">
+                        <button class="btn-action-preview" data-id="${ev.id}" style="background:var(--surface3); color:#fff; font-weight:800; padding:6px 10px; border-radius:6px; border:1px solid var(--border); cursor:pointer; font-size:11px;" title="Ver ficha técnica y detalles completos">👁️ REVISAR</button>
+                        <button class="btn-action-approve" data-id="${ev.id}" style="background:var(--accent); color:#000; font-weight:900; padding:6px 12px; border-radius:6px; border:none; cursor:pointer; font-size:11px;">APROBAR ✅</button>
+                        <button class="btn-action-reject" data-id="${ev.id}" style="background:#ef4444; color:#fff; font-weight:800; padding:6px 12px; border-radius:6px; border:none; cursor:pointer; font-size:11px;">RECHAZAR ❌</button>
+                      </div>
                     </td>
                   </tr>
                 `).join('')}
@@ -725,14 +831,40 @@ const App = (() => {
       showToast('📊 Reporte Ejecutivo de Ventas exportado a CSV.');
     });
 
+    view.querySelectorAll('.admin-pending-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-action-approve, .btn-action-reject')) return;
+        const id = row.dataset.id;
+        if (id) openEventDetailModal(id);
+      });
+    });
+
+    view.querySelectorAll('.admin-pending-title').forEach(titleEl => {
+      titleEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const row = titleEl.closest('tr');
+        const id = titleEl.dataset.id || (row ? row.dataset.id : null);
+        if (id) openEventDetailModal(id);
+      });
+    });
+
+    view.querySelectorAll('.btn-action-preview').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEventDetailModal(btn.dataset.id);
+      });
+    });
+
     view.querySelectorAll('.btn-action-approve').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         await setEventStatus(btn.dataset.id, 'approved');
       });
     });
 
     view.querySelectorAll('.btn-action-reject').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         await setEventStatus(btn.dataset.id, 'rejected');
       });
     });
@@ -1239,6 +1371,63 @@ const App = (() => {
 
       <!-- Contenido Principal Off-Canvas -->
       <div class="offcanvas-body">
+        ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'gestor') ? `
+          ${ev.status === 'pending' ? `
+            <!-- PANEL DE MODERACIÓN PARA ADMINISTRADOR -->
+            <div class="admin-moderation-box" style="background:linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(30,27,75,0.8) 100%); border:2px solid #ef4444; border-radius:14px; padding:18px; box-shadow:0 6px 20px rgba(239,68,68,0.25);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:22px;">🛡️</span>
+                  <div>
+                    <strong style="font-family:var(--font-mono); font-size:13px; color:#ef4444; letter-spacing:0.5px; font-weight:900; display:block;">
+                      REVISIÓN Y MODERACIÓN DE CARTELERA
+                    </strong>
+                    <span style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">Decisión requerida de Administración</span>
+                  </div>
+                </div>
+                <span style="background:#ef4444; color:#fff; font-family:var(--font-mono); font-size:10px; font-weight:900; padding:4px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.3);">
+                  PENDIENTE
+                </span>
+              </div>
+              <p style="font-size:12px; color:#e2e8f0; line-height:1.5; margin-bottom:14px;">
+                Revisa los detalles técnicos, recinto, precio y aforo. Como Administrador puedes aprobar este espectáculo para publicarlo de inmediato en la cartelera de Quito o rechazarlo.
+              </p>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <button class="btn-primary" id="btn-detail-admin-approve" style="background:var(--accent); color:#000; font-family:var(--font-mono); font-weight:900; padding:12px 14px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; border:none; border-radius:8px;">
+                  APROBAR CARTELERA ✅
+                </button>
+                <button class="btn-secondary" id="btn-detail-admin-reject" style="background:#ef4444; color:#fff; font-family:var(--font-mono); font-weight:900; padding:12px 14px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; border:none; border-radius:8px;">
+                  RECHAZAR CARTELERA ❌
+                </button>
+              </div>
+            </div>
+          ` : ev.status === 'approved' ? `
+            <div style="background:rgba(16,185,129,0.12); border:1px solid #10b981; border-radius:12px; padding:14px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+              <div>
+                <div style="color:#10b981; font-weight:900; font-size:13px; font-family:var(--font-mono); display:flex; align-items:center; gap:6px;">
+                  ✅ CARTELERA APROBADA Y PUBLICADA
+                </div>
+                <div style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">Visible para todo el público de Quito</div>
+              </div>
+              <button id="btn-detail-admin-revoke" style="background:transparent; color:#ef4444; border:1px solid #ef4444; border-radius:6px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:800; font-family:var(--font-mono);">
+                PAUSAR / PENDIENTE ⏸️
+              </button>
+            </div>
+          ` : `
+            <div style="background:rgba(239,68,68,0.12); border:1px solid #ef4444; border-radius:12px; padding:14px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+              <div>
+                <div style="color:#ef4444; font-weight:900; font-size:13px; font-family:var(--font-mono); display:flex; align-items:center; gap:6px;">
+                  ❌ CARTELERA RECHAZADA
+                </div>
+                <div style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">No visible en la cartelera pública</div>
+              </div>
+              <button id="btn-detail-admin-reopen" style="background:var(--accent); color:#000; border:none; border-radius:6px; padding:6px 14px; font-size:11px; cursor:pointer; font-weight:900; font-family:var(--font-mono);">
+                RE-EVALUAR & APROBAR ✅
+              </button>
+            </div>
+          `}
+        ` : ''}
+
         <div>
           <h3 style="font-size:13px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:8px; text-transform:uppercase;">
             📖 ACERCA DEL ESPECTÁCULO
@@ -1312,9 +1501,20 @@ const App = (() => {
             </button>
           ` : ''}
 
-          <button class="btn-primary" id="btn-detail-add-cart" style="padding:14px; font-size:13px; font-weight:900; font-family:var(--font-mono); width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--accent); color:#000;">
-            ${ICONS.cart} AGREGAR ENTRADA AL CARRITO
-          </button>
+          ${ev.status === 'pending' ? `
+            <div style="background:var(--surface2); border:1px dashed #ef4444; border-radius:10px; padding:14px; text-align:center;">
+              <div style="font-size:12px; color:#ef4444; font-family:var(--font-mono); font-weight:800; margin-bottom:4px;">
+                ⏳ ESPECTÁCULO EN REVISIÓN DE MODERACIÓN
+              </div>
+              <div style="font-size:11px; color:var(--grey1);">
+                La venta de boletos y confirmación de asistencia se activará inmediatamente una vez aprobado.
+              </div>
+            </div>
+          ` : `
+            <button class="btn-primary" id="btn-detail-add-cart" style="padding:14px; font-size:13px; font-weight:900; font-family:var(--font-mono); width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--accent); color:#000;">
+              ${ICONS.cart} AGREGAR ENTRADA AL CARRITO
+            </button>
+          `}
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
             <button class="btn-secondary ${inter.is_favorite ? 'fav-active' : ''}" id="btn-detail-fav" style="padding:10px; font-size:11px; font-family:var(--font-mono); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px;">
@@ -1327,7 +1527,7 @@ const App = (() => {
         </div>
 
         <div style="border-top:1px solid var(--border); padding-top:14px; font-size:11px; color:var(--grey1); font-family:var(--font-mono); text-align:center;">
-          🔒 Compra protegida por KAWSAY Quito Cultural. Entradas en Tu Biblioteca.
+          🔒 Plataforma Cultural KAWSAY Quito · Transparencia y Gestión Comunitaria
         </div>
       </div>
     `;
@@ -1358,11 +1558,48 @@ const App = (() => {
     });
 
     $('#modal-detail-close').addEventListener('click', closeEventDetailModal);
-    $('#btn-detail-add-cart').addEventListener('click', () => {
-      const price = parseInt(ev.price.replace('$', '')) || 15;
-      addToCart(ev.title, price);
-      closeEventDetailModal();
-    });
+
+    // Moderación Admin en Drawer
+    const adminApprove = $('#btn-detail-admin-approve');
+    if (adminApprove) {
+      adminApprove.addEventListener('click', async () => {
+        closeEventDetailModal();
+        await setEventStatus(ev.id, 'approved');
+      });
+    }
+
+    const adminReject = $('#btn-detail-admin-reject');
+    if (adminReject) {
+      adminReject.addEventListener('click', async () => {
+        closeEventDetailModal();
+        await setEventStatus(ev.id, 'rejected');
+      });
+    }
+
+    const adminRevoke = $('#btn-detail-admin-revoke');
+    if (adminRevoke) {
+      adminRevoke.addEventListener('click', async () => {
+        closeEventDetailModal();
+        await setEventStatus(ev.id, 'pending');
+      });
+    }
+
+    const adminReopen = $('#btn-detail-admin-reopen');
+    if (adminReopen) {
+      adminReopen.addEventListener('click', async () => {
+        closeEventDetailModal();
+        await setEventStatus(ev.id, 'approved');
+      });
+    }
+
+    const addCartBtn = $('#btn-detail-add-cart');
+    if (addCartBtn) {
+      addCartBtn.addEventListener('click', () => {
+        const price = parseInt(ev.price.replace('$', '')) || 15;
+        addToCart(ev.title, price);
+        closeEventDetailModal();
+      });
+    }
 
     const editBtn = $('#btn-detail-edit-event');
     if (editBtn) {
@@ -1786,6 +2023,12 @@ const App = (() => {
             <button type="submit" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
               ENTRAR A MI CUENTA
             </button>
+            <div style="border-top:1px solid #334155; padding-top:12px; margin-top:6px; display:flex; flex-direction:column; gap:6px;">
+              <span style="font-size:11px; color:#94a3b8; font-family:var(--font-mono); text-align:center;">ACCESO RÁPIDO ADMINISTRADOR:</span>
+              <button type="button" id="btn-quick-admin-login" style="background:rgba(239,68,68,0.15); border:1px solid #ef4444; color:#fca5a5; font-size:12px; font-weight:800; padding:10px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+                🛡️ Entrar como Administrador (admin@kawsay.ec)
+              </button>
+            </div>
           </form>
 
           <!-- Formulario 2: Crear Cuenta -->
@@ -2208,7 +2451,15 @@ const App = (() => {
           closeAuthModal();
           renderSidebar();
           renderTopbar();
-          renderHomeView();
+          if (currentUser.role === 'admin' || currentUser.role === 'gestor') {
+            navigate('admin');
+          } else if (currentUser.role === 'artista') {
+            navigate('artist');
+          } else if (currentUser.role === 'espacio') {
+            navigate('space');
+          } else {
+            navigate('home');
+          }
         } catch (err) {
           showAuthAlert('Error de conexión con el servidor. Revisa tu conexión.');
         }
@@ -2240,13 +2491,18 @@ const App = (() => {
           localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
           await loadUserInteractions();
           showToast(`¡Cuenta creada exitosamente! Bienvenido/a ${currentUser.name}`);
-          currentUser = data.user;
-          localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
-          await loadUserInteractions();
           closeAuthModal();
           renderSidebar();
           renderTopbar();
-          renderHomeView();
+          if (currentUser.role === 'admin' || currentUser.role === 'gestor') {
+            navigate('admin');
+          } else if (currentUser.role === 'artista') {
+            navigate('artist');
+          } else if (currentUser.role === 'espacio') {
+            navigate('space');
+          } else {
+            navigate('home');
+          }
 
           // Mostrar Modal de Validación por Correo
           const confirmText = $('#email-confirm-text');
@@ -2256,6 +2512,20 @@ const App = (() => {
           $('#modal-email-confirm').classList.add('open');
         } catch (err) {
           showAuthAlert('Error al conectar con el servidor.');
+        }
+      });
+    }
+
+    // Botón de Acceso Rápido Administrador en el modal de login
+    const quickAdminBtn = $('#btn-quick-admin-login');
+    if (quickAdminBtn) {
+      quickAdminBtn.addEventListener('click', () => {
+        const emailInp = $('#login-email');
+        const passInp = $('#login-password');
+        if (emailInp && passInp && formLogin) {
+          emailInp.value = 'admin@kawsay.ec';
+          passInp.value = 'admin123';
+          formLogin.dispatchEvent(new Event('submit'));
         }
       });
     }
@@ -2590,7 +2860,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
 
       if (res.ok) {
         showToast(isEditing
-          ? `Cartelera "${eventData.title}" MODIFICADA con éxito en SQLite.`
+          ? `Cartelera "${eventData.title}" modificada con éxito.`
           : (currentUser.role === 'admin'
             ? `Cartelera "${eventData.title}" publicada en vivo.`
             : `Cartelera "${eventData.title}" enviada. En revisión admin.`)
@@ -2653,19 +2923,30 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
 
   async function setEventStatus(eventId, status) {
     try {
+      const target = apiEvents.find(e => String(e.id) === String(eventId));
+      if (target) target.status = status;
+
       const res = await fetch(`${API_BASE}/events/${eventId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
       if (res.ok) {
-        showToast(status === 'approved' ? 'Evento APROBADO en SQLite.' : 'Evento RECHAZADO.');
-        await loadInitialData();
-        renderTopbar();
-        renderHomeView();
+        showToast(status === 'approved' ? '✅ Cartelera APROBADA y publicada en vivo.' : (status === 'pending' ? '⏸️ Cartelera pausada y puesta en pendiente.' : '❌ Cartelera RECHAZADA.'));
+      } else {
+        showToast(status === 'approved' ? '✅ Cartelera APROBADA.' : (status === 'pending' ? '⏸️ Cartelera puesta en pendiente.' : '❌ Cartelera RECHAZADA.'));
       }
     } catch (e) {
-      showToast('Error al actualizar estado');
+      const target = apiEvents.find(e => String(e.id) === String(eventId));
+      if (target) target.status = status;
+      showToast(status === 'approved' ? '✅ Cartelera APROBADA.' : (status === 'pending' ? '⏸️ Cartelera puesta en pendiente.' : '❌ Cartelera RECHAZADA.'));
+    }
+    await loadInitialData();
+    renderTopbar();
+    renderHomeView();
+    if (currentView === 'admin') {
+      const viewEl = document.getElementById('view-admin');
+      if (viewEl) renderAdminDashboardView(viewEl);
     }
   }
 
@@ -2775,6 +3056,8 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
 
     const main = document.getElementById('main');
     if (main) main.scrollTop = 0;
+
+    renderMobileBottomNav();
   }
 
   function bindGlobalEvents() {

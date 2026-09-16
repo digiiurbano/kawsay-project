@@ -96,6 +96,24 @@ const KAWSAY_DATA = {
       time: '11:00',
       price: 'Gratis',
       soldOut: false
+    },
+    {
+      id: 'ev-007',
+      title: 'FESTIVAL DE POESÍA URBANA',
+      fullTitle: 'Festival de Poesía y Micrófono Abierto',
+      date: '12 NOV',
+      venue: 'Espacio Radar',
+      fullVenue: 'Espacio Radar • La Ronda',
+      image: 'images/event_portraits.jpg',
+      category: 'Teatro',
+      time: '17:00',
+      price: 'Gratis',
+      sector: 'Centro Histórico • La Ronda',
+      capacity: 120,
+      cast: 'Poetas Emergentes de Quito & Invitados',
+      description: 'Recital libre para poetas emergentes del centro histórico de Quito. Espacio de micrófono abierto, lectura dramatizada y música acústica.',
+      status: 'pending',
+      soldOut: false
     }
   ],
 

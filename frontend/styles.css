@@ -2419,4 +2419,262 @@ p, .event-card-desc { font-size: 14px !important; }
   z-index: 1000005 !important;
 }
 
+/* Admin Pending Moderation Table & Drawer Styles */
+.admin-pending-row {
+  transition: background-color 0.2s ease;
+}
+.admin-pending-row:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+.admin-pending-row:hover .admin-pending-title {
+  color: var(--accent) !important;
+}
+.admin-pending-title {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.admin-pending-title:hover {
+  color: var(--accent) !important;
+}
+.btn-action-preview {
+  transition: all 0.15s ease;
+}
+.btn-action-preview:hover {
+  background: var(--surface4) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+/* ============================================================
+   SPOTIFY-STYLE MOBILE RESPONSIVE SYSTEM (<= 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  :root {
+    --sidebar-w: 0px;
+  }
+
+  /* 1. Ocultar Sidebar en Móvil y Expandir Main */
+  #sidebar {
+    display: none !important;
+  }
+
+  #main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-bottom: 90px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* 2. Topbar Adaptativo Móvil */
+  #topbar {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .search-wrap-lg {
+    max-width: 100% !important;
+    order: 3;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .topbar-actions {
+    gap: 6px !important;
+  }
+
+  .location-wrap {
+    display: none !important;
+  }
+
+  .hero-banner {
+    height: 320px !important;
+  }
+
+  .hero-title {
+    font-size: 26px !important;
+    line-height: 1.1 !important;
+  }
+
+  .hero-desc {
+    font-size: 13px !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .hero-btns {
+    flex-direction: column !important;
+    width: 100%;
+  }
+
+  .hero-btns button {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* 3. Spotify Quick Grid (2 Columnas Compactas) */
+  .spotify-quick-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 14px 0;
+  }
+
+  .quick-grid-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .quick-grid-card:active {
+    transform: scale(0.97);
+    background: var(--surface3);
+  }
+  .quick-grid-icon-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  .quick-grid-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    font-family: var(--font-mono);
+  }
+
+  /* 4. Carruseles Horizontales Estilo Spotify con Snap-Scroll */
+  .events-grid, .spaces-grid {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 12px !important;
+    padding-bottom: 14px;
+    margin-left: -12px;
+    margin-right: -12px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .events-grid::-webkit-scrollbar, .spaces-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .event-card, .space-card {
+    flex: 0 0 240px !important;
+    scroll-snap-align: start;
+    max-width: 240px !important;
+  }
+
+  .interests-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .admin-kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .admin-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  /* 5. Drawers / Off-Canvas Móvil Bottom Sheet Style */
+  .offcanvas-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 92vh !important;
+    top: auto !important;
+    bottom: 0 !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  /* 6. Mobile Bottom Navigation Bar (Spotify Floating Footer) */
+  .mobile-bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 99999;
+    justify-content: space-around;
+    align-items: center;
+    padding: 4px 6px 6px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.6);
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    gap: 3px;
+    cursor: pointer;
+    flex: 1;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-nav-item.active {
+    color: var(--accent) !important;
+  }
+
+  .mobile-nav-item.active .mobile-nav-icon {
+    transform: translateY(-2px);
+  }
+
+  .mobile-nav-icon {
+    font-size: 18px;
+    transition: transform 0.15s ease;
+  }
+
+  .mobile-nav-create-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(198, 241, 53, 0.45);
+    margin-bottom: 2px;
+  }
+}
+
+/* Ocultar barra móvil en desktop */
+@media (min-width: 769px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+  .spotify-quick-grid {
+    display: none !important;
+  }
+}
+
 
