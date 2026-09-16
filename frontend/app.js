@@ -187,7 +187,7 @@ const App = (() => {
   async function loadUserInteractions() {
     if (currentUser.role === 'invitado') return;
     try {
-      const res = await fetchWithTimeout(`${API_BASE}/interactions/${currentUser.id}`);
+      const res = await fetchWithTimeout(`${API_BASE}/interactions?userId=${currentUser.id}`);
       if (res.ok) {
         const rows = await res.json();
         userInteractions = {};

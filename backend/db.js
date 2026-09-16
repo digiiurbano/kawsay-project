@@ -253,7 +253,7 @@ function seedData() {
           price: '$20',
           venue: 'Museo Urbano',
           full_venue: 'Museo Urbano de Arte Andino',
-          image: 'images/event_workshop.jpg',
+          image: 'images/event_mural.jpg',
           status: 'approved',
           organizer_id: 'usr-gestor-1',
           sold_out: 0

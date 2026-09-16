@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
-    const { userId } = req.query;
+    const userId = req.query.userId || req.query.id;
     if (!userId) return res.status(400).json({ error: 'userId requerido' });
 
     return db.all(`SELECT event_id, is_favorite, has_rsvp FROM user_interactions WHERE user_id = ?`, [userId], (err, rows) => {
