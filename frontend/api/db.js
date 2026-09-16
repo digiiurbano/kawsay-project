@@ -4,7 +4,7 @@ const fs = require('fs');
 const { Pool } = require('pg');
 
 const isVercel = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
-const defaultDbUrl = 'postgresql://postgres:CqdX95RBv%2BY%3Ffh%25@db.secjavdxoirrucbrllwu.supabase.co:5432/postgres';
+const defaultDbUrl = 'postgresql://postgres.secjavdxoirrucbrllwu:CqdX95RBv%2BY%3Ffh%25@aws-0-us-west-2.pooler.supabase.com:5432/postgres';
 const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || defaultDbUrl;
 
 let pgPool = null;
