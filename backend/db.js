@@ -1,7 +1,21 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const fs = require('fs');
 
-const dbPath = path.join(__dirname, 'kawsay.db');
+const dbPath = process.env.DB_PATH || path.join(__dirname, 'kawsay.db');
+
+if (process.env.DB_PATH && !fs.existsSync(dbPath)) {
+  const sourceDbPath = path.join(__dirname, 'kawsay.db');
+  if (fs.existsSync(sourceDbPath)) {
+    try {
+      const dir = path.dirname(dbPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.copyFileSync(sourceDbPath, dbPath);
+      console.log("✅ Base de datos inicial copiada al disco persistente en Render:", dbPath);
+    } catch (err) {
+      console.warn("⚠️ No se pudo copiar la DB inicial al disco persistente:", err.message);
+    }
+  }
+}
+
 const db = new sqlite3.Database(dbPath);
 
 function initDb() {

@@ -16,7 +16,7 @@ if (dbUrl) {
 }
 
 const targetDbDir = isVercel ? '/tmp' : path.join(__dirname, '../backend');
-const dbPath = path.join(targetDbDir, 'kawsay.db');
+const dbPath = process.env.DB_PATH || path.join(targetDbDir, 'kawsay.db');
 const sourceDbPath = path.join(__dirname, '../backend/kawsay.db');
 
 if (isVercel && !fs.existsSync(dbPath) && fs.existsSync(sourceDbPath)) {
