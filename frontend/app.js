@@ -2342,17 +2342,24 @@ const App = (() => {
     el.style.setProperty('visibility', 'visible', 'important');
     el.style.setProperty('pointer-events', 'all', 'important');
     el.style.setProperty('z-index', '999999', 'important');
+
+    void el.offsetHeight;
+
     el.classList.add('open');
   }
 
   function hideModal(selector) {
     const el = (typeof selector === 'string') ? $(selector) : selector;
     if (!el) return;
-    el.style.setProperty('display', 'none', 'important');
+    el.classList.remove('open');
     el.style.setProperty('opacity', '0', 'important');
     el.style.setProperty('visibility', 'hidden', 'important');
     el.style.setProperty('pointer-events', 'none', 'important');
-    el.classList.remove('open');
+    setTimeout(() => {
+      if (!el.classList.contains('open')) {
+        el.style.setProperty('display', 'none', 'important');
+      }
+    }, 250);
   }
 
   function openAuthModal() { showModal('#modal-auth'); }
