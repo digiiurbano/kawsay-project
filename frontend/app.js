@@ -89,7 +89,7 @@ const App = (() => {
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
 
-  async function fetchWithTimeout(url, options = {}, timeoutMs = 1200) {
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -1067,15 +1067,6 @@ const App = (() => {
           }
         } catch (err) {
           showToast('Error de conexión');
-        }
-      });
-    });
-
-    $$('.event-card').forEach(card => {
-      card.addEventListener('click', (e) => {
-        if (!e.target.closest('.btn-card-action')) {
-          const eventId = card.dataset.id;
-          openEventDetailModal(eventId);
         }
       });
     });
@@ -2824,10 +2815,10 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         return;
       }
 
-      // 3. Delegación global: Capturar clic en cualquier tarjeta de evento, convocatoria o píldora de calendario
-      const card = e.target.closest('.event-card, .month-event-pill');
+      // 3. Delegación global única: Capturar clic en cualquier tarjeta de evento, hero button o píldora de calendario
+      const card = e.target.closest('.event-card, .month-event-pill, #btn-mas-info');
       if (card) {
-        const id = card.dataset.id || card.getAttribute('data-id');
+        const id = card.dataset.id || card.getAttribute('data-id') || (card.id === 'btn-mas-info' ? 'fe-001' : null);
         if (id) {
           openEventDetailModal(id);
         }
