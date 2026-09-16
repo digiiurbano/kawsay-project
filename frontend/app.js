@@ -495,7 +495,7 @@ const App = (() => {
       <!-- Events Grid -->
       <section class="section">
         <div class="section-header">
-          <h2 class="section-title" style="font-size:22px; font-weight:900;">CARTELERA CULTURAL EN VIVO (SQLITE DB)</h2>
+          <h2 class="section-title" style="font-size:22px; font-weight:900;">CARTELERA CULTURAL EN VIVO</h2>
           <span class="section-link" id="eventos-ver-todo">VER TODO</span>
         </div>
         <div class="events-grid stagger" id="events-grid">
@@ -584,7 +584,7 @@ const App = (() => {
               </span>
             </div>
             <p style="color:var(--grey1); font-size:14px; font-family:var(--font-mono);">
-              Monitoreo global de sesiones, número de artistas, ventas de entradas y base de datos local SQLite.
+              Monitoreo global de sesiones, número de artistas, ventas de entradas y base de datos en la nube.
             </p>
           </div>
           <div style="display:flex; gap:12px;">
@@ -602,7 +602,7 @@ const App = (() => {
           <div class="admin-kpi-card">
             <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🌐 SESIONES / USUARIOS ACTIVOS</div>
             <div class="admin-kpi-val" style="color:var(--accent);">1,450</div>
-            <div class="admin-kpi-sub">4 Perfiles Registrados en SQLite</div>
+            <div class="admin-kpi-sub">4 Perfiles Registrados en la Nube</div>
           </div>
           <div class="admin-kpi-card">
             <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🎨 CANTIDAD DE ARTISTAS</div>
@@ -1066,7 +1066,7 @@ const App = (() => {
             renderHomeView();
           }
         } catch (err) {
-          showToast('Error al conectar con SQLite');
+          showToast('Error de conexión');
         }
       });
     });
@@ -1665,7 +1665,7 @@ const App = (() => {
       <div style="padding:24px 32px 12px; display:flex; justify-content:space-between; align-items:center;">
         <div>
           <h2 class="calendar-view-title" style="font-size:26px; font-weight:900;">CALENDARIO MENSUAL — OCTUBRE 2026</h2>
-          <p style="color:var(--grey1); font-size:14px; font-family:var(--font-mono);">MATRIZ COMPLETA DE EVENTOS CULTURALES EN SQLITE</p>
+          <p style="color:var(--grey1); font-size:14px; font-family:var(--font-mono);">MATRIZ COMPLETA DE EVENTOS CULTURALES</p>
         </div>
       </div>
       <div class="month-view-layout" style="display:grid; grid-template-columns: 1fr 340px; gap:24px; padding:12px 32px 32px;">
@@ -2014,7 +2014,7 @@ const App = (() => {
               </div>
 
               <button class="btn-submit" id="btn-submit-billboard" type="submit" style="margin-top:16px; width:100%; font-size:14px; font-weight:900; background:var(--accent); color:#000;">
-                🚀 PUBLICAR CARTELERA EN VIVO EN SQLITE DB
+                🚀 PUBLICAR CARTELERA EN VIVO
               </button>
             </form>
 
@@ -2669,7 +2669,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
   function openCreateModal() {
     editingEventId = null;
     $('#modal-create-title').textContent = `📜 GENERADOR DE CARTELERA PROFESIONAL (${currentUser.role.toUpperCase()})`;
-    if ($('#btn-submit-billboard')) $('#btn-submit-billboard').textContent = '🚀 PUBLICAR CARTELERA EN VIVO EN SQLITE DB';
+    if ($('#btn-submit-billboard')) $('#btn-submit-billboard').textContent = '🚀 PUBLICAR CARTELERA EN VIVO';
     showModal('#modal-create');
   }
   function closeCreateModal() {
