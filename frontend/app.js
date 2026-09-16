@@ -136,19 +136,24 @@ const App = (() => {
   }
 
   // ============================================================
-  // DATA FETCHING (CON TIMEOUT NO BLOQUEANTE DE 1.2 SEGUNDOS)
+  // DATA FETCHING (CON TIMEOUT NO BLOQUEANTE DE 5 SEGUNDOS)
   // ============================================================
   async function loadInitialData() {
     try {
-      const uRes = await fetchWithTimeout(`${API_BASE}/users`);
-      if (uRes.ok) {
-        const fetchedUsers = await uRes.json();
+      const [uRes, eRes, sRes, stRes] = await Promise.allSettled([
+        fetchWithTimeout(`${API_BASE}/users`),
+        fetchWithTimeout(`${API_BASE}/events?status=all`),
+        fetchWithTimeout(`${API_BASE}/spaces`),
+        fetchWithTimeout(`${API_BASE}/stats`)
+      ]);
+
+      if (uRes.status === 'fulfilled' && uRes.value.ok) {
+        const fetchedUsers = await uRes.value.json();
         usersList = [guestUser, ...fetchedUsers];
       }
 
-      const eRes = await fetchWithTimeout(`${API_BASE}/events?status=all`);
-      if (eRes.ok) {
-        const fetchedEvents = await eRes.json();
+      if (eRes.status === 'fulfilled' && eRes.value.ok) {
+        const fetchedEvents = await eRes.value.json();
         if (fetchedEvents && fetchedEvents.length > 0) {
           apiEvents = fetchedEvents;
         }
@@ -161,14 +166,14 @@ const App = (() => {
         }
       });
 
-      const sRes = await fetchWithTimeout(`${API_BASE}/spaces`);
-      if (sRes.ok) {
-        const fetchedSpaces = await sRes.json();
+      if (sRes.status === 'fulfilled' && sRes.value.ok) {
+        const fetchedSpaces = await sRes.value.json();
         if (fetchedSpaces && fetchedSpaces.length > 0) apiSpaces = fetchedSpaces;
       }
 
-      const stRes = await fetchWithTimeout(`${API_BASE}/stats`);
-      if (stRes.ok) platformStats = await stRes.json();
+      if (stRes.status === 'fulfilled' && stRes.value.ok) {
+        platformStats = await stRes.value.json();
+      }
 
       if (currentUser.role !== 'invitado') {
         await loadUserInteractions();
@@ -176,7 +181,7 @@ const App = (() => {
         userInteractions = {};
       }
     } catch (err) {
-      console.warn("⚠️ API remota no respondió dentro del timeout, manteniendo base local:", err);
+      console.warn("⚠️ Error al sincronizar con la API Serverless, usando base local:", err);
       if (!apiEvents || apiEvents.length === 0) {
         apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: 'approved' })), ...convocatoriasList];
       }
