@@ -1885,7 +1885,7 @@ const App = (() => {
       </div>
 
       <!-- Off-Canvas Drawer Detalle del Evento (Side Panel) -->
-      <div class="offcanvas-overlay modal-overlay" id="modal-event-detail">
+      <div class="offcanvas-overlay" id="modal-event-detail">
         <div class="offcanvas-panel" id="modal-event-detail-box"></div>
       </div>
 
@@ -2271,11 +2271,11 @@ const App = (() => {
     }
 
     // Modal legal handlers
-    if ($('#link-reg-terms')) $('#link-reg-terms').addEventListener('click', (e) => { e.preventDefault(); $('#modal-terms').classList.add('open'); });
-    if ($('#link-reg-privacy')) $('#link-reg-privacy').addEventListener('click', (e) => { e.preventDefault(); $('#modal-privacy').classList.add('open'); });
-    if ($('#modal-terms-close')) $('#modal-terms-close').addEventListener('click', () => $('#modal-terms').classList.remove('open'));
-    if ($('#modal-privacy-close')) $('#modal-privacy-close').addEventListener('click', () => $('#modal-privacy').classList.remove('open'));
-    if ($('#modal-email-confirm-close')) $('#modal-email-confirm-close').addEventListener('click', () => $('#modal-email-confirm').classList.remove('open'));
+    if ($('#link-reg-terms')) $('#link-reg-terms').addEventListener('click', (e) => { e.preventDefault(); showModal('#modal-terms'); });
+    if ($('#link-reg-privacy')) $('#link-reg-privacy').addEventListener('click', (e) => { e.preventDefault(); showModal('#modal-privacy'); });
+    if ($('#modal-terms-close')) $('#modal-terms-close').addEventListener('click', () => hideModal('#modal-terms'));
+    if ($('#modal-privacy-close')) $('#modal-privacy-close').addEventListener('click', () => hideModal('#modal-privacy'));
+    if ($('#modal-email-confirm-close')) $('#modal-email-confirm-close').addEventListener('click', () => hideModal('#modal-email-confirm'));
 
     $('#modal-cart-close').addEventListener('click', closeCartModal);
     $('#btn-checkout').addEventListener('click', () => {

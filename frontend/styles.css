@@ -1223,7 +1223,7 @@ input, select { font-family: inherit; }
   background: rgba(0,0,0,0.85) !important;
   backdrop-filter: blur(8px) !important;
   z-index: 999999 !important;
-  display: none !important;
+  display: none;
   align-items: center !important;
   justify-content: center !important;
   opacity: 0;
@@ -2325,12 +2325,16 @@ p, .event-card-desc { font-size: 14px !important; }
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  display: flex !important;
+  display: none;
   justify-content: flex-end !important;
+  align-items: stretch !important;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .offcanvas-overlay.open {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: stretch !important;
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: all !important;
