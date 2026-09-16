@@ -4,11 +4,7 @@
 
 const App = (() => {
 
-  const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:3005/api'
-    : (window.location.origin.includes('onrender.com')
-        ? '/api'
-        : 'https://kawsay-project.onrender.com/api');
+  const API_BASE = '/api';
 
   // ---- SVG ICON DICTIONARY ----
   const ICONS = {
