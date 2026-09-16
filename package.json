@@ -1,15 +1,17 @@
 {
   "name": "kawsay-project",
   "version": "1.0.0",
-  "description": "Proyecto Cultural KAWSAY con Frontend y Backend separados",
+  "description": "Proyecto Cultural KAWSAY con Frontend y Backend unificados en Vercel + Supabase",
   "scripts": {
     "start": "node backend/index.js",
     "dev": "node backend/index.js",
     "test": "node backend/test_api.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "pg": "^8.12.0",
     "sqlite3": "^5.1.7"
   }
 }
