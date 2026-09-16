@@ -1223,7 +1223,7 @@ input, select { font-family: inherit; }
   background: rgba(0,0,0,0.85) !important;
   backdrop-filter: blur(8px) !important;
   z-index: 999999 !important;
-  display: flex !important;
+  display: none !important;
   align-items: center !important;
   justify-content: center !important;
   opacity: 0;
@@ -1232,6 +1232,7 @@ input, select { font-family: inherit; }
   transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 .modal-overlay.open {
+  display: flex !important;
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: all !important;

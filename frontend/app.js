@@ -2332,6 +2332,11 @@ const App = (() => {
   function showModal(selector) {
     const el = (typeof selector === 'string') ? $(selector) : selector;
     if (!el) return;
+
+    $$('.modal-overlay, .offcanvas-overlay').forEach(m => {
+      if (m !== el) hideModal(m);
+    });
+
     el.style.setProperty('display', 'flex', 'important');
     el.style.setProperty('opacity', '1', 'important');
     el.style.setProperty('visibility', 'visible', 'important');
