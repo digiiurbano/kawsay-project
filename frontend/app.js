@@ -369,11 +369,6 @@ const App = (() => {
     const totalCartItems = cartItems.reduce((acc, item) => acc + item.qty, 0);
 
     topbar.innerHTML = `
-      <div class="topbar-nav">
-        <button class="topbar-nav-btn" id="btn-back" title="Atrás">&#8592;</button>
-        <button class="topbar-nav-btn" id="btn-forward" title="Adelante">&#8594;</button>
-      </div>
-
       <!-- Barra de Búsqueda Destacada -->
       <div class="search-wrap-lg">
         <span class="search-icon-lg">${ICONS.search}</span>
@@ -429,8 +424,6 @@ const App = (() => {
       </div>
     `;
 
-    $('#btn-back').addEventListener('click', () => history.back());
-    $('#btn-forward').addEventListener('click', () => history.forward());
     $('#btn-cart').addEventListener('click', openCartModal);
 
     const loginBtn = $('#btn-topbar-login');
@@ -492,22 +485,22 @@ const App = (() => {
 
     view.innerHTML = `
       <!-- Hero Banner -->
-      <section class="hero-banner" id="hero-banner" style="height:360px;">
+      <section class="hero-banner" id="hero-banner">
         <img class="hero-img" src="${featured.image}" alt="${featured.title}">
         <div class="hero-content">
-          <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+          <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center; flex-wrap:wrap;">
             <span class="hero-badge">${featured.badge || 'DESTACADO'}</span>
             <span class="premium-badge-gold" style="display:inline-flex; align-items:center; gap:4px;">
               ${ICONS.star} EXCLUSIVO PREMIUM
             </span>
           </div>
-          <h1 class="hero-title" style="font-size:48px;">${featured.title}</h1>
-          <p class="hero-desc" style="font-size:16px;">${featured.description || featured.subtitle || 'Una experiencia inmersiva de arte, música viva y patrimonio cultural en Quito.'}</p>
-          <div class="hero-btns" style="margin-top:16px;">
-            <button class="btn-primary" id="btn-conseguir-entradas" style="padding:14px 28px; font-size:14px; display:inline-flex; align-items:center; gap:8px;">
+          <h1 class="hero-title">${featured.title}</h1>
+          <p class="hero-desc">${featured.description || featured.subtitle || 'Una experiencia inmersiva de arte, música viva y patrimonio cultural en Quito.'}</p>
+          <div class="hero-btns">
+            <button class="btn-primary" id="btn-conseguir-entradas" style="display:inline-flex; align-items:center; gap:8px;">
               ${ICONS.ticket} CONSEGUIR ENTRADAS Y AGREGAR AL CARRITO
             </button>
-            <button class="btn-secondary" id="btn-mas-info" style="padding:14px 24px; font-size:14px;">
+            <button class="btn-secondary" id="btn-mas-info">
               VER DETALLES DEL EVENTO 🔍
             </button>
           </div>

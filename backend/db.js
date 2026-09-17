@@ -1,4 +1,6 @@
 const fs = require('fs');
+const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'kawsay.db');
 

@@ -327,7 +327,10 @@ input, select { font-family: inherit; }
 /* ---- Hero Banner ---- */
 .hero-banner {
   position: relative;
-  height: 340px;
+  min-height: 440px;
+  height: 440px;
+  border-radius: 16px;
+  margin-bottom: 24px;
   overflow: hidden;
   background: #111;
 }
@@ -349,8 +352,9 @@ input, select { font-family: inherit; }
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 32px 36px;
-  background: linear-gradient(to right, rgba(0,0,0,0.75) 55%, transparent);
+  padding: 44px 48px;
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 15%, rgba(0,0,0,0.55) 65%, transparent 100%);
+  gap: 8px;
 }
 
 .hero-badge {
@@ -362,29 +366,30 @@ input, select { font-family: inherit; }
   font-weight: 700;
   letter-spacing: 0.12em;
   padding: 4px 10px;
-  border-radius: 3px;
-  margin-bottom: 12px;
+  border-radius: 4px;
   width: fit-content;
 }
 
 .hero-title {
-  font-size: 46px;
-  font-weight: 900;
-  line-height: 1.0;
+  font-size: 44px !important;
+  font-weight: 900 !important;
+  line-height: 1.05 !important;
   letter-spacing: -0.01em;
-  margin-bottom: 10px;
-  text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+  margin-bottom: 6px;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.8);
   white-space: pre-line;
+  color: #ffffff;
 }
 
 .hero-desc {
-  font-size: 14px;
-  color: rgba(255,255,255,0.85);
-  margin-bottom: 20px;
-  max-width: 420px;
+  font-size: 15px !important;
+  color: rgba(255,255,255,0.9) !important;
+  margin-bottom: 18px;
+  max-width: 640px;
+  line-height: 1.5;
 }
 
-.hero-btns { display: flex; gap: 10px; }
+.hero-btns { display: flex; gap: 14px; flex-wrap: wrap; }
 
 .btn-primary {
   display: flex;
@@ -2181,7 +2186,7 @@ input, select { font-family: inherit; }
    ============================================================ */
 
 /* Fuentes más grandes para legibilidad */
-h1, .hero-title { font-size: 32px !important; }
+h1 { font-size: 32px !important; }
 h2, .section-title { font-size: 24px !important; }
 h3, .event-card-title { font-size: 18px !important; }
 p, .event-card-desc { font-size: 14px !important; }
@@ -2467,20 +2472,26 @@ p, .event-card-desc { font-size: 14px !important; }
 
   /* 2. Topbar Adaptativo Móvil */
   #topbar {
-    padding: 10px 12px !important;
+    padding: 10px 14px !important;
     gap: 8px !important;
-    flex-wrap: wrap !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .topbar-actions {
+    width: 100% !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    margin-bottom: 2px;
   }
 
   .search-wrap-lg {
     max-width: 100% !important;
-    order: 3;
-    width: 100%;
-    margin-top: 4px;
-  }
-
-  .topbar-actions {
-    gap: 6px !important;
+    order: 2 !important;
+    width: 100% !important;
+    margin-top: 2px;
   }
 
   .location-wrap {
@@ -2488,32 +2499,44 @@ p, .event-card-desc { font-size: 14px !important; }
   }
 
   .hero-banner {
-    height: 320px !important;
+    min-height: 390px !important;
+    height: auto !important;
+    border-radius: 14px !important;
+  }
+
+  .hero-content {
+    padding: 24px 16px 24px !important;
+    justify-content: flex-end !important;
   }
 
   .hero-title {
     font-size: 26px !important;
-    line-height: 1.1 !important;
+    line-height: 1.15 !important;
+    margin-bottom: 6px !important;
   }
 
   .hero-desc {
     font-size: 13px !important;
+    line-height: 1.4 !important;
+    margin-bottom: 14px !important;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
 
   .hero-btns {
     flex-direction: column !important;
-    width: 100%;
+    gap: 8px !important;
+    width: 100% !important;
   }
 
   .hero-btns button {
     width: 100% !important;
     justify-content: center !important;
-    padding: 12px !important;
-    font-size: 12px !important;
+    padding: 12px 14px !important;
+    font-size: 11px !important;
+    white-space: normal !important;
   }
 
   /* 3. Spotify Quick Grid (2 Columnas Compactas) */
