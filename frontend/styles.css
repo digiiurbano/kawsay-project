@@ -2137,11 +2137,18 @@ input, select { font-family: inherit; }
   padding: 20px;
   position: relative;
   transition: var(--transition);
+  cursor: pointer;
+  user-select: none;
 }
 
 .admin-kpi-card:hover {
   border-color: var(--accent);
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.6);
+}
+
+.admin-kpi-card:active {
+  transform: translateY(-1px);
 }
 
 .admin-kpi-val {
@@ -2317,107 +2324,351 @@ p, .event-card-desc { font-size: 14px !important; }
 }
 
 /* ============================================================
-   OFF-CANVAS DRAWER — DETALLE DE EVENTO (SIDE PANEL)
+   FLOATING CENTRAL SPLIT MODAL — Event Detail
+   LEFT: Full image with giant title overlay
+   RIGHT: Scrollable info + sticky action bar
    ============================================================ */
 .offcanvas-overlay {
   position: fixed !important;
-  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
-  width: 100vw !important; height: 100vh !important;
-  background: rgba(0, 0, 0, 0.65) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.82) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   z-index: 999999 !important;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   display: none;
-  justify-content: flex-end !important;
-  align-items: stretch !important;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  align-items: center !important;
+  justify-content: center !important;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .offcanvas-overlay.open {
   display: flex !important;
-  justify-content: flex-end !important;
-  align-items: stretch !important;
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: all !important;
 }
 
+/* Floating panel — centered card */
 .offcanvas-panel {
-  width: 520px;
-  max-width: 92vw;
-  height: 100vh;
-  background: var(--surface, #0f172a);
-  border-left: 1px solid var(--border, rgba(255,255,255,0.12));
-  box-shadow: -12px 0 50px rgba(0,0,0,0.85);
+  width: min(94vw, 1020px);
+  height: min(92vh, 660px);
+  background: #0a0a0a;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 18px;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.95);
   display: flex;
-  flex-direction: column;
-  overflow-y: auto;
+  flex-direction: row;
+  overflow: hidden;
   position: relative;
-  transform: translateX(100%);
-  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: scale(0.93) translateY(24px);
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .offcanvas-overlay.open .offcanvas-panel {
-  transform: translateX(0) !important;
+  transform: scale(1) translateY(0) !important;
+  opacity: 1 !important;
 }
 
+/* ── LEFT: Image column with giant title overlay ── */
 .offcanvas-hero {
+  flex: 0 0 52%;
   position: relative;
-  width: 100%;
-  height: 240px;
-  flex-shrink: 0;
   overflow: hidden;
+  background: #000;
 }
 
 .offcanvas-hero-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: brightness(0.75);
+  object-position: center;
+  filter: brightness(0.55);
+  transition: transform 8s ease;
+}
+.offcanvas-overlay.open .offcanvas-hero-img {
+  transform: scale(1.04);
 }
 
-.offcanvas-hero-overlay {
+/* Badges top-left */
+.offcanvas-hero-badges {
   position: absolute;
-  bottom: 0; left: 0; right: 0;
-  padding: 20px 24px;
-  background: linear-gradient(to top, rgba(15,23,42,1) 0%, rgba(15,23,42,0.6) 60%, transparent 100%);
+  top: 18px;
+  left: 18px;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  z-index: 5;
+}
+
+/* Giant title block — bottom of image */
+.offcanvas-hero-title-block {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 80px 22px 20px;
+  background: linear-gradient(to top,
+    rgba(0,0,0,0.96) 0%,
+    rgba(0,0,0,0.7) 45%,
+    transparent 100%);
+  z-index: 5;
+}
+
+.offcanvas-event-title {
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: clamp(32px, 5vw, 58px);
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 0.95;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+  margin: 0 0 14px;
+  word-break: break-word;
+}
+
+.offcanvas-venue-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.offcanvas-venue-text {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.offcanvas-venue-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.18);
+  min-width: 20px;
+  max-width: 40px;
+}
+
+.offcanvas-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── RIGHT: Scrollable info panel ── */
+.offcanvas-left {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  background: #111111;
+  position: relative;
+  overflow: hidden;
 }
 
+/* Close button — top-right of the INFO panel */
 .offcanvas-close-btn {
   position: absolute;
-  top: 16px; right: 16px;
-  width: 38px; height: 38px;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.65);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: #ffffff;
-  font-size: 22px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10;
-  transition: background 0.15s ease, transform 0.15s ease;
+  z-index: 20;
+  transition: background 0.15s ease, color 0.15s ease;
+  line-height: 1;
 }
-
 .offcanvas-close-btn:hover {
   background: rgba(239, 68, 68, 0.85);
-  transform: scale(1.05);
+  color: #fff;
+  border-color: transparent;
 }
 
+/* Scrollable content zone */
 .offcanvas-body {
-  padding: 24px;
+  flex: 1 1 0;
+  overflow-y: auto;
+  padding: 48px 24px 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  flex-grow: 1;
+  gap: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
+.offcanvas-body::-webkit-scrollbar { width: 3px; }
+.offcanvas-body::-webkit-scrollbar-track { background: transparent; }
+.offcanvas-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+/* Section header "ⓘ ACERCA DEL ESPECTÁCULO" */
+.detail-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--accent, #d4ff00);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+/* Info grid 2-column */
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.detail-info-card {
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dic-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.38);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.dic-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dic-value.accent { color: var(--accent, #d4ff00); }
+.dic-value.gold   { color: var(--gold, #eab308); }
+
+/* ── Sticky Action Bar at bottom of right panel ── */
+.offcanvas-action-bar {
+  flex-shrink: 0;
+  padding: 12px 18px 18px;
+  background: #111111;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-cart-main {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent, #d4ff00);
+  color: #000000;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.btn-cart-main:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.btn-cart-main:active { transform: translateY(0); }
+
+.btn-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn-secondary-action {
+  padding: 11px 14px;
+  background: #1a1a1a;
+  color: rgba(255,255,255,0.75);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.btn-secondary-action:hover {
+  background: #222;
+  border-color: rgba(255,255,255,0.2);
+  color: #fff;
+}
+.btn-secondary-action.fav-active {
+  color: #f43f5e;
+  border-color: rgba(244,63,94,0.4);
+  background: rgba(244,63,94,0.08);
+}
+.btn-secondary-action.rsvp-active {
+  color: var(--accent, #d4ff00);
+  border-color: rgba(212,255,0,0.3);
+  background: rgba(212,255,0,0.06);
+}
+
+/* ── Responsive: stacked on mobile ── */
+@media (max-width: 640px) {
+  .offcanvas-panel {
+    flex-direction: column !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  .offcanvas-hero {
+    flex: 0 0 48% !important;
+    max-width: 100% !important;
+  }
+  .offcanvas-event-title {
+    font-size: clamp(26px, 7vw, 40px) !important;
+  }
+  .offcanvas-body {
+    padding: 14px 16px 10px !important;
+  }
+  .offcanvas-action-bar {
+    padding: 10px 14px 14px !important;
+  }
+}
+
+/* Left header inside offcanvas-left-header (unused now, kept for compat) */
+.offcanvas-left-header { display: none; }
+.hero-rating-row { display: none; }
+
+
 
 /* Layer legal/confirmation modals cleanly on top of auth modal */
 #modal-terms, #modal-privacy, #modal-email-confirm {
@@ -2619,7 +2870,41 @@ p, .event-card-desc { font-size: 14px !important; }
     overflow-x: auto;
   }
 
-  /* 5. Drawers / Off-Canvas Móvil Bottom Sheet Style */
+  /* 5. Floating Split Modal — Mobile Stacked Layout */
+  .offcanvas-panel {
+    flex-direction: column !important;
+    width: 96vw !important;
+    height: 92vh !important;
+    border-radius: 16px !important;
+  }
+
+  .offcanvas-left {
+    order: 2;
+    max-height: 65vh;
+    overflow-y: auto;
+  }
+
+  .offcanvas-hero {
+    order: 1;
+    flex: 0 0 200px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 200px !important;
+  }
+
+  .offcanvas-left-header {
+    padding: 16px 16px 0 !important;
+  }
+
+  .offcanvas-body {
+    padding: 14px 16px 16px !important;
+    gap: 14px !important;
+  }
+
+  .offcanvas-action-bar {
+    padding: 12px 16px 16px !important;
+  }
+
   .offcanvas-box {
     width: 100% !important;
     max-width: 100% !important;
@@ -2699,5 +2984,214 @@ p, .event-card-desc { font-size: 14px !important; }
     display: none !important;
   }
 }
+
+/* ============================================================
+   ESTILOS DE ONBOARDING RÁPIDO & SOCIAL AUTH (KAWSAY)
+   ============================================================ */
+
+/* Botones de Social Login (Google y Apple ID) */
+.social-auth-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.social-auth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  font-family: var(--font-sans);
+}
+
+.social-btn-google {
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+}
+.social-btn-google:hover {
+  background: #f3f4f6;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.social-btn-apple {
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid #374151;
+}
+.social-btn-apple:hover {
+  background: #111827;
+  border-color: #4b5563;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Divisor de métodos de registro */
+.social-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 14px 0 16px;
+  color: #64748b;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.social-divider::before,
+.social-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #334155;
+}
+.social-divider span {
+  padding: 0 10px;
+}
+
+/* Indicador de Fortaleza de Contraseña */
+.password-strength-container {
+  margin-top: 6px;
+}
+.password-strength-bar-bg {
+  width: 100%;
+  height: 4px;
+  background: #334155;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.password-strength-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.password-strength-text {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #94a3b8;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Píldoras interactivas de Personalización Cultural */
+.onboarding-tags-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.onboarding-tag-pill {
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+.onboarding-tag-pill:hover {
+  border-color: var(--accent);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.onboarding-tag-pill.active {
+  background: var(--accent);
+  color: #000000;
+  border-color: var(--accent);
+  box-shadow: 0 0 14px rgba(198, 241, 53, 0.4);
+  font-weight: 800;
+}
+
+/* Banner de Recomendaciones Personalizadas en Home */
+.personalized-recom-banner {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(198, 241, 53, 0.35);
+  border-radius: 14px;
+  padding: 18px 22px;
+  margin-bottom: 26px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.4s ease-out;
+}
+.personalized-recom-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--accent);
+}
+.personalized-recom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.personalized-recom-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.personalized-recom-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.personalized-chip {
+  background: rgba(198, 241, 53, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(198, 241, 53, 0.3);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+/* Badge 'Recomendado para ti' en tarjetas */
+.event-recommended-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--accent);
+  color: #000;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.5px;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 
 

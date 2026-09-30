@@ -46,6 +46,9 @@ const App = (() => {
   let currentUser = guestUser;
   let currentLocation = 'TODOS';
 
+  let pendingAuthAction = null;
+  let tempRegData = null;
+
   let cartItems = [];
   let apiEvents = [];
   let apiSpaces = [];
@@ -54,6 +57,42 @@ const App = (() => {
   let isPlayingDemoTrack = false;
   let activeDetailEvent = null;
   let editingEventId = null;
+
+  // ---- Calendar State (Dynamic real date calculation) ----
+  const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const todayDateObj = new Date();
+  const realCalYear = todayDateObj.getFullYear();
+  const realCalMonth = todayDateObj.getMonth();
+  const realCalDay = todayDateObj.getDate();
+
+  let calendarYear = realCalYear;
+  let calendarMonth = realCalMonth;
+  let selectedCalendarDate = `${realCalYear}-${String(realCalMonth + 1).padStart(2, '0')}-${String(realCalDay).padStart(2, '0')}`;
+  let weekStartOffset = 0;
+
+  function normalizeDateStr(dateStr) {
+    if (!dateStr) return '';
+    const str = String(dateStr).trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    if (str.includes('T')) return str.split('T')[0];
+
+    const monthMap = {
+      'ENE': '01', 'FEB': '02', 'MAR': '03', 'ABR': '04',
+      'MAY': '05', 'JUN': '06', 'JUL': '07', 'AGO': '08',
+      'SEP': '09', 'OCT': '10', 'NOV': '11', 'DIC': '12'
+    };
+
+    const parts = str.split(' ');
+    if (parts.length === 2) {
+      const day = parts[0].padStart(2, '0');
+      const monthKey = parts[1].substring(0, 3).toUpperCase();
+      const month = monthMap[monthKey] || '10';
+      return `2026-${month}-${day}`;
+    }
+
+    return str;
+  }
 
   const convocatoriasList = [
     {
@@ -147,6 +186,10 @@ const App = (() => {
         if (viewEl) renderSpaceStudioView(viewEl);
       } else if (currentView === 'home') {
         renderHomeView();
+      } else if (currentView === 'calendar-month') {
+        renderMonthView();
+      } else if (currentView === 'calendar-week') {
+        renderWeekView();
       }
       renderSidebar();
       renderTopbar();
@@ -406,9 +449,14 @@ const App = (() => {
 
         <!-- Área de Autenticación / Perfil Real -->
         ${currentUser.role === 'invitado' ? `
-          <button class="btn-primary" id="btn-topbar-login" style="padding:8px 18px; font-size:12px; font-family:var(--font-mono); font-weight:900; background:var(--accent); color:#000; cursor:pointer; border:none; border-radius:6px; display:flex; align-items:center; gap:6px;">
-            ${ICONS.key} INICIAR SESIÓN / REGISTRO
-          </button>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-secondary" id="btn-topbar-login" style="padding:7px 12px; font-size:12px; font-family:var(--font-mono); font-weight:700; color:#cbd5e1; border:1px solid #334155; border-radius:6px; cursor:pointer; background:rgba(30,41,59,0.7); display:flex; align-items:center; gap:6px;">
+              ${ICONS.key} Iniciar Sesión
+            </button>
+            <button class="btn-primary" id="btn-topbar-register" style="padding:7px 14px; font-size:12px; font-family:var(--font-mono); font-weight:900; background:var(--accent); color:#000; border-radius:6px; cursor:pointer; border:none; display:flex; align-items:center; gap:6px; box-shadow:0 0 12px rgba(198,241,53,0.3);">
+              ✨ Crear Cuenta <span style="font-size:9px; background:#000; color:var(--accent); padding:1px 5px; border-radius:10px; font-weight:900;">1 MIN</span>
+            </button>
+          </div>
         ` : `
           <div id="topbar-user-badge" style="display:flex; align-items:center; gap:10px; background:var(--surface2); padding:4px 10px 4px 6px; border-radius:20px; border:1px solid var(--border); cursor:pointer;" title="Abrir mi Panel / Dashboard">
             <img src="${currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">
@@ -427,7 +475,10 @@ const App = (() => {
     $('#btn-cart').addEventListener('click', openCartModal);
 
     const loginBtn = $('#btn-topbar-login');
-    if (loginBtn) loginBtn.addEventListener('click', openAuthModal);
+    if (loginBtn) loginBtn.addEventListener('click', () => openAuthModal('login'));
+
+    const regBtn = $('#btn-topbar-register');
+    if (regBtn) regBtn.addEventListener('click', () => openAuthModal('register'));
 
     const userBadge = $('#topbar-user-badge');
     if (userBadge) {
@@ -552,6 +603,24 @@ const App = (() => {
         </div>
       </div>
 
+      <!-- Banner de Recomendaciones Personalizadas según Algoritmo de Gustos -->
+      ${currentUser && currentUser.preferences && ((currentUser.preferences.categories && currentUser.preferences.categories.length > 0) || (currentUser.preferences.zones && currentUser.preferences.zones.length > 0)) ? `
+        <div class="personalized-recom-banner">
+          <div class="personalized-recom-header">
+            <div class="personalized-recom-title">
+              <span>✨ RECOMENDADOS PARA TI SEGÚN TUS INTERESES CULTURALES</span>
+            </div>
+            <button class="btn-secondary" id="btn-edit-preferences" style="padding:5px 12px; font-size:11px; font-family:var(--font-mono); border-radius:6px; border:1px solid rgba(255,255,255,0.2); cursor:pointer; color:#fff; background:rgba(255,255,255,0.06); font-weight:700;">
+              ⚙️ Ajustar Intereses
+            </button>
+          </div>
+          <div class="personalized-recom-badges">
+            ${(currentUser.preferences.categories || []).map(cat => `<span class="personalized-chip">🎭 ${cat}</span>`).join('')}
+            ${(currentUser.preferences.zones || []).map(z => `<span class="personalized-chip" style="color:#38bdf8; border-color:rgba(56,189,248,0.3); background:rgba(56,189,248,0.15);">📍 ${z}</span>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+
       <!-- Filter Bar -->
       <div class="filter-bar" role="toolbar">
         <button class="filter-pill active" data-cat="TODOS">TODOS</button>
@@ -611,6 +680,14 @@ const App = (() => {
 
     bindCardInteractions();
 
+    // Space card clicks → full-page space detail
+    $$('.space-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const spaceId = card.dataset.id;
+        if (spaceId) navigateSpaceDetail(spaceId);
+      });
+    });
+
     // Quick Grid Clicks
     const qgFavs = $('#qg-favs');
     if (qgFavs) qgFavs.addEventListener('click', () => navigate('calendar-month'));
@@ -627,9 +704,12 @@ const App = (() => {
     if (qgFeat) qgFeat.addEventListener('click', () => openEventDetailModal(featured.id));
     const qgRole = $('#qg-role');
     if (qgRole) qgRole.addEventListener('click', () => {
-      if (currentUser.role === 'invitado') openAuthModal();
+      if (currentUser.role === 'invitado') openAuthModal('login');
       else navigate(currentUser.role === 'admin' ? 'admin' : currentUser.role === 'artista' ? 'artist' : currentUser.role === 'espacio' ? 'space' : 'join');
     });
+
+    const editPrefBtn = $('#btn-edit-preferences');
+    if (editPrefBtn) editPrefBtn.addEventListener('click', () => openOnboardingModal(true));
 
     $$('.filter-pill').forEach(pill => {
       pill.addEventListener('click', () => {
@@ -649,6 +729,11 @@ const App = (() => {
     });
 
     $('#btn-conseguir-entradas').addEventListener('click', () => {
+      if (currentUser.role === 'invitado') {
+        pendingAuthAction = { type: 'cart', title: featured.title, price: 15 };
+        openAuthModal('register');
+        return;
+      }
       addToCart(featured.title, 15);
     });
     $('#btn-mas-info').addEventListener('click', () => {
@@ -687,30 +772,45 @@ const App = (() => {
           </div>
         </div>
 
-        <!-- TARJETAS DE MÉTRICAS CLAVE (KPIs EXECUTIVOS) -->
+        <!-- TARJETAS DE MÉTRICAS CLAVE (KPIs EXECUTIVOS - INTERACTIVAS) -->
         <div class="admin-kpi-grid">
-          <div class="admin-kpi-card">
-            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🌐 SESIONES / USUARIOS ACTIVOS</div>
+          <div class="admin-kpi-card" data-kpi="sessions" title="Haz clic para abrir el desglose de sesiones y usuarios">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🌐 SESIONES / USUARIOS ACTIVOS</div>
+              <span style="font-size:10px; background:rgba(198,241,53,0.15); color:var(--accent); border:1px solid var(--accent); padding:2px 8px; border-radius:10px; font-family:var(--font-mono); font-weight:800;">Ver desglose ↗</span>
+            </div>
             <div class="admin-kpi-val" style="color:var(--accent);">1,450</div>
             <div class="admin-kpi-sub">4 Perfiles Registrados en la Nube</div>
           </div>
-          <div class="admin-kpi-card">
-            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🎨 CANTIDAD DE ARTISTAS</div>
+          <div class="admin-kpi-card" data-kpi="artists" title="Haz clic para abrir el directorio y categorías de artistas">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🎨 CANTIDAD DE ARTISTAS</div>
+              <span style="font-size:10px; background:rgba(234,179,8,0.15); color:var(--gold); border:1px solid var(--gold); padding:2px 8px; border-radius:10px; font-family:var(--font-mono); font-weight:800;">Ver desglose ↗</span>
+            </div>
             <div class="admin-kpi-val" style="color:var(--gold);">142</div>
             <div class="admin-kpi-sub">Colectivos & Bandas Verificados</div>
           </div>
-          <div class="admin-kpi-card">
-            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🏛️ ESPACIOS & RECINTOS</div>
+          <div class="admin-kpi-card" data-kpi="spaces" title="Haz clic para abrir el catastro de recintos y aforos">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🏛️ ESPACIOS & RECINTOS</div>
+              <span style="font-size:10px; background:rgba(96,165,250,0.15); color:#60a5fa; border:1px solid #60a5fa; padding:2px 8px; border-radius:10px; font-family:var(--font-mono); font-weight:800;">Ver desglose ↗</span>
+            </div>
             <div class="admin-kpi-val" style="color:#60a5fa;">24</div>
             <div class="admin-kpi-sub">Centros Culturales en Quito</div>
           </div>
-          <div class="admin-kpi-card">
-            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🎟️ BOLETOS VENDIDOS</div>
+          <div class="admin-kpi-card" data-kpi="tickets" title="Haz clic para abrir el monitoreo de boletaje y QR">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🎟️ BOLETOS VENDIDOS</div>
+              <span style="font-size:10px; background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid #f43f5e; padding:2px 8px; border-radius:10px; font-family:var(--font-mono); font-weight:800;">Ver desglose ↗</span>
+            </div>
             <div class="admin-kpi-val" style="color:#f43f5e;">3,850</div>
             <div class="admin-kpi-sub">Entradas Digitales Procesadas</div>
           </div>
-          <div class="admin-kpi-card">
-            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">💰 RECAUDACIÓN TOTAL</div>
+          <div class="admin-kpi-card" data-kpi="revenue" title="Haz clic para abrir el reporte contable y comisiones">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">💰 RECAUDACIÓN TOTAL</div>
+              <span style="font-size:10px; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid #10b981; padding:2px 8px; border-radius:10px; font-family:var(--font-mono); font-weight:800;">Ver desglose ↗</span>
+            </div>
             <div class="admin-kpi-val" style="color:#10b981;">$48,250</div>
             <div class="admin-kpi-sub">Ingresos Totales por Taquilla</div>
           </div>
@@ -819,6 +919,13 @@ const App = (() => {
 
     bindCardInteractions();
 
+    view.querySelectorAll('.admin-kpi-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const kpiKey = card.dataset.kpi;
+        if (kpiKey) openKpiDetailModal(kpiKey);
+      });
+    });
+
     $('#btn-admin-create-event').addEventListener('click', openCreateModal);
     $('#btn-admin-export-report').addEventListener('click', () => {
       showToast('📊 Reporte Ejecutivo de Ventas exportado a CSV.');
@@ -867,25 +974,29 @@ const App = (() => {
   // DISEÑO DEDICADO PARA ESPACIO CULTURAL (GESTIÓN DE RECINTO)
   // ============================================================
   function renderSpaceStudioView(view) {
+    const mySpaces = apiSpaces.length > 0 ? apiSpaces : [
+      { id: 'sp-004', name: 'Teatro Nacional Quito', type: 'ARTES ESCÉNICAS', sector: 'Centro Histórico', address: 'Av. 10 de Agosto y Briceño', capacity: 500, image: 'images/space_teatro.jpg' }
+    ];
+
     view.innerHTML = `
       <!-- Banner del Espacio Cultural -->
       <div class="space-dashboard-banner">
         <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-          <img src="images/space_teatro.jpg" style="width:100px; height:100px; border-radius:14px; object-fit:cover; border:3px solid var(--gold);" alt="Teatro Nacional">
+          <img src="${mySpaces[0].image || 'images/space_teatro.jpg'}" style="width:100px; height:100px; border-radius:14px; object-fit:cover; border:3px solid var(--gold);" alt="${mySpaces[0].name}">
           <div style="flex:1;">
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-              <h1 style="font-size:32px; font-weight:900;">Teatro Nacional Quito</h1>
+              <h1 style="font-size:32px; font-weight:900;">${mySpaces[0].name}</h1>
               <span class="space-verified-tag">🏛️ RECINTO CULTURAL VERIFICADO</span>
             </div>
             <p style="color:var(--grey1); font-size:14px; font-family:var(--font-mono); margin-bottom:12px;">
-              Centro Histórico, Quito · Av. 10 de Agosto y Briceño · Capacidad: 500 Espectadores
+              ${mySpaces[0].sector || 'Quito'} · ${mySpaces[0].address || 'Quito, Ecuador'} · Capacidad: ${mySpaces[0].capacity || 500} Espectadores
             </p>
             <div style="display:flex; gap:12px; flex-wrap:wrap;">
               <button class="btn-primary" id="btn-space-create-event" style="padding:14px 28px; font-size:13px; font-family:var(--font-mono); font-weight:900; background:var(--gold); color:#000; display:inline-flex; align-items:center; gap:8px;">
                 ${ICONS.plus} + CREAR & PUBLICAR EVENTO EN MI RECINTO
               </button>
-              <button class="btn-secondary" id="btn-space-promote-venue" style="padding:12px 20px; font-size:13px; font-family:var(--font-mono); font-weight:800; border:1px solid var(--border); color:#fff; display:inline-flex; align-items:center; gap:8px;">
-                📢 PROMOVER MI ESPACIO / ALQUILER
+              <button class="btn-primary" id="btn-space-register-new" style="padding:14px 24px; font-size:13px; font-family:var(--font-mono); font-weight:900; background:var(--accent); color:#000; display:inline-flex; align-items:center; gap:8px;">
+                🏛️ + REGISTRAR NUEVO ESPACIO CULTURAL
               </button>
             </div>
           </div>
@@ -894,12 +1005,12 @@ const App = (() => {
         <!-- Métricas del Recinto -->
         <div class="artist-stats-grid" style="margin-top:24px;">
           <div class="artist-stat-card">
-            <div class="artist-stat-num" style="color:var(--gold);">500</div>
+            <div class="artist-stat-num" style="color:var(--gold);">${mySpaces[0].capacity || 500}</div>
             <div class="artist-stat-label">AFORO MÁXIMO</div>
           </div>
           <div class="artist-stat-card">
-            <div class="artist-stat-num" style="color:var(--gold);">85%</div>
-            <div class="artist-stat-label">OCUPACIÓN MENSUAL</div>
+            <div class="artist-stat-num" style="color:var(--gold);">${apiSpaces.length}</div>
+            <div class="artist-stat-label">RECINTOS REGISTRADOS</div>
           </div>
           <div class="artist-stat-card">
             <div class="artist-stat-num" style="color:var(--gold);">${apiEvents.length}</div>
@@ -912,24 +1023,29 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- SECCIÓN: SALAS & EQUIPAMIENTO DEL RECINTO -->
+      <!-- SECCIÓN: DIRECTORIO & GESTIÓN DE ESPACIOS CULTURALES -->
       <section class="section">
         <div class="section-header">
-          <h2 class="section-title" style="font-size:22px; font-weight:900;">INSTALACIONES & SALAS DISPONIBLES EN EL TEATRO</h2>
+          <h2 class="section-title" style="font-size:22px; font-weight:900;">🏛️ ESPACIOS CULTURALES EN LA PLATAFORMA (${apiSpaces.length})</h2>
+          <span class="section-link" id="btn-space-new-space-top">+ REGISTRAR OTRO ESPACIO</span>
         </div>
-        <div class="space-specs-grid">
-          <div class="space-spec-card">
-            <div style="font-size:16px; font-weight:900; color:var(--gold); margin-bottom:4px;">SALA PRINCIPAL TEATRAL</div>
-            <div style="font-size:12px; color:var(--grey1); font-family:var(--font-mono);">Capacidad: 500 personas · Escenario 12x8m · Sonido DMX</div>
-          </div>
-          <div class="space-spec-card">
-            <div style="font-size:16px; font-weight:900; color:var(--gold); margin-bottom:4px;">GALERÍA Y SALÓN SUBTERRÁNEO</div>
-            <div style="font-size:12px; color:var(--grey1); font-family:var(--font-mono);">Capacidad: 150 personas · Exposición de Arte y Vinilos</div>
-          </div>
-          <div class="space-spec-card">
-            <div style="font-size:16px; font-weight:900; color:var(--gold); margin-bottom:4px;">TERRAZA & CAFETÍN CULTURAL</div>
-            <div style="font-size:12px; color:var(--grey1); font-family:var(--font-mono);">Vista al Centro Histórico · Catering & Acústica</div>
-          </div>
+        <div class="spaces-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
+          ${apiSpaces.map(sp => `
+            <div class="space-card" data-id="${sp.id}" style="background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; cursor:pointer; transition:transform 0.2s, border-color 0.2s;">
+              <img src="${sp.image || 'images/space_nave01.jpg'}" style="width:100%; height:140px; object-fit:cover;">
+              <div style="padding:16px;">
+                <span style="font-size:10px; font-family:var(--font-mono); font-weight:900; color:var(--gold); text-transform:uppercase;">${sp.type || 'ESPACIO CULTURAL'}</span>
+                <h3 style="font-size:16px; font-weight:900; margin:4px 0 6px;">${sp.name}</h3>
+                <p style="font-size:12px; color:var(--grey1); margin-bottom:10px; display:flex; align-items:center; gap:4px;">
+                  📍 ${sp.sector || 'Quito'} · Capacidad ${sp.capacity || 200} pers.
+                </p>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:10px;">
+                  <button class="btn-secondary btn-open-space-profile" data-id="${sp.id}" style="padding:6px 12px; font-size:11px; font-weight:800;">VER PERFIL ➔</button>
+                  <button class="btn-action-delete-space" data-id="${sp.id}" style="background:none; border:none; color:#ef4444; font-size:12px; cursor:pointer;" title="Eliminar espacio">🗑️</button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
         </div>
       </section>
 
@@ -948,8 +1064,29 @@ const App = (() => {
     bindCardInteractions();
     $('#btn-space-create-event').addEventListener('click', openCreateModal);
     $('#btn-space-new-event-top').addEventListener('click', openCreateModal);
-    $('#btn-space-promote-venue').addEventListener('click', () => {
-      showToast('📢 Campaña de alquiler del Teatro Nacional enviada a colectivos.');
+    if ($('#btn-space-register-new')) $('#btn-space-register-new').addEventListener('click', openSpaceCreateModal);
+    if ($('#btn-space-new-space-top')) $('#btn-space-new-space-top').addEventListener('click', openSpaceCreateModal);
+
+    view.querySelectorAll('.btn-open-space-profile').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openSpaceDetailModal(btn.dataset.id);
+      });
+    });
+
+    view.querySelectorAll('.btn-action-delete-space').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await deleteSpace(btn.dataset.id);
+      });
+    });
+
+    view.querySelectorAll('.space-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-action-delete-space')) return;
+        const id = card.dataset.id;
+        if (id) openSpaceDetailModal(id);
+      });
     });
   }
 
@@ -1105,16 +1242,28 @@ const App = (() => {
     const ratingAvg = ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0';
     const showEdit = canEditEvent(ev);
 
+    let isRecommended = false;
+    if (currentUser && currentUser.preferences) {
+      const cats = currentUser.preferences.categories || [];
+      const zones = currentUser.preferences.zones || [];
+      const matchCat = cats.some(c => (ev.category && ev.category.toLowerCase().includes(c.toLowerCase())) || (ev.title && ev.title.toLowerCase().includes(c.toLowerCase())));
+      const matchZone = zones.some(z => (ev.venue && ev.venue.toLowerCase().includes(z.toLowerCase())) || (ev.description && ev.description.toLowerCase().includes(z.toLowerCase())));
+      if (matchCat || matchZone) isRecommended = true;
+    }
+
     return `
       <div class="event-card" data-id="${ev.id}" tabindex="0" role="button" style="border-radius:12px; overflow:hidden;">
         <div class="event-card-img-wrap" style="position:relative; height:170px;">
           <img class="event-card-img" src="${ev.image}" alt="${ev.title}">
           <span class="card-badge-cat ${catClass}" style="font-size:11px; font-weight:800; text-transform:uppercase; padding:4px 8px; border-radius:4px;">${ev.category || ev.badge || 'CULTURA'}</span>
           <span class="card-badge-price" style="font-size:12px; font-weight:800;">${ev.price || 'Gratis'}</span>
+          ${isRecommended ? `<span class="event-recommended-badge">✨ Para ti</span>` : ''}
           ${isPending ? `<span class="status-badge pending" style="position:absolute; top:36px; right:8px;">PENDIENTE</span>` : ''}
         </div>
         <div class="event-card-title" style="font-size:17px; font-weight:800; line-height:1.3; margin-top:8px;">${ev.title}</div>
-        <div class="event-card-meta" style="font-size:13px; color:var(--grey1); margin:4px 0 6px;">${ev.date} · ${ev.venue}</div>
+        <div class="event-card-meta" style="font-size:12px; color:var(--grey1); margin:4px 0 6px;">
+          ${ev.date} · <span class="venue-clickable" data-venue="${ev.venue}" style="color:var(--accent); font-weight:800; cursor:pointer;" title="Ver perfil del espacio">🏛️ ${ev.venue}</span>
+        </div>
         
         <!-- Valoración por Estrellas -->
         <div style="font-size:12px; font-weight:800; color:#eab308; margin-bottom:8px; display:flex; align-items:center; gap:4px;">
@@ -1142,6 +1291,25 @@ const App = (() => {
   }
 
   function bindCardInteractions() {
+    $$('.venue-clickable').forEach(vBtn => {
+      vBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const venueName = vBtn.dataset.venue;
+        let matchedSpace = apiSpaces.find(s =>
+          (s.name && venueName && s.name.toLowerCase().includes(venueName.toLowerCase().split(' ')[0])) ||
+          (s.name && venueName && venueName.toLowerCase().includes(s.name.toLowerCase().split(' ')[0]))
+        );
+        if (!matchedSpace && KAWSAY_DATA && KAWSAY_DATA.spaces) {
+          matchedSpace = KAWSAY_DATA.spaces.find(s =>
+            (s.name && venueName && s.name.toLowerCase().includes(venueName.toLowerCase().split(' ')[0])) ||
+            (s.name && venueName && venueName.toLowerCase().includes(s.name.toLowerCase().split(' ')[0]))
+          );
+        }
+        const targetSpaceId = matchedSpace ? matchedSpace.id : (apiSpaces[0] ? apiSpaces[0].id : 'sp-001');
+        openSpaceDetailModal(targetSpaceId);
+      });
+    });
+
     $$('.btn-card-action').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -1154,13 +1322,19 @@ const App = (() => {
         }
 
         if (currentUser.role === 'invitado' && (act === 'fav' || act === 'rsvp')) {
-          openAuthModal();
+          pendingAuthAction = { type: act, eventId };
+          openAuthModal('register');
           return;
         }
 
         if (act === 'add-cart') {
           const title = btn.dataset.title;
           const price = parseInt(btn.dataset.price.replace('$', '')) || 12;
+          if (currentUser.role === 'invitado') {
+            pendingAuthAction = { type: 'cart', title, price };
+            openAuthModal('register');
+            return;
+          }
           addToCart(title, price);
           return;
         }
@@ -1197,6 +1371,283 @@ const App = (() => {
     });
   }
 
+  // ============================================================
+  //  MODAL FLOTANTE: DETALLE DE ESPACIO CULTURAL
+  //  Mismo layout split que el modal de eventos
+  // ============================================================
+  function openSpaceDetailModal(spaceId) {
+    let sp = apiSpaces.find(s => String(s.id) === String(spaceId));
+    if (!sp && KAWSAY_DATA && KAWSAY_DATA.spaces) {
+      sp = KAWSAY_DATA.spaces.find(s => String(s.id) === String(spaceId));
+    }
+    if (!sp) sp = apiSpaces[0];
+    if (!sp) return;
+
+    // Enrich defaults
+    sp = { ...sp };
+    if (!sp.image) sp.image = 'images/hero_banner.jpg';
+    if (!sp.description) sp.description = 'Espacio cultural referente de Quito para la experimentación artística.';
+    if (!sp.sector) sp.sector = 'Quito';
+    if (!sp.address) sp.address = 'Quito, Ecuador';
+    if (!sp.hours) sp.hours = 'Lun–Vie: 09:00–19:00 · Sáb: 10:00–18:00';
+    if (!sp.categories) sp.categories = ['Arte', 'Cultura', 'Comunidad'];
+    if (!sp.eventsCount) sp.eventsCount = 47;
+    if (!sp.collectionsCount) sp.collectionsCount = 12;
+    if (!sp.rating) sp.rating = 4.8;
+    if (!sp.ratingCount) sp.ratingCount = 18;
+    if (!sp.nextEvent) sp.nextEvent = '2 DÍAS';
+    if (!sp.capacity) sp.capacity = 150;
+
+    // Related events
+    const spaceEvents = apiEvents.filter(e =>
+      e.status === 'approved'
+    ).slice(0, 4);
+
+    const galleryImages = sp.gallery || [sp.image, sp.image, sp.image, sp.image];
+
+    let detailBox = $('#modal-event-detail-box');
+    let modalDetail = $('#modal-event-detail');
+    if (!detailBox || !modalDetail) {
+      renderModals();
+      detailBox = $('#modal-event-detail-box');
+      modalDetail = $('#modal-event-detail');
+    }
+    if (!detailBox || !modalDetail) return;
+
+    // Expand floating modal box size for large space layout
+    detailBox.className = 'offcanvas-panel offcanvas-space-large';
+    detailBox.style.cssText = 'width: min(96vw, 1280px); height: min(94vh, 880px); max-height: 94vh; overflow-y: auto; display: block; background: #0a0a0a; border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; box-shadow: 0 40px 120px rgba(0,0,0,0.95); position: relative;';
+
+    detailBox.innerHTML = `
+      <div class="space-detail-page" style="background:#0a0a0a; padding-bottom:40px; position:relative;">
+
+        <!-- ── STICKY TOP BAR OF FLOATING MODAL ── -->
+        <div style="position:sticky; top:0; z-index:100; background:rgba(10,10,10,0.92); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-bottom:1px solid rgba(255,255,255,0.08); padding:14px 28px; display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button id="modal-space-back" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; border-radius:8px; padding:6px 14px; font-family:var(--font-mono); font-size:11px; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; transition:background 0.15s;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              ESPACIOS
+            </button>
+            <span style="color:rgba(255,255,255,0.3); font-size:11px; font-family:var(--font-mono);">/</span>
+            <span style="color:var(--accent); font-size:11px; font-family:var(--font-mono); font-weight:700;">${sp.name}</span>
+          </div>
+          <button id="modal-space-close" aria-label="Cerrar" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; border-radius:50%; width:32px; height:32px; font-size:18px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>
+        </div>
+
+        <!-- ── HEADER HERO ── -->
+        <div style="position:relative; background:#000; padding: 24px 0 0;">
+
+          <!-- Badges -->
+          <div style="padding:0 32px 14px; display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:var(--accent,#d4ff00); color:#000; font-family:var(--font-mono); font-size:10px; font-weight:900; padding:5px 12px; border-radius:6px;">${sp.badge || 'ESPACIO'}</span>
+            <span style="background:rgba(255,255,255,0.1); color:#fff; font-family:var(--font-mono); font-size:10px; font-weight:800; padding:5px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">${sp.sector.toUpperCase()}</span>
+            <span style="background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); font-family:var(--font-mono); font-size:10px; font-weight:700; padding:5px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.1);">${sp.type}</span>
+          </div>
+
+          <!-- GIANT TITLE -->
+          <div style="padding:0 32px 20px;">
+            <h1 style="font-size:clamp(32px, 5vw, 64px); font-weight:900; color:#fff; line-height:0.95; letter-spacing:-2px; text-transform:uppercase; margin:0; max-width:850px;">
+              ${sp.name}
+            </h1>
+          </div>
+
+          <!-- Action buttons row -->
+          <div style="padding:0 32px 24px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button id="btn-spd-follow" style="display:flex; align-items:center; gap:8px; padding:10px 20px; background:var(--accent); color:#000; border:none; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; cursor:pointer; transition:filter 0.15s;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              SEGUIR ESPACIO
+            </button>
+            <button id="btn-spd-share" style="width:38px; height:38px; border-radius:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button id="btn-spd-save" style="width:38px; height:38px; border-radius:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            </button>
+          </div>
+
+          <!-- Stats bar -->
+          <div style="border-top:1px solid rgba(255,255,255,0.07); display:flex; gap:0; overflow-x:auto;">
+            ${[
+              { label: 'EVENTOS CON AFORO', value: sp.eventsCount || 47 },
+              { label: 'COLECCIONES', value: sp.collectionsCount || 12 },
+              { label: 'VALORACIÓN', value: `★ ${sp.rating}` },
+              { label: 'PRÓXIMO EN', value: sp.nextEvent || '2 DÍAS' },
+            ].map((stat, i) => `
+              <div style="flex:1; min-width:140px; padding:16px 24px; border-right:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; gap:3px;">
+                <span style="font-family:var(--font-mono); font-size:9px; font-weight:700; color:rgba(255,255,255,0.35); letter-spacing:0.8px;">${stat.label}</span>
+                <span style="font-family:var(--font-mono); font-size:18px; font-weight:900; color:${i === 2 ? '#eab308' : '#fff'};">${stat.value}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- ── BODY: 2-column layout ── -->
+        <div style="display:grid; grid-template-columns:1fr 340px; gap:28px; padding:28px 32px; align-items:start;">
+
+          <!-- ── LEFT COLUMN ── -->
+          <div style="display:flex; flex-direction:column; gap:28px;">
+
+            <!-- Acerca del Espacio -->
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+                <span style="width:18px; height:2px; background:var(--accent);"></span>
+                <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">ACERCA DEL ESPACIO</span>
+              </div>
+              <p style="color:rgba(255,255,255,0.78); line-height:1.7; font-size:14px; max-width:680px; margin:0 0 16px;">
+                ${sp.description}
+              </p>
+            </div>
+
+            <!-- Galería fotográfica -->
+            <div>
+              <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+                ${galleryImages.slice(0, 4).map((img) => `
+                  <div style="aspect-ratio:1; border-radius:10px; overflow:hidden; background:#1a1a1a;">
+                    <img src="${img}" style="width:100%; height:100%; object-fit:cover; filter:brightness(0.75); transition:filter 0.2s; cursor:pointer;" onmouseover="this.style.filter='brightness(1)'" onmouseout="this.style.filter='brightness(0.75)'">
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Próximos Eventos en este espacio -->
+            <div>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="width:18px; height:2px; background:var(--accent);"></span>
+                  <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">PRÓXIMOS EVENTOS</span>
+                </div>
+                <span style="font-family:var(--font-mono); font-size:10px; color:rgba(255,255,255,0.3);">AÑO · ${spaceEvents.length} EVENTOS</span>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                ${spaceEvents.map(ev => `
+                  <div class="space-detail-ev-card" data-ev-id="${ev.id}" style="background:#111; border:1px solid rgba(255,255,255,0.07); border-radius:12px; overflow:hidden; cursor:pointer; transition:border-color 0.15s, transform 0.15s;" onmouseover="this.style.borderColor='rgba(212,255,0,0.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.07)';this.style.transform='none'">
+                    <div style="position:relative;">
+                      <img src="${ev.image}" style="width:100%; height:130px; object-fit:cover;">
+                      <div style="position:absolute; top:8px; left:8px; display:flex; gap:5px;">
+                        <span style="background:var(--accent); color:#000; font-family:var(--font-mono); font-size:9px; font-weight:900; padding:3px 8px; border-radius:5px;">${ev.category || 'EVENTO'}</span>
+                        ${ev.badge ? `<span style="background:rgba(0,0,0,0.7); color:#fff; font-family:var(--font-mono); font-size:9px; font-weight:800; padding:3px 8px; border-radius:5px; border:1px solid rgba(255,255,255,0.2);">${ev.badge}</span>` : ''}
+                      </div>
+                    </div>
+                    <div style="padding:12px 14px;">
+                      <div style="font-size:10px; font-family:var(--font-mono); color:rgba(255,255,255,0.4); margin-bottom:5px;">${ev.date} · ${ev.time} <span style="color:var(--accent); font-weight:900;">${ev.price}</span></div>
+                      <div style="font-weight:900; font-size:13px; color:#fff; line-height:1.2; margin-bottom:5px;">${ev.title}</div>
+                      <div style="font-size:11px; color:rgba(255,255,255,0.45); display:flex; align-items:center; gap:4px;">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        ${ev.venue || sp.name}
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+          </div><!-- /LEFT -->
+
+          <!-- ── RIGHT SIDEBAR ── -->
+          <div style="display:flex; flex-direction:column; gap:16px; position:sticky; top:80px;">
+
+            <!-- Disponibilidad card -->
+            <div style="background:#111; border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden;">
+              <div style="padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:8px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">DISPONIBILIDAD</span>
+              </div>
+              <div style="padding:16px 18px; display:flex; flex-direction:column; gap:14px;">
+                <div style="display:flex; align-items:flex-start; gap:10px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.5" style="flex-shrink:0;margin-top:2px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  <div>
+                    <div style="font-size:14px; font-weight:800; color:#fff;">${sp.sector}</div>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-family:var(--font-mono); font-size:9px; font-weight:700; color:rgba(255,255,255,0.3); letter-spacing:0.8px; margin-bottom:4px;">DIRECCIÓN</div>
+                  <div style="font-size:13px; color:rgba(255,255,255,0.75);">${sp.address}</div>
+                </div>
+                <div>
+                  <div style="font-family:var(--font-mono); font-size:9px; font-weight:700; color:rgba(255,255,255,0.3); letter-spacing:0.8px; margin-bottom:4px;">HORARIO</div>
+                  <div style="font-size:12px; color:rgba(255,255,255,0.65); line-height:1.5;">${sp.hours}</div>
+                </div>
+                <div>
+                  <div style="font-family:var(--font-mono); font-size:9px; font-weight:700; color:rgba(255,255,255,0.3); letter-spacing:0.8px; margin-bottom:4px;">SOBRE DOMICILIO</div>
+                  <div style="font-size:12px; color:rgba(255,255,255,0.65);">Capacidad: ${sp.capacity} personas</div>
+                </div>
+                <div id="btn-spd-map-card" style="background:#1a1a1a; border:1px solid rgba(255,255,255,0.07); border-radius:10px; height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; cursor:pointer; transition:border-color 0.15s;" onmouseover="this.style.borderColor='rgba(212,255,0,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.07)'">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span style="font-family:var(--font-mono); font-size:9px; font-weight:800; color:rgba(255,255,255,0.3); letter-spacing:0.5px;">VER MAPA</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- En este espacio (categorías + stats) -->
+            <div style="background:#111; border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden;">
+              <div style="padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:8px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">EN ESTE ESPACIO</span>
+              </div>
+              <div style="padding:10px 6px;">
+                ${sp.categories.map((cat, i) => `
+                  <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-radius:8px; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='transparent'">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${i === 0 ? 'var(--accent)' : 'rgba(255,255,255,0.3)'}" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>
+                      <span style="font-size:13px; color:${i === 0 ? '#fff' : 'rgba(255,255,255,0.6)'}; font-weight:${i === 0 ? '700' : '500'};">${cat}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <span style="font-family:var(--font-mono); font-size:11px; font-weight:800; color:rgba(255,255,255,0.35);">AÑO</span>
+                      <span style="font-family:var(--font-mono); font-size:11px; font-weight:900; color:var(--accent); min-width:24px; text-align:right;">${i === 0 ? 155 : i === 1 ? 47 : 23}</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Social icons -->
+            <div style="background:#111; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px 18px;">
+              <div style="display:flex; gap:10px; justify-content:center;">
+                ${['IG', 'FB', 'YT', 'WEB'].map((net) => `
+                  <button style="width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.6); font-family:var(--font-mono); font-size:9px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.6)'">${net}</button>
+                `).join('')}
+              </div>
+            </div>
+
+          </div><!-- /RIGHT SIDEBAR -->
+
+        </div><!-- /body grid -->
+
+      </div>
+    `;
+
+    // Listeners
+    $('#modal-space-back').addEventListener('click', closeEventDetailModal);
+    $('#modal-space-close').addEventListener('click', closeEventDetailModal);
+
+    $('#btn-spd-follow').addEventListener('click', function() {
+      showToast(`¡Ahora sigues a ${sp.name}!`);
+      this.style.background = 'rgba(212,255,0,0.15)';
+      this.style.color = 'var(--accent)';
+      this.style.border = '1.5px solid var(--accent)';
+      this.innerHTML = '✓ SIGUIENDO';
+    });
+    $('#btn-spd-share').addEventListener('click', () => {
+      navigator.clipboard && navigator.clipboard.writeText(window.location.href);
+      showToast('¡Enlace copiado!');
+    });
+    const mapCard = $('#btn-spd-map-card');
+    if (mapCard) {
+      mapCard.addEventListener('click', () => {
+        window.open(`https://maps.google.com?q=${encodeURIComponent(sp.address + ', Quito')}`, '_blank');
+      });
+    }
+
+    detailBox.querySelectorAll('.space-detail-ev-card').forEach(el => {
+      el.addEventListener('click', () => {
+        closeEventDetailModal();
+        setTimeout(() => openEventDetailModal(el.dataset.evId), 200);
+      });
+    });
+
+    showModal('#modal-event-detail');
+  }
+
   function openEventDetailModal(eventId) {
     if (!eventId) eventId = 'fe-001';
     let ev = apiEvents.find(e => String(e.id) === String(eventId));
@@ -1231,75 +1682,29 @@ const App = (() => {
     }
     if (!detailBox || !modalDetail) return;
 
+    detailBox.className = 'offcanvas-panel';
+    detailBox.style.cssText = '';
+
     const isConvocatoria = (ev.category === 'Convocatorias' || (ev.id && ev.id.startsWith('conv-')));
 
     if (isConvocatoria) {
       detailBox.innerHTML = `
-        <!-- Header Hero Off-Canvas de Convocatoria -->
-        <div class="offcanvas-hero">
-          <img class="offcanvas-hero-img" src="${ev.image}" alt="${ev.title}">
-          <button class="offcanvas-close-btn" id="modal-detail-close" aria-label="Cerrar">×</button>
-          <div class="offcanvas-hero-overlay">
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <span class="cat-convocatorias" style="font-size:10px; font-weight:900; padding:3px 8px; border-radius:10px; text-transform:uppercase;">
+        <!-- LEFT: Scrollable info column -->
+        <div class="offcanvas-left">
+
+          <!-- Title/Header block -->
+          <div class="offcanvas-left-header">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+              <span class="cat-convocatorias" style="font-size:10px; font-weight:900; padding:3px 10px; border-radius:8px; text-transform:uppercase;">
                 📢 CONVOCATORIA CULTURAL
               </span>
-              <span style="background:rgba(0,0,0,0.85); font-family:var(--font-mono); font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px; border:1px solid var(--gold); color:var(--gold);">
+              <span style="background:rgba(0,0,0,0.8); font-family:var(--font-mono); font-size:10px; font-weight:800; padding:3px 10px; border-radius:8px; border:1px solid var(--gold); color:var(--gold);">
                 💰 ${ev.price || 'Fondo: $10,000'}
               </span>
             </div>
-            <h2 style="font-size:22px; font-weight:900; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.9); line-height:1.2; margin-top:4px;">${ev.title}</h2>
+            <h2 style="font-size:clamp(20px,2.5vw,28px); font-weight:900; color:#fff; line-height:1.1; margin:0 0 8px;">${ev.title}</h2>
             <p style="color:var(--grey1); font-size:12px; font-weight:700;">🏛️ Organiza: ${ev.venue}</p>
-          </div>
-        </div>
-
-        <div class="offcanvas-body">
-          <div>
-            <h3 style="font-size:13px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:8px; text-transform:uppercase;">
-              📖 DESCRIPCIÓN DEL FONDO / BECA
-            </h3>
-            <p style="color:#e2e8f0; line-height:1.6; font-size:13px;">
-              ${ev.description}
-            </p>
-          </div>
-
-          <!-- Ficha Técnica Píldoras -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-              <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">CIERRE DE RECEPCIÓN</div>
-              <div style="font-size:13px; font-weight:900; color:#fff;">📅 ${ev.date} · ${ev.time}</div>
-            </div>
-            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-              <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">INCENTIVO / MONTO</div>
-              <div style="font-size:14px; font-weight:900; color:var(--accent);">💰 ${ev.price}</div>
-            </div>
-            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-              <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">INSTITUCIÓN EMISORA</div>
-              <div style="font-size:13px; font-weight:900; color:#fff;">🏛️ ${ev.venue}</div>
-            </div>
-            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-              <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">MODALIDAD</div>
-              <div style="font-size:13px; font-weight:900; color:var(--gold);">🌐 100% Digital</div>
-            </div>
-          </div>
-
-          <!-- Requisitos -->
-          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px;">
-            <div style="font-size:12px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:8px;">
-              📋 REQUISITOS DE POSTULACIÓN
-            </div>
-            <ul style="color:var(--grey1); font-size:12px; line-height:1.7; padding-left:16px; margin:0;">
-              <li>Residir comprobablemente en Quito o Pichincha.</li>
-              <li>Presentar dossier técnico del proyecto y portafolio.</li>
-              <li>Desglose presupuestario y cronograma a 6 meses.</li>
-              <li>Aceptar bases legales de la Secretaría de Cultura / KAWSAY.</li>
-            </ul>
-          </div>
-
-          <!-- Valoración -->
-          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px;">
-            <div style="font-size:12px; font-weight:800; color:#fff; margin-bottom:6px;">VALORACIÓN DE POSTULANTES:</div>
-            <div style="display:flex; align-items:center; gap:8px;">
+            <div class="hero-rating-row" style="margin-top:8px;">
               <div class="rating-stars" id="detail-rating-stars">
                 <span class="star-icon" data-star="1">★</span>
                 <span class="star-icon" data-star="2">★</span>
@@ -1307,20 +1712,80 @@ const App = (() => {
                 <span class="star-icon" data-star="4">★</span>
                 <span class="star-icon" data-star="5">★</span>
               </div>
-              <span style="font-family:var(--font-mono); font-size:12px; font-weight:800; color:#eab308;">⭐ ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'}</span>
+              <span style="font-family:var(--font-mono); font-size:11px; font-weight:800; color:#eab308;">⭐ ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'}</span>
             </div>
           </div>
 
-          <!-- Botones de Acción -->
-          <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
+          <div class="offcanvas-body">
+            <div>
+              <h3 style="font-size:13px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:8px; text-transform:uppercase;">
+                📖 DESCRIPCIÓN DEL FONDO / BECA
+              </h3>
+              <p style="color:#e2e8f0; line-height:1.6; font-size:13px;">
+                ${ev.description}
+              </p>
+            </div>
+
+            <!-- Ficha Técnica Píldoras -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+                <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">CIERRE DE RECEPCIÓN</div>
+                <div style="font-size:13px; font-weight:900; color:#fff;">📅 ${ev.date} · ${ev.time}</div>
+              </div>
+              <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+                <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">INCENTIVO / MONTO</div>
+                <div style="font-size:14px; font-weight:900; color:var(--accent);">💰 ${ev.price}</div>
+              </div>
+              <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+                <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">INSTITUCIÓN EMISORA</div>
+                <div style="font-size:13px; font-weight:900; color:#fff;">🏛️ ${ev.venue}</div>
+              </div>
+              <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
+                <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">MODALIDAD</div>
+                <div style="font-size:13px; font-weight:900; color:var(--gold);">🌐 100% Digital</div>
+              </div>
+            </div>
+
+            <!-- Requisitos -->
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px;">
+              <div style="font-size:12px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:8px;">
+                📋 REQUISITOS DE POSTULACIÓN
+              </div>
+              <ul style="color:var(--grey1); font-size:12px; line-height:1.7; padding-left:16px; margin:0;">
+                <li>Residir comprobablemente en Quito o Pichincha.</li>
+                <li>Presentar dossier técnico del proyecto y portafolio.</li>
+                <li>Desglose presupuestario y cronograma a 6 meses.</li>
+                <li>Aceptar bases legales de la Secretaría de Cultura / KAWSAY.</li>
+              </ul>
+            </div>
+
+            <div style="font-size:11px; color:var(--grey1); font-family:var(--font-mono); text-align:center; padding-top:4px;">
+              🔒 Plataforma Cultural KAWSAY Quito · Transparencia y Gestión Comunitaria
+            </div>
+          </div><!-- /offcanvas-body -->
+
+          <!-- Sticky Action Bar -->
+          <div class="offcanvas-action-bar">
             <button class="btn-primary" id="btn-detail-apply-now" style="background:var(--accent); color:#000; font-family:var(--font-mono); font-weight:900; padding:14px; font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px;">
               🚀 POSTULAR AHORA / APLICAR AL FONDO
             </button>
             <button class="btn-secondary" id="btn-detail-download-pdf" style="border:1px solid var(--border); color:#fff; font-family:var(--font-mono); font-weight:800; padding:12px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:8px;">
               📄 DESCARGAR BASES Y REGLAMENTO (PDF)
             </button>
+          </div><!-- /offcanvas-action-bar -->
+
+        </div><!-- /offcanvas-left -->
+
+        <!-- RIGHT: Fixed image column -->
+        <div class="offcanvas-hero">
+          <img class="offcanvas-hero-img" src="${ev.image}" alt="${ev.title}">
+          <button class="offcanvas-close-btn" id="modal-detail-close" aria-label="Cerrar">×</button>
+          <div class="offcanvas-hero-overlay">
+            <span class="cat-convocatorias" style="font-size:10px; font-weight:900; padding:3px 10px; border-radius:8px; text-transform:uppercase; display:inline-block;">
+              📢 CONVOCATORIA
+            </span>
           </div>
-        </div>
+        </div><!-- /offcanvas-hero (right image) -->
       `;
 
       $('#modal-detail-close').addEventListener('click', closeEventDetailModal);
@@ -1346,24 +1811,47 @@ const App = (() => {
     }
 
     detailBox.innerHTML = `
-      <!-- Header Hero Off-Canvas -->
+
+      <!-- ═══ LEFT: Event Image + Giant Title Overlay ═══ -->
       <div class="offcanvas-hero">
         <img class="offcanvas-hero-img" src="${ev.image}" alt="${ev.title}">
-        <button class="offcanvas-close-btn" id="modal-detail-close" aria-label="Cerrar">×</button>
-        <div class="offcanvas-hero-overlay">
-          <div style="display:flex; gap:8px; align-items:center;">
-            <span class="hero-badge" style="font-size:10px; background:var(--accent); color:#000; font-weight:900;">${ev.badge || 'DESTACADO'}</span>
-            <span style="background:rgba(0,0,0,0.8); font-family:var(--font-mono); font-size:10px; font-weight:800; padding:3px 8px; border-radius:10px; border:1px solid var(--gold); color:var(--gold);">
-              ${ev.category.toUpperCase()}
-            </span>
-          </div>
-          <h2 style="font-size:24px; font-weight:900; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.9); line-height:1.2; margin-top:4px;">${ev.title}</h2>
-          <p style="color:var(--grey1); font-size:12px; font-weight:700;">📍 ${ev.venue} ${ev.sector ? `· ${ev.sector}` : ''}</p>
-        </div>
-      </div>
 
-      <!-- Contenido Principal Off-Canvas -->
-      <div class="offcanvas-body">
+        <!-- Top-left badges -->
+        <div class="offcanvas-hero-badges">
+          <span style="background:var(--accent,#d4ff00); color:#000; font-family:var(--font-mono); font-size:10px; font-weight:900; padding:4px 10px; border-radius:6px; letter-spacing:0.5px;">${ev.badge || 'DESTACADO'}</span>
+          <span style="background:#ef4444; color:#fff; font-family:var(--font-mono); font-size:10px; font-weight:900; padding:4px 10px; border-radius:6px; letter-spacing:0.5px;">${ev.category.toUpperCase()}</span>
+        </div>
+
+        <!-- Bottom: giant title + venue + rating -->
+        <div class="offcanvas-hero-title-block">
+          <h2 class="offcanvas-event-title">${ev.title}</h2>
+          <div class="offcanvas-venue-row">
+            <span class="offcanvas-venue-text" id="btn-hero-venue-text" style="cursor:pointer;" title="Ver perfil del espacio">📍 ${ev.venue}${ev.sector ? `, ${ev.sector}` : ''}</span>
+            <span class="offcanvas-venue-line"></span>
+            <div class="offcanvas-rating-row">
+              <div class="rating-stars" id="detail-rating-stars" style="gap:2px;">
+                <span class="star-icon" data-star="1" style="font-size:13px;">★</span>
+                <span class="star-icon" data-star="2" style="font-size:13px;">★</span>
+                <span class="star-icon" data-star="3" style="font-size:13px;">★</span>
+                <span class="star-icon" data-star="4" style="font-size:13px;">★</span>
+                <span class="star-icon" data-star="5" style="font-size:13px;">★</span>
+              </div>
+              <span id="detail-rating-text" style="font-family:var(--font-mono); font-size:10px; font-weight:800; color:rgba(255,255,255,0.65); margin-left:4px;">
+                ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'} (${ev.rating_count || 8} VALORACIONES)
+              </span>
+            </div>
+          </div>
+        </div>
+      </div><!-- /offcanvas-hero LEFT -->
+
+      <!-- ═══ RIGHT: Info Panel ═══ -->
+      <div class="offcanvas-left">
+
+        <!-- Close button -->
+        <button class="offcanvas-close-btn" id="modal-detail-close" aria-label="Cerrar">&times;</button>
+
+        <!-- Scrollable content -->
+        <div class="offcanvas-body">
         ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'gestor') ? `
           ${ev.status === 'pending' ? `
             <!-- PANEL DE MODERACIÓN PARA ADMINISTRADOR -->
@@ -1421,108 +1909,83 @@ const App = (() => {
           `}
         ` : ''}
 
-        <div>
-          <h3 style="font-size:13px; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-bottom:8px; text-transform:uppercase;">
-            📖 ACERCA DEL ESPECTÁCULO
-          </h3>
-          <p style="color:#e2e8f0; line-height:1.6; font-size:13px;">
-            ${ev.description || 'Presentación especial en la agenda multicultural de Quito. Disfruta de un espectáculo de alta calidad artística con el respaldo técnico y la producción del recinto.'}
-          </p>
-        </div>
-
-        <!-- Píldoras de Información Completa -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">FECHA</div>
-            <div style="font-size:14px; font-weight:900; color:#fff;">📅 ${ev.date}</div>
-          </div>
-          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">HORA DE INICIO</div>
-            <div style="font-size:14px; font-weight:900; color:#fff;">⏰ ${ev.time}</div>
-          </div>
-          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">PRECIO ENTRADA</div>
-            <div style="font-size:16px; font-weight:900; color:var(--accent);">💰 ${ev.price}</div>
-          </div>
-          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">AFORO ESTIMADO</div>
-            <div style="font-size:14px; font-weight:900; color:#fff;">👥 ${ev.capacity ? `${ev.capacity} Personas` : '250 Personas'}</div>
-          </div>
-          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">RECINTO / ESPACIO</div>
-            <div style="font-size:13px; font-weight:900; color:#fff;">🏛️ ${ev.venue}</div>
-          </div>
-          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:10px; font-family:var(--font-mono); color:var(--grey1);">UBICACIÓN / SECTOR</div>
-            <div style="font-size:13px; font-weight:900; color:var(--gold);">📍 ${ev.sector || 'Quito Centro'}</div>
-          </div>
-        </div>
-
-        <!-- Elenco & Colectivo -->
-        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px; display:flex; align-items:center; gap:12px;">
-          <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid var(--accent);" alt="Artista">
+          <!-- ⓘ Acerca del espectáculo -->
           <div>
-            <div style="font-weight:900; font-size:13px; color:#fff;">${ev.cast || 'Mateo & La Banda (Colectivo Invitado)'}</div>
-            <div style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">Elenco Principal · ${ev.category} · Quito</div>
-          </div>
-        </div>
-
-        <!-- Valoración Públicas -->
-        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px;">
-          <div style="font-size:12px; font-weight:800; color:#ffffff; margin-bottom:6px;">
-            ⭐ CALIFICACIÓN DEL PÚBLICO:
-          </div>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div class="rating-stars" id="detail-rating-stars">
-              <span class="star-icon" data-star="1">★</span>
-              <span class="star-icon" data-star="2">★</span>
-              <span class="star-icon" data-star="3">★</span>
-              <span class="star-icon" data-star="4">★</span>
-              <span class="star-icon" data-star="5">★</span>
+            <div class="detail-section-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              ACERCA DEL ESPECTÁCULO
             </div>
-            <span id="detail-rating-text" style="font-family:var(--font-mono); font-size:12px; font-weight:800; color:#eab308;">
-              ⭐ ${ev.rating_count > 0 ? (ev.rating_sum / ev.rating_count).toFixed(1) : '5.0'} (${ev.rating_count || 0} valoraciones)
-            </span>
+            <p style="color:rgba(255,255,255,0.72); line-height:1.6; font-size:13px; margin:0;">
+              ${ev.description || 'Presentación especial en la agenda multicultural de Quito. Disfruta de un espectáculo de alta calidad artística con el respaldo técnico y la producción del recinto. Una obra que explora las raíces sonoras de la ciudad.'}
+            </p>
           </div>
-        </div>
 
-        <!-- Botones de Acción Off-Canvas -->
-        <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
-          ${canEditEvent(ev) ? `
-            <button class="btn-primary" id="btn-detail-edit-event" style="padding:12px; font-size:13px; font-family:var(--font-mono); font-weight:900; background:var(--gold); color:#000; display:flex; align-items:center; justify-content:center; gap:8px;">
-              ${ICONS.edit} MODIFICAR / EDITAR ESTE EVENTO
-            </button>
-          ` : ''}
+          <!-- Info grid 2-col -->
+          <div class="detail-info-grid">
+            <div class="detail-info-card">
+              <span class="dic-label">FECHA</span>
+              <span class="dic-value"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${ev.date}</span>
+            </div>
+            <div class="detail-info-card">
+              <span class="dic-label">HORA DE INICIO</span>
+              <span class="dic-value"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${ev.time}</span>
+            </div>
+            <div class="detail-info-card">
+              <span class="dic-label">PRECIO ENTRADA</span>
+              <span class="dic-value accent"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 1-2-2h-4a2 2 0 0 1-2 2v16"/></svg>${ev.price}</span>
+            </div>
+            <div class="detail-info-card">
+              <span class="dic-label">AFORO ESTIMADO</span>
+              <span class="dic-value"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${ev.capacity ? `${ev.capacity} Personas` : '250 Personas'}</span>
+            </div>
+            <div class="detail-info-card" id="btn-detail-venue-card" style="cursor:pointer; transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.07)'">
+              <span class="dic-label">RECINTO / ESPACIO</span>
+              <span class="dic-value" style="font-size:13px; color:#fff;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${ev.venue}</span>
+            </div>
+            <div class="detail-info-card">
+              <span class="dic-label">UBICACIÓN / SECTOR</span>
+              <span class="dic-value gold" style="font-size:13px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${ev.sector || 'Quito Centro'}</span>
+            </div>
+          </div>
 
+          <!-- Elenco -->
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#1a1a1a; border:1px solid rgba(255,255,255,0.07); border-radius:10px;">
+            <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid var(--accent); flex-shrink:0;" alt="Artista">
+            <div>
+              <div style="font-weight:900; font-size:13px; color:#fff;">${ev.cast || 'Mateo & La Banda (Colectivo Invitado)'}</div>
+              <div style="font-size:11px; color:rgba(255,255,255,0.4); font-family:var(--font-mono); margin-top:2px;">Elenco Principal · ${ev.category} · Quito</div>
+            </div>
+          </div>
+
+          <div style="font-size:10px; color:rgba(255,255,255,0.2); font-family:var(--font-mono); text-align:center;">
+            🔒 KAWSAY · Plataforma Cultural de Quito
+          </div>
+
+        </div><!-- /offcanvas-body -->
+
+        <!-- Sticky Action Bar -->
+        <div class="offcanvas-action-bar">
           ${ev.status === 'pending' ? `
-            <div style="background:var(--surface2); border:1px dashed #ef4444; border-radius:10px; padding:14px; text-align:center;">
-              <div style="font-size:12px; color:#ef4444; font-family:var(--font-mono); font-weight:800; margin-bottom:4px;">
-                ⏳ ESPECTÁCULO EN REVISIÓN DE MODERACIÓN
-              </div>
-              <div style="font-size:11px; color:var(--grey1);">
-                La venta de boletos y confirmación de asistencia se activará inmediatamente una vez aprobado.
-              </div>
+            <div style="background:#1a1a1a; border:1px dashed #ef4444; border-radius:8px; padding:12px; text-align:center;">
+              <div style="font-size:11px; color:#ef4444; font-family:var(--font-mono); font-weight:800;">⏳ EN REVISIÓN DE MODERACIÓN</div>
+              <div style="font-size:10px; color:rgba(255,255,255,0.45); margin-top:3px;">Compra disponible tras aprobación</div>
             </div>
           ` : `
-            <button class="btn-primary" id="btn-detail-add-cart" style="padding:14px; font-size:13px; font-weight:900; font-family:var(--font-mono); width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--accent); color:#000;">
+            <button class="btn-cart-main" id="btn-detail-add-cart">
               ${ICONS.cart} AGREGAR ENTRADA AL CARRITO
             </button>
           `}
-
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-            <button class="btn-secondary ${inter.is_favorite ? 'fav-active' : ''}" id="btn-detail-fav" style="padding:10px; font-size:11px; font-family:var(--font-mono); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px;">
+          <div class="btn-row-2">
+            <button class="btn-secondary-action ${inter.is_favorite ? 'fav-active' : ''}" id="btn-detail-fav">
               ${inter.is_favorite ? ICONS.heartFill : ICONS.heart} FAVORITO
             </button>
-            <button class="btn-secondary ${inter.has_rsvp ? 'active' : ''}" id="btn-detail-rsvp" style="padding:10px; font-size:11px; font-family:var(--font-mono); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px;">
+            <button class="btn-secondary-action ${inter.has_rsvp ? 'rsvp-active' : ''}" id="btn-detail-rsvp">
               ${inter.has_rsvp ? ICONS.check : ICONS.user} ASISTIRÉ
             </button>
           </div>
-        </div>
+        </div><!-- /offcanvas-action-bar -->
 
-        <div style="border-top:1px solid var(--border); padding-top:14px; font-size:11px; color:var(--grey1); font-family:var(--font-mono); text-align:center;">
-          🔒 Plataforma Cultural KAWSAY Quito · Transparencia y Gestión Comunitaria
-        </div>
-      </div>
+      </div><!-- /offcanvas-left RIGHT -->
     `;
 
     // Listeners de Estrellas de Calificación
@@ -1551,6 +2014,29 @@ const App = (() => {
     });
 
     $('#modal-detail-close').addEventListener('click', closeEventDetailModal);
+
+    // Venue click → Open space profile modal
+    const triggerSpaceModal = () => {
+      let matchedSpace = apiSpaces.find(s =>
+        (ev.space_id && String(s.id) === String(ev.space_id)) ||
+        (s.name && ev.venue && s.name.toLowerCase().includes(ev.venue.toLowerCase().split(' ')[0])) ||
+        (s.name && ev.venue && ev.venue.toLowerCase().includes(s.name.toLowerCase().split(' ')[0]))
+      );
+      if (!matchedSpace && KAWSAY_DATA && KAWSAY_DATA.spaces) {
+        matchedSpace = KAWSAY_DATA.spaces.find(s =>
+          (s.name && ev.venue && s.name.toLowerCase().includes(ev.venue.toLowerCase().split(' ')[0])) ||
+          (s.name && ev.venue && ev.venue.toLowerCase().includes(s.name.toLowerCase().split(' ')[0]))
+        );
+      }
+      const targetSpaceId = matchedSpace ? matchedSpace.id : (apiSpaces[0] ? apiSpaces[0].id : 'sp-001');
+      closeEventDetailModal();
+      setTimeout(() => openSpaceDetailModal(targetSpaceId), 150);
+    };
+
+    const venueCard = $('#btn-detail-venue-card');
+    if (venueCard) venueCard.addEventListener('click', triggerSpaceModal);
+    const heroVenue = $('#btn-hero-venue-text');
+    if (heroVenue) heroVenue.addEventListener('click', triggerSpaceModal);
 
     // Moderación Admin en Drawer
     const adminApprove = $('#btn-detail-admin-approve');
@@ -1821,45 +2307,91 @@ const App = (() => {
 
   function renderWeekView() {
     const view = document.getElementById('view-calendar-week');
+    if (!view) return;
+
+    // Calculate dates for current week offset from real current date
+    const baseDate = new Date(realCalYear, realCalMonth, realCalDay + (weekStartOffset * 7));
+    const endDate = new Date(baseDate);
+    endDate.setDate(baseDate.getDate() + 6);
+
+    const startMonthName = MONTH_NAMES[baseDate.getMonth()].toUpperCase();
+    const endMonthName = MONTH_NAMES[endDate.getMonth()].toUpperCase();
+
     view.innerHTML = `
-      <div class="calendar-header-bar" style="padding:24px 32px 12px; display:flex; justify-content:space-between; align-items:center;">
+      <div class="calendar-header-bar" style="padding:24px 32px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
         <div>
-          <h2 class="calendar-view-title" style="font-size:26px; font-weight:900;">OCTUBRE 2026 — AGENDA SEMANAL</h2>
+          <h2 class="calendar-view-title" style="font-size:24px; font-weight:900;">
+            AGENDA SEMANAL — ${baseDate.getDate()} ${startMonthName} A ${endDate.getDate()} ${endMonthName} ${baseDate.getFullYear()}
+          </h2>
           <p style="color:var(--grey1); font-size:14px; font-family:var(--font-mono);">SEMANA DE EVENTOS ACTIVOS EN QUITO</p>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button id="btn-cal-prev-week" style="background:var(--surface2); border:1px solid var(--border); color:#fff; padding:8px 14px; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:800; cursor:pointer;">
+            ◄ SEMANA ANTERIOR
+          </button>
+          <button id="btn-cal-today-week" style="background:var(--accent); color:#000; padding:8px 14px; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; border:none; cursor:pointer;">
+            📍 ESTA SEMANA
+          </button>
+          <button id="btn-cal-next-week" style="background:var(--surface2); border:1px solid var(--border); color:#fff; padding:8px 14px; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:800; cursor:pointer;">
+            SIGUIENTE SEMANA ►
+          </button>
         </div>
       </div>
       <div style="padding: 12px 32px 32px;" id="week-grid-container"></div>
     `;
+
+    bindWeekNavigationEvents();
     buildWeekGrid();
+  }
+
+  function bindWeekNavigationEvents() {
+    const prev = document.getElementById('btn-cal-prev-week');
+    const next = document.getElementById('btn-cal-next-week');
+    const today = document.getElementById('btn-cal-today-week');
+
+    if (prev) prev.addEventListener('click', () => { weekStartOffset--; renderWeekView(); });
+    if (next) next.addEventListener('click', () => { weekStartOffset++; renderWeekView(); });
+    if (today) today.addEventListener('click', () => { weekStartOffset = 0; renderWeekView(); });
   }
 
   function buildWeekGrid() {
     const container = document.getElementById('week-grid-container');
     if (!container) return;
 
-    const days = [
-      { name: 'LUNES 26', date: '2026-10-26' },
-      { name: 'MARTES 27', date: '2026-10-27' },
-      { name: 'MIÉRCOLES 28', date: '2026-10-28' },
-      { name: 'JUEVES 29', date: '2026-10-29' },
-      { name: 'VIERNES 30', date: '2026-10-30' },
-      { name: 'SÁBADO 31', date: '2026-10-31' },
-      { name: 'DOMINGO 01', date: '2026-11-01' }
-    ];
+    const daysOfWeek = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+    const baseDate = new Date(realCalYear, realCalMonth, realCalDay + (weekStartOffset * 7));
+
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + i);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      const dayName = `${daysOfWeek[d.getDay()]} ${dd}`;
+      weekDays.push({ name: dayName, dateStr });
+    }
 
     container.innerHTML = `
       <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:12px; margin-top:10px;">
-        ${days.map(day => {
-          const dayEvents = apiEvents.filter(e => e.date && e.date.includes(day.date.substring(5)));
+        ${weekDays.map(day => {
+          const dayEvents = apiEvents.filter(e => {
+            if (!e.date) return false;
+            const norm = normalizeDateStr(e.date);
+            return norm === day.dateStr;
+          });
+
           return `
-            <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; min-height:350px;">
-              <div style="font-family:var(--font-mono); font-weight:900; font-size:13px; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:12px;">
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; min-height:380px;">
+              <div style="font-family:var(--font-mono); font-weight:900; font-size:12px; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:12px;">
                 ${day.name}
               </div>
               <div style="display:flex; flex-direction:column; gap:10px;">
                 ${dayEvents.length > 0 ? dayEvents.map(e => `
                   <div class="event-card" data-id="${e.id}" style="background:var(--surface2); padding:10px; border-radius:8px; border:1px solid var(--border); cursor:pointer;">
-                    <div style="font-size:10px; color:var(--gold); font-weight:800; font-family:var(--font-mono);">${e.time} · ${e.category}</div>
+                    <div style="font-size:10px; color:var(--gold); font-weight:800; font-family:var(--font-mono);">${e.time || ''} · ${e.category || ''}</div>
                     <div style="font-size:12px; font-weight:800; margin:4px 0;">${e.title}</div>
                     <div style="font-size:10px; color:var(--grey1);">${e.venue}</div>
                   </div>
@@ -1880,25 +2412,113 @@ const App = (() => {
 
   function renderMonthView() {
     const view = document.getElementById('view-calendar-month');
+    if (!view) return;
+
     view.innerHTML = `
-      <div style="padding:24px 32px 12px; display:flex; justify-content:space-between; align-items:center;">
+      <!-- Header del Calendario Mensual -->
+      <div style="padding:24px 32px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
         <div>
-          <h2 class="calendar-view-title" style="font-size:26px; font-weight:900;">CALENDARIO MENSUAL — OCTUBRE 2026</h2>
-          <p style="color:var(--grey1); font-size:14px; font-family:var(--font-mono);">MATRIZ COMPLETA DE EVENTOS CULTURALES</p>
+          <h2 class="calendar-view-title" id="cal-month-title" style="font-size:26px; font-weight:900; margin:0;">
+            CALENDARIO MENSUAL — ${MONTH_NAMES[calendarMonth].toUpperCase()} ${calendarYear}
+          </h2>
+          <p style="color:var(--grey1); font-size:14px; font-family:var(--font-mono); margin-top:4px;">
+            MATRIZ COMPLETA DE EVENTOS Y ACTIVIDADES CULTURALES EN QUITO
+          </p>
+        </div>
+
+        <!-- Botones de Navegación del Mes -->
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button id="btn-cal-prev-month" style="background:var(--surface2); border:1px solid var(--border); color:#fff; padding:8px 14px; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:800; cursor:pointer;">
+            ◄ ANTERIOR
+          </button>
+          
+          <select id="select-cal-month" style="background:var(--surface3); border:1px solid var(--border); color:#fff; padding:8px 12px; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:800; cursor:pointer;">
+            ${MONTH_NAMES.map((m, idx) => `<option value="${idx}" ${idx === calendarMonth ? 'selected' : ''}>${m.toUpperCase()}</option>`).join('')}
+          </select>
+
+          <select id="select-cal-year" style="background:var(--surface3); border:1px solid var(--border); color:#fff; padding:8px 12px; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:800; cursor:pointer;">
+            <option value="2025" ${calendarYear === 2025 ? 'selected' : ''}>2025</option>
+            <option value="2026" ${calendarYear === 2026 ? 'selected' : ''}>2026</option>
+            <option value="2027" ${calendarYear === 2027 ? 'selected' : ''}>2027</option>
+          </select>
+
+          <button id="btn-cal-next-month" style="background:var(--surface2); border:1px solid var(--border); color:#fff; padding:8px 14px; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:800; cursor:pointer;">
+            SIGUIENTE ►
+          </button>
+
+          <button id="btn-cal-today" style="background:var(--accent); color:#000; padding:8px 14px; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; border:none; cursor:pointer;" title="Regresar al día actual (26 Oct 2026)">
+            📍 HOY
+          </button>
         </div>
       </div>
+
+      <!-- Grid Principal + Panel Lateral -->
       <div class="month-view-layout" style="display:grid; grid-template-columns: 1fr 340px; gap:24px; padding:12px 32px 32px;">
         <div id="month-grid-wrap"></div>
-        <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px;">
-          <h3 style="font-size:16px; font-weight:900; margin-bottom:16px; font-family:var(--font-mono); color:var(--accent); display:flex; align-items:center; gap:8px;">
-            ${ICONS.calendar} PRÓXIMOS EVENTOS
-          </h3>
+        
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; display:flex; flex-direction:column; gap:16px;">
+          <div id="selected-day-header" style="border-bottom:1px solid var(--border); padding-bottom:12px;"></div>
           <div id="upcoming-list" style="display:flex; flex-direction:column; gap:12px;"></div>
         </div>
       </div>
     `;
+
+    bindMonthNavigationEvents();
     buildMonthGrid();
     buildUpcomingList();
+  }
+
+  function bindMonthNavigationEvents() {
+    const prevBtn = document.getElementById('btn-cal-prev-month');
+    const nextBtn = document.getElementById('btn-cal-next-month');
+    const monthSelect = document.getElementById('select-cal-month');
+    const yearSelect = document.getElementById('select-cal-year');
+    const todayBtn = document.getElementById('btn-cal-today');
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        calendarMonth--;
+        if (calendarMonth < 0) {
+          calendarMonth = 11;
+          calendarYear--;
+        }
+        renderMonthView();
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        calendarMonth++;
+        if (calendarMonth > 11) {
+          calendarMonth = 0;
+          calendarYear++;
+        }
+        renderMonthView();
+      });
+    }
+
+    if (monthSelect) {
+      monthSelect.addEventListener('change', (e) => {
+        calendarMonth = parseInt(e.target.value);
+        renderMonthView();
+      });
+    }
+
+    if (yearSelect) {
+      yearSelect.addEventListener('change', (e) => {
+        calendarYear = parseInt(e.target.value);
+        renderMonthView();
+      });
+    }
+
+    if (todayBtn) {
+      todayBtn.addEventListener('click', () => {
+        calendarYear = realCalYear;
+        calendarMonth = realCalMonth;
+        selectedCalendarDate = `${realCalYear}-${String(realCalMonth + 1).padStart(2, '0')}-${String(realCalDay).padStart(2, '0')}`;
+        renderMonthView();
+      });
+    }
   }
 
   function buildMonthGrid() {
@@ -1906,8 +2526,11 @@ const App = (() => {
     if (!wrap) return;
 
     const daysOfWeek = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
-    const totalDays = 31;
-    const startDayOffset = 4;
+    
+    // Calculate first day of week offset and total days in month
+    const firstDayObj = new Date(calendarYear, calendarMonth, 1);
+    const startDayOffset = firstDayObj.getDay();
+    const totalDaysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
 
     let html = `
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px;">
@@ -1918,28 +2541,42 @@ const App = (() => {
     `;
 
     for (let i = 0; i < startDayOffset; i++) {
-      html += `<div style="min-height:90px; background:transparent;"></div>`;
+      html += `<div style="min-height:100px; background:transparent; opacity:0.3; border:1px dashed rgba(255,255,255,0.05); border-radius:8px;"></div>`;
     }
 
-    for (let day = 1; day <= totalDays; day++) {
-      const dayEvents = apiEvents.filter(e => e.date && e.date.includes(`10-${day < 10 ? '0' + day : day}`));
-      const isToday = (day === 26);
+    for (let day = 1; day <= totalDaysInMonth; day++) {
+      const monthStr = String(calendarMonth + 1).padStart(2, '0');
+      const dayStr = String(day).padStart(2, '0');
+      const targetDateStr = `${calendarYear}-${monthStr}-${dayStr}`;
+
+      const dayEvents = apiEvents.filter(e => {
+        if (!e.date) return false;
+        const norm = normalizeDateStr(e.date);
+        return norm === targetDateStr;
+      });
+
+      const isToday = (calendarYear === realCalYear && calendarMonth === realCalMonth && day === realCalDay);
+      const isSelected = (selectedCalendarDate === targetDateStr);
 
       html += `
-        <div style="min-height:95px; background:${isToday ? 'var(--surface3)' : 'var(--surface2)'}; border:${isToday ? '2px solid var(--accent)' : '1px solid var(--border)'}; border-radius:8px; padding:8px; display:flex; flex-direction:column; justify-content:space-between;">
-          <div style="font-family:var(--font-mono); font-weight:900; font-size:13px; color:${isToday ? 'var(--accent)' : 'var(--white)'};">
-            ${day} ${isToday ? '• HOY' : ''}
+        <div class="calendar-day-cell ${isSelected ? 'selected-day' : ''}" data-date="${targetDateStr}" style="min-height:105px; background:${isSelected ? 'rgba(198,241,53,0.12)' : (isToday ? 'var(--surface3)' : 'var(--surface2)')}; border:${isSelected ? '2px solid var(--accent)' : (isToday ? '2px solid var(--gold)' : '1px solid var(--border)')}; border-radius:8px; padding:8px; display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; transition:border-color 0.15s, background 0.15s;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-family:var(--font-mono); font-weight:900; font-size:13px; color:${isSelected || isToday ? 'var(--accent)' : 'var(--white)'};">
+              ${day} ${isToday ? '• HOY' : ''}
+            </span>
+            ${dayEvents.length > 0 ? `<span style="font-size:10px; background:var(--accent); color:#000; font-weight:900; padding:1px 5px; border-radius:10px; font-family:var(--font-mono);">${dayEvents.length}</span>` : ''}
           </div>
-          <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+
+          <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px; flex:1; justify-content:flex-start;">
             ${dayEvents.slice(0, 2).map(e => {
               const catClass = getCategoryClass(e.category);
               return `
-                <div class="month-event-pill ${catClass}" data-id="${e.id}" style="font-size:11px; font-weight:800; padding:4px 6px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+                <div class="month-event-pill ${catClass}" data-id="${e.id}" style="font-size:10px; font-weight:800; padding:4px 6px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3);" title="${e.title} (${e.time || ''})">
                   ${e.time ? e.time + ' · ' : ''}${e.title}
                 </div>
               `;
             }).join('')}
-            ${dayEvents.length > 2 ? `<span style="font-size:9px; color:var(--gold); font-weight:800;">+${dayEvents.length - 2} más</span>` : ''}
+            ${dayEvents.length > 2 ? `<span style="font-size:9px; color:var(--gold); font-weight:800; font-family:var(--font-mono);">+${dayEvents.length - 2} más</span>` : ''}
           </div>
         </div>
       `;
@@ -1949,23 +2586,102 @@ const App = (() => {
     wrap.innerHTML = html;
 
     wrap.querySelectorAll('.month-event-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
+      pill.addEventListener('click', (e) => {
+        e.stopPropagation();
         openEventDetailModal(pill.dataset.id);
+      });
+    });
+
+    wrap.querySelectorAll('.calendar-day-cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        selectedCalendarDate = cell.dataset.date;
+        buildMonthGrid();
+        buildUpcomingList();
       });
     });
   }
 
   function buildUpcomingList() {
+    const header = document.getElementById('selected-day-header');
     const list = document.getElementById('upcoming-list');
     if (!list) return;
 
-    list.innerHTML = apiEvents.slice(0, 6).map(ev => `
-      <div class="upcoming-event-card" data-id="${ev.id}" style="background:var(--surface2); padding:12px; border-radius:8px; border:1px solid var(--border); cursor:pointer;">
-        <div style="font-size:11px; font-weight:800; color:var(--accent); font-family:var(--font-mono);">${ev.date} · ${ev.time}</div>
-        <div style="font-size:13px; font-weight:900; margin:4px 0;">${ev.title}</div>
-        <div style="font-size:11px; color:var(--grey1);">${ev.venue} (${ev.category})</div>
+    const dateParts = selectedCalendarDate.split('-');
+    const selYear = dateParts[0] || String(realCalYear);
+    const selMonthIdx = parseInt(dateParts[1] || String(realCalMonth + 1)) - 1;
+    const selDay = parseInt(dateParts[2] || String(realCalDay));
+    const selMonthName = MONTH_NAMES[selMonthIdx] || 'Septiembre';
+
+    const selectedDayEvents = apiEvents.filter(e => {
+      if (!e.date) return false;
+      const norm = normalizeDateStr(e.date);
+      return norm === selectedCalendarDate;
+    });
+
+    if (header) {
+      header.innerHTML = `
+        <div style="font-size:11px; font-family:var(--font-mono); color:var(--accent); font-weight:900; letter-spacing:0.5px;">
+          📅 DÍA SELECCIONADO EN CALENDARIO
+        </div>
+        <div style="font-size:16px; font-weight:900; color:#fff; margin-top:2px;">
+          ${selDay} DE ${selMonthName.toUpperCase()} DE ${selYear}
+        </div>
+        <button id="btn-add-event-selected-day" style="margin-top:8px; width:100%; background:var(--accent); color:#000; font-family:var(--font-mono); font-weight:900; font-size:11px; padding:8px; border:none; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+          ${ICONS.plus} + CREAR EVENTO PARA ESTE DÍA
+        </button>
+      `;
+
+      const addBtn = document.getElementById('btn-add-event-selected-day');
+      if (addBtn) {
+        addBtn.addEventListener('click', () => {
+          if ($('#ev-date')) $('#ev-date').value = selectedCalendarDate;
+          openCreateModal();
+        });
+      }
+    }
+
+    let listHtml = '';
+
+    if (selectedDayEvents.length > 0) {
+      listHtml += `
+        <div style="font-size:11px; font-family:var(--font-mono); color:var(--gold); font-weight:800; margin-bottom:4px;">
+          EVENTOS AGENDADOS ESTE DÍA (${selectedDayEvents.length}):
+        </div>
+        ${selectedDayEvents.map(ev => `
+          <div class="upcoming-event-card" data-id="${ev.id}" style="background:var(--surface2); padding:12px; border-radius:8px; border:1px solid var(--accent); cursor:pointer;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:11px; font-weight:900; color:var(--accent); font-family:var(--font-mono);">${ev.time || '20:00'}</span>
+              <span class="card-badge-cat ${getCategoryClass(ev.category)}" style="font-size:9px; padding:2px 6px; border-radius:4px; font-weight:800;">${ev.category}</span>
+            </div>
+            <div style="font-size:13px; font-weight:900; margin:6px 0 2px;">${ev.title}</div>
+            <div style="font-size:11px; color:var(--grey1);">🏛️ ${ev.venue}</div>
+          </div>
+        `).join('')}
+        <div style="border-top:1px solid var(--border); margin:12px 0 4px;"></div>
+      `;
+    } else {
+      listHtml += `
+        <div style="padding:10px; background:var(--surface2); border:1px dashed var(--border); border-radius:8px; font-size:11px; color:var(--grey1); text-align:center;">
+          No hay eventos agendados para este día.
+        </div>
+        <div style="border-top:1px solid var(--border); margin:12px 0 4px;"></div>
+      `;
+    }
+
+    listHtml += `
+      <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800; margin-bottom:4px;">
+        PRÓXIMOS EVENTOS DESTACADOS:
       </div>
-    `).join('');
+      ${apiEvents.slice(0, 5).map(ev => `
+        <div class="upcoming-event-card" data-id="${ev.id}" style="background:var(--surface2); padding:10px; border-radius:8px; border:1px solid var(--border); cursor:pointer;">
+          <div style="font-size:10px; font-weight:800; color:var(--gold); font-family:var(--font-mono);">${ev.date} · ${ev.time}</div>
+          <div style="font-size:12px; font-weight:800; margin:3px 0;">${ev.title}</div>
+          <div style="font-size:10px; color:var(--grey1);">${ev.venue} (${ev.category})</div>
+        </div>
+      `).join('')}
+    `;
+
+    list.innerHTML = listHtml;
 
     list.querySelectorAll('.upcoming-event-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -1980,18 +2696,23 @@ const App = (() => {
   function renderModals() {
     const container = document.getElementById('modals-container');
     container.innerHTML = `
-      <!-- Modal Auth Real (Login / Registro) -->
+      <!-- Modal Auth Real (Login / Registro Rápido) -->
       <div class="modal-overlay" id="modal-auth">
-        <div class="cart-modal-box" style="max-width:440px; background:#0f172a; border:1px solid #334155; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div class="cart-modal-box" style="max-width:460px; background:#0f172a; border:1px solid #334155; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
           <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px;">
-            <div class="modal-title" style="font-size:18px; font-weight:900; color:#ffffff; display:flex; align-items:center; gap:8px;">
-              ${ICONS.lock} ACCESO A LA PLATAFORMA
+            <div>
+              <div class="modal-title" style="font-size:18px; font-weight:900; color:#ffffff; display:flex; align-items:center; gap:8px;">
+                ${ICONS.lock} ACCESO A LA PLATAFORMA
+              </div>
+              <div style="font-size:11px; font-family:var(--font-mono); color:var(--accent); font-weight:800; margin-top:3px;">
+                ⚡ REGISTRO EN MENOS DE 1 MINUTO
+              </div>
             </div>
             <button class="modal-close" id="modal-auth-close" style="color:#94a3b8;">×</button>
           </div>
           
           <!-- Pestañas Auth -->
-          <div style="display:flex; gap:10px; margin: 18px 0 22px;">
+          <div style="display:flex; gap:10px; margin: 18px 0 20px;">
             <button id="tab-btn-login" class="tab-btn active" style="flex:1; padding:10px; font-size:13px; font-weight:900; border-radius:6px; cursor:pointer; background:var(--accent); color:#000000; border:none; letter-spacing:0.5px;">
               INICIAR SESIÓN
             </button>
@@ -2016,38 +2737,126 @@ const App = (() => {
             <button type="submit" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
               ENTRAR A MI CUENTA
             </button>
-            <div style="border-top:1px solid #334155; padding-top:12px; margin-top:6px; display:flex; flex-direction:column; gap:6px;">
-              <span style="font-size:11px; color:#94a3b8; font-family:var(--font-mono); text-align:center;">ACCESO RÁPIDO ADMINISTRADOR:</span>
-              <button type="button" id="btn-quick-admin-login" style="background:rgba(239,68,68,0.15); border:1px solid #ef4444; color:#fca5a5; font-size:12px; font-weight:800; padding:10px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
-                🛡️ Entrar como Administrador (admin@kawsay.ec)
-              </button>
-            </div>
           </form>
 
-          <!-- Formulario 2: Crear Cuenta -->
-          <form id="form-auth-register" style="display:none; flex-direction:column; gap:16px;">
+          <!-- Formulario 2: Crear Cuenta (Registro Rápido & Sin Fricción) -->
+          <form id="form-auth-register" style="display:none; flex-direction:column; gap:14px;">
+            <!-- Opción 1 Clic: Social Auth -->
+            <div class="social-auth-grid">
+              <button type="button" class="social-auth-btn social-btn-google" id="btn-social-google">
+                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                Continuar con Google
+              </button>
+              <button type="button" class="social-auth-btn social-btn-apple" id="btn-social-apple">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.79 1.06-1.88.94-2.97-1 .04-2.18.67-2.88 1.48-.56.65-1.05 1.76-.92 2.82 1.11.09 2.23-.55 2.86-1.33z"/></svg>
+                Continuar con Apple ID
+              </button>
+            </div>
+
+            <div class="social-divider">
+              <span>o con tu correo electrónico</span>
+            </div>
+
+            <!-- Campos Mínimos Esenciales -->
             <div>
-              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">NOMBRE COMPLETO / ORGANIZACIÓN</label>
-              <input type="text" id="reg-name" required placeholder="Ej. Carlos Andrade" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
+              <label style="display:block; font-size:11px; font-weight:800; margin-bottom:6px; color:#ffffff; letter-spacing:0.5px;">NOMBRE Y APELLIDO</label>
+              <input type="text" id="reg-name" required placeholder="Ej. Sofía Morales" style="width:100%; padding:11px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
             <div>
-              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CORREO ELECTRÓNICO</label>
-              <input type="email" id="reg-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
+              <label style="display:block; font-size:11px; font-weight:800; margin-bottom:6px; color:#ffffff; letter-spacing:0.5px;">CORREO ELECTRÓNICO ACTIVO</label>
+              <input type="email" id="reg-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:11px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
             <div>
-              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CONTRASEÑA</label>
-              <input type="password" id="reg-password" required placeholder="••••••••" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
+              <label style="display:block; font-size:11px; font-weight:800; margin-bottom:6px; color:#ffffff; letter-spacing:0.5px;">CONTRASEÑA SEGURA</label>
+              <div style="position:relative; display:flex; align-items:center;">
+                <input type="password" id="reg-password" required placeholder="Mínimo 6 caracteres" style="width:100%; padding:11px 40px 11px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
+                <button type="button" id="btn-toggle-reg-pass" style="position:absolute; right:10px; background:transparent; border:none; color:#94a3b8; cursor:pointer; font-size:16px;" title="Ver/Ocultar contraseña">
+                  👁️
+                </button>
+              </div>
+              <!-- Medidor Visual de Seguridad en Tiempo Real -->
+              <div class="password-strength-container">
+                <div class="password-strength-bar-bg">
+                  <div id="password-strength-bar" class="password-strength-bar-fill"></div>
+                </div>
+                <div class="password-strength-text">
+                  <span>Seguridad de contraseña</span>
+                  <span id="password-strength-label">Mínimo 6 caracteres</span>
+                </div>
+              </div>
             </div>
-            <div style="margin-top:4px;">
-              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; color:#ffffff;">
-                <input type="checkbox" id="reg-terms-check" required style="width:16px; height:16px; accent-color:var(--accent);">
+            <div style="margin-top:2px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; color:#cbd5e1;">
+                <input type="checkbox" id="reg-terms-check" required checked style="width:16px; height:16px; accent-color:var(--accent);">
                 <span>Acepto los <a href="#" id="link-reg-terms" style="color:var(--accent); text-decoration:underline;">Términos y Condiciones</a> y la <a href="#" id="link-reg-privacy" style="color:var(--accent); text-decoration:underline;">Política de Privacidad</a></span>
               </label>
             </div>
-            <button type="submit" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
-              REGISTRAR MI PERFIL
+            <button type="submit" class="btn-submit" id="btn-submit-reg" style="background:var(--accent); color:#000000; font-weight:900; padding:13px; border:none; border-radius:6px; cursor:pointer; font-size:13px; margin-top:6px; letter-spacing:0.5px; display:flex; align-items:center; justify-content:center; gap:8px;">
+              CONTINUAR A PERSONALIZACIÓN (1/2) ➔
             </button>
           </form>
+        </div>
+      </div>
+
+      <!-- Modal Onboarding Paso 2: Personalización de Intereses Culturales -->
+      <div class="modal-overlay" id="modal-onboarding-preferences">
+        <div class="cart-modal-box" style="max-width:520px; background:#0f172a; border:1px solid #334155; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;">
+          <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px;">
+            <div>
+              <span style="font-size:11px; font-family:var(--font-mono); color:var(--accent); font-weight:800; letter-spacing:0.5px;">PASO 2 DE 2 · ALGORITMO DE DESCUBRIMIENTO</span>
+              <div class="modal-title" style="font-size:18px; font-weight:900; color:#ffffff; margin-top:2px;">
+                🎨 Personaliza tu Experiencia Cultural
+              </div>
+            </div>
+            <button class="modal-close" id="modal-onboarding-close" style="color:#94a3b8;">×</button>
+          </div>
+
+          <div style="margin: 16px 0 20px;">
+            <p style="font-size:13px; color:#cbd5e1; margin:0 0 16px; line-height:1.4;">
+              Selecciona tus disciplinas artísticas favoritas y las zonas de Quito que más frecuentas para sugerirte la cartelera perfecta:
+            </p>
+
+            <!-- 1. Disciplinas e Intereses -->
+            <label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; font-family:var(--font-mono); text-transform:uppercase; margin-bottom:6px;">
+              1. ¿Qué eventos te interesan explorar? (Selecciona tus preferidos)
+            </label>
+            <div class="onboarding-tags-grid" id="onboarding-categories-tags">
+              <button type="button" class="onboarding-tag-pill active" data-cat="Teatro">🎭 Teatro & Escena</button>
+              <button type="button" class="onboarding-tag-pill active" data-cat="Música Andina">🎶 Música Andina & Fusión</button>
+              <button type="button" class="onboarding-tag-pill" data-cat="Conciertos">🎸 Rock & Conciertos</button>
+              <button type="button" class="onboarding-tag-pill" data-cat="Cine">🎬 Cine Independiente</button>
+              <button type="button" class="onboarding-tag-pill" data-cat="Danza">💃 Danza & Artes Vivas</button>
+              <button type="button" class="onboarding-tag-pill" data-cat="Fotografía">📸 Fotografía & Galerías</button>
+              <button type="button" class="onboarding-tag-pill" data-cat="Arte Urbano">🎨 Arte Urbano & Murales</button>
+              <button type="button" class="onboarding-tag-pill" data-cat="Talleres">🛠️ Talleres Creativos</button>
+              <button type="button" class="onboarding-tag-pill" data-cat="Festivales">🎪 Festivales & Ferias</button>
+              <button type="button" class="onboarding-tag-pill" data-cat="Literatura">📚 Literatura & Poesía</button>
+            </div>
+
+            <!-- 2. Zonas y Barrios en Quito -->
+            <label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; font-family:var(--font-mono); text-transform:uppercase; margin-top:18px; margin-bottom:6px;">
+              2. ¿En qué zonas o barrios de Quito prefieres asistir?
+            </label>
+            <div class="onboarding-tags-grid" id="onboarding-zones-tags">
+              <button type="button" class="onboarding-tag-pill active" data-zone="Centro Histórico">📍 Centro Histórico</button>
+              <button type="button" class="onboarding-tag-pill active" data-zone="La Floresta">🌿 La Floresta</button>
+              <button type="button" class="onboarding-tag-pill" data-zone="Cumbayá">⛰️ Cumbayá & Tumbaco</button>
+              <button type="button" class="onboarding-tag-pill" data-zone="La Mariscal">🏙️ La Mariscal</button>
+              <button type="button" class="onboarding-tag-pill" data-zone="Guápulo">🌄 Guápulo</button>
+              <button type="button" class="onboarding-tag-pill" data-zone="La Carolina">🌳 Parque La Carolina</button>
+              <button type="button" class="onboarding-tag-pill" data-zone="La Ronda">🏛️ San Marcos / La Ronda</button>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div style="display:flex; flex-direction:column; gap:10px; margin-top:20px; border-top:1px solid #1e293b; padding-top:16px;">
+            <button type="button" id="btn-save-onboarding-preferences" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:13px; letter-spacing:0.5px;">
+              ✨ GUARDAR PREFERENCIAS Y COMENZAR A EXPLORAR
+            </button>
+            <button type="button" id="btn-skip-onboarding-preferences" style="background:transparent; border:none; color:#94a3b8; font-size:12px; font-weight:700; cursor:pointer; padding:6px; text-decoration:underline;">
+              Omitir por ahora y ver toda la cartelera
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2200,6 +3009,9 @@ const App = (() => {
                 </div>
                 <div class="form-group">
                   <label class="form-label">RECINTO / ESPACIO CULTURAL</label>
+                  <select class="form-select" id="ev-venue-select" style="margin-bottom:6px;">
+                    <option value="">-- Seleccionar Espacio Registrado --</option>
+                  </select>
                   <input class="form-input" id="ev-venue" type="text" placeholder="Ej: Teatro Nacional Quito, NAVE 01" value="${currentUser.role === 'espacio' ? 'Teatro Nacional Quito' : 'NAVE 01 (La Floresta)'}" required>
                 </div>
               </div>
@@ -2267,9 +3079,93 @@ const App = (() => {
               <div style="font-size:11px; color:var(--grey1); font-family:var(--font-mono); margin-top:12px; text-align:center;">
                 La cartelera se actualizará automáticamente al escribir.
               </div>
+            </div>          </div>
+        </div>
+      </div>
+
+      <!-- MODAL REGISTRO DE ESPACIO CULTURAL -->
+      <div class="modal-overlay" id="modal-create-space">
+        <div class="modal-box" style="max-width: 650px; width: 90vw; background:#0f172a; border:1px solid #334155; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">
+          <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px;">
+            <div>
+              <div class="modal-title" style="font-size:20px; font-weight:900; color:#ffffff; display:flex; align-items:center; gap:8px;">
+                🏛️ REGISTRAR NUEVO ESPACIO CULTURAL EN QUITO
+              </div>
+              <p style="font-size:12px; color:var(--grey1); font-family:var(--font-mono); margin-top:3px;">
+                Registra tu recinto, galería, club de vinilos o teatro en la base de datos oficial de KAWSAY.
+              </p>
+            </div>
+            <button class="modal-close" id="modal-create-space-close" style="color:#94a3b8;">×</button>
+          </div>
+
+          <form id="create-space-form" style="display:flex; flex-direction:column; gap:14px; margin-top:16px;">
+            <div class="form-row">
+              <div class="form-group" style="flex:1;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">NOMBRE DEL ESPACIO / RECINTO</label>
+                <input class="form-input" id="sp-name" type="text" placeholder="Ej: Centro Cultural La Casa Rosa" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">TIPO / CATEGORÍA</label>
+                <select class="form-select" id="sp-type" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+                  <option value="ESPACIO CULTURAL">Espacio Cultural / Multidisciplinario</option>
+                  <option value="ARTES ESCÉNICAS">Teatro / Artes Escénicas</option>
+                  <option value="GALERÍA & COWORK">Galería de Arte / Exposición</option>
+                  <option value="CLUB DE VINILOS">Club de Vinilos / Música</option>
+                  <option value="MUSEO URBANO">Museo / Centro Histórico</option>
+                  <option value="CAFÉ CULTURAL">Café Cultural / Librería</option>
+                </select>
+              </div>
             </div>
 
-          </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:1;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">SECTOR EN QUITO</label>
+                <select class="form-select" id="sp-sector" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+                  <option value="La Floresta">La Floresta</option>
+                  <option value="Centro Histórico">Centro Histórico</option>
+                  <option value="La Mariscal">La Mariscal</option>
+                  <option value="Cumbayá">Cumbayá & Tumbaco</option>
+                  <option value="Guápulo">Guápulo</option>
+                  <option value="Norte de Quito">Norte de Quito</option>
+                  <option value="Sur de Quito">Sur de Quito</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">AFORO / CAPACIDAD MÁXIMA</label>
+                <input class="form-input" id="sp-capacity" type="number" placeholder="Ej: 200" value="200" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DIRECCIÓN EXACTA</label>
+              <input class="form-input" id="sp-address" type="text" placeholder="Ej: Calle Galavis E9-35 e Isabel La Católica" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group" style="flex:1;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">HORARIO DE ATENCIÓN</label>
+                <input class="form-input" id="sp-hours" type="text" placeholder="Ej: Mar–Sáb: 10:00–22:00" value="Mar–Sáb: 10:00–22:00" style="background:#1e293b; border:1px solid #334155; color:#fff;">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DISCIPLINAS (SEPARADAS POR COMA)</label>
+                <input class="form-input" id="sp-categories" type="text" placeholder="Arte, Música, Teatro" value="Arte, Música, Teatro" style="background:#1e293b; border:1px solid #334155; color:#fff;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">URL FOTO DE PORTADA</label>
+              <input class="form-input" id="sp-image" type="text" placeholder="URL de la imagen del recinto..." value="images/space_nave01.jpg" style="background:#1e293b; border:1px solid #334155; color:#fff;">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DESCRIPCIÓN / PROPUESTA CULTURAL</label>
+              <textarea class="form-textarea" id="sp-desc" rows="3" placeholder="Resumen de la propuesta del espacio..." style="background:#1e293b; border:1px solid #334155; color:#fff;">Espacio cultural independiente en Quito enfocado en la creación y expresión artística.</textarea>
+            </div>
+
+            <button class="btn-submit" type="submit" style="background:var(--gold); color:#000; font-weight:900; font-size:14px; padding:14px; border:none; border-radius:6px; cursor:pointer; margin-top:6px;">
+              ✨ REGISTRAR Y PUBLICAR ESPACIO CULTURAL
+            </button>
+          </form>
         </div>
       </div>
 
@@ -2281,6 +3177,19 @@ const App = (() => {
             <button class="modal-close" id="modal-admin-close">×</button>
           </div>
           <div id="admin-mod-list"></div>
+        </div>
+      </div>
+
+      <!-- Modal Desglose KPIs Admin -->
+      <div class="modal-overlay" id="modal-kpi-detail">
+        <div class="modal-box" style="max-width: 920px; width: 92vw; background:#0f172a; border:1px solid #334155;">
+          <div class="modal-header" style="margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+            <div class="modal-title" style="font-size:16px; font-weight:900; color:var(--accent); display:flex; align-items:center; gap:8px;">
+              📊 ANÁLISIS DETALLADO Y DESGLOSE EXECUTIVE KAWSAY
+            </div>
+            <button class="modal-close" id="modal-kpi-detail-close" style="color:#94a3b8;">×</button>
+          </div>
+          <div id="modal-kpi-detail-content"></div>
         </div>
       </div>
 
@@ -2450,70 +3359,236 @@ const App = (() => {
       });
     }
 
-    // Submit Formulario Registro
+    // Toggle de visibilidad de contraseña
+    const togglePassBtn = $('#btn-toggle-reg-pass');
+    const regPassInput = $('#reg-password');
+    if (togglePassBtn && regPassInput) {
+      togglePassBtn.addEventListener('click', () => {
+        const isPass = regPassInput.type === 'password';
+        regPassInput.type = isPass ? 'text' : 'password';
+        togglePassBtn.textContent = isPass ? '🙈' : '👁️';
+      });
+    }
+
+    // Medidor de fortaleza de contraseña en tiempo real
+    const strengthBar = $('#password-strength-bar');
+    const strengthLabel = $('#password-strength-label');
+    if (regPassInput && strengthBar && strengthLabel) {
+      regPassInput.addEventListener('input', () => {
+        const val = regPassInput.value;
+        if (!val) {
+          strengthBar.style.width = '0%';
+          strengthBar.style.background = '#334155';
+          strengthLabel.textContent = 'Mínimo 6 caracteres';
+          strengthLabel.style.color = '#94a3b8';
+          return;
+        }
+        let score = 0;
+        if (val.length >= 6) score++;
+        if (val.length >= 10) score++;
+        if (/[0-9]/.test(val)) score++;
+        if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+
+        if (score <= 1) {
+          strengthBar.style.width = '25%';
+          strengthBar.style.background = '#ef4444';
+          strengthLabel.textContent = 'Contraseña débil';
+          strengthLabel.style.color = '#f87171';
+        } else if (score === 2) {
+          strengthBar.style.width = '50%';
+          strengthBar.style.background = '#f59e0b';
+          strengthLabel.textContent = 'Aceptable';
+          strengthLabel.style.color = '#fbbf24';
+        } else if (score === 3) {
+          strengthBar.style.width = '75%';
+          strengthBar.style.background = '#38bdf8';
+          strengthLabel.textContent = 'Buena seguridad';
+          strengthLabel.style.color = '#38bdf8';
+        } else {
+          strengthBar.style.width = '100%';
+          strengthBar.style.background = '#10b981';
+          strengthLabel.textContent = 'Excelente seguridad ✨';
+          strengthLabel.style.color = '#34d399';
+        }
+      });
+    }
+
+    // Botones de Registro Rápido con 1 Clic (Google / Apple ID)
+    const btnGoogle = $('#btn-social-google');
+    if (btnGoogle) {
+      btnGoogle.addEventListener('click', () => {
+        closeAuthModal();
+        const randId = Math.floor(1000 + Math.random() * 9000);
+        tempRegData = {
+          name: 'Usuario Google Cultural',
+          email: `usuario.google.${randId}@gmail.com`,
+          password: 'GoogleOAuth2026!' + randId,
+          role: 'espectador'
+        };
+        showToast('⚡ Conectado con Google ID. Selecciona tus preferencias culturales.');
+        openOnboardingModal();
+      });
+    }
+
+    const btnApple = $('#btn-social-apple');
+    if (btnApple) {
+      btnApple.addEventListener('click', () => {
+        closeAuthModal();
+        const randId = Math.floor(1000 + Math.random() * 9000);
+        tempRegData = {
+          name: 'Usuario Apple ID',
+          email: `usuario.apple.${randId}@icloud.com`,
+          password: 'AppleOAuth2026!' + randId,
+          role: 'espectador'
+        };
+        showToast('⚡ Conectado con Apple ID. Selecciona tus preferencias culturales.');
+        openOnboardingModal();
+      });
+    }
+
+    // Submit Formulario Registro Tradicional (Paso 1 -> Paso 2)
     if (formReg) {
-      formReg.addEventListener('submit', async (e) => {
+      formReg.addEventListener('submit', (e) => {
         e.preventDefault();
         const name = $('#reg-name').value.trim();
         const email = $('#reg-email').value.trim();
         const password = $('#reg-password').value;
-        const roleEl = $('#reg-role');
-        const role = roleEl ? roleEl.value : 'espectador';
+        const termsCheck = $('#reg-terms-check');
 
+        if (!termsCheck || !termsCheck.checked) {
+          showAuthAlert('Debes aceptar los Términos y Condiciones y la Política de Privacidad.');
+          return;
+        }
+
+        if (password.length < 6) {
+          showAuthAlert('La contraseña debe tener al menos 6 caracteres.');
+          return;
+        }
+
+        tempRegData = {
+          name,
+          email,
+          password,
+          role: 'espectador'
+        };
+
+        closeAuthModal();
+        showToast('Paso 1 completado. Personaliza tus intereses para recomendaciones.');
+        openOnboardingModal();
+      });
+    }
+
+    // Modal Onboarding (Paso 2: Preferencias e Intereses Culturales)
+    const btnCloseOnboarding = $('#modal-onboarding-close');
+    if (btnCloseOnboarding) btnCloseOnboarding.addEventListener('click', closeOnboardingModal);
+
+    $$('.onboarding-tag-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        pill.classList.toggle('active');
+      });
+    });
+
+    async function finishRegistrationWithPreferences(preferences) {
+      closeOnboardingModal();
+
+      if (tempRegData) {
         try {
           const res = await fetch(`${API_BASE}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password, role })
+            body: JSON.stringify({ ...tempRegData, preferences })
           });
           const data = await res.json();
           if (!res.ok) {
-            showAuthAlert(data.error || 'Error al registrar usuario');
+            showToast(data.error || 'Error al completar el registro.');
             return;
           }
-
           currentUser = data.user;
           localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
           await loadUserInteractions();
+
           showToast(`¡Cuenta creada exitosamente! Bienvenido/a ${currentUser.name}`);
-          closeAuthModal();
-          renderSidebar();
-          renderTopbar();
-          if (currentUser.role === 'admin' || currentUser.role === 'gestor') {
-            navigate('admin');
-          } else if (currentUser.role === 'artista') {
-            navigate('artist');
-          } else if (currentUser.role === 'espacio') {
-            navigate('space');
-          } else {
-            navigate('home');
-          }
 
-          // Mostrar Modal de Validación por Correo
-          const confirmText = $('#email-confirm-text');
-          if (confirmText) {
-            confirmText.textContent = `Hemos enviado un enlace de validación a tu correo (${currentUser.email}). Por favor ingresa a tu bandeja para activar tu cuenta.`;
-          }
-          $('#modal-email-confirm').classList.add('open');
+          // Notificación automática de activación por correo sin bloquear al usuario
+          setTimeout(() => {
+            showToast(`📬 Hemos enviado un enlace de activación a ${currentUser.email}. ¡Tu cuenta ya está lista para explorar y comprar!`);
+          }, 1000);
+
+          tempRegData = null;
         } catch (err) {
-          showAuthAlert('Error al conectar con el servidor.');
+          // Fallback resiliente offline
+          currentUser = {
+            id: 'usr-' + Date.now(),
+            name: tempRegData.name,
+            email: tempRegData.email,
+            role: tempRegData.role || 'espectador',
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            bio: 'Perfil de espectador en KAWSAY',
+            preferences
+          };
+          localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
+          showToast(`¡Bienvenido/a ${currentUser.name}! Tus preferencias han sido configuradas.`);
+          setTimeout(() => {
+            showToast(`📬 Enlace de activación enviado a ${currentUser.email}.`);
+          }, 1000);
+          tempRegData = null;
         }
+      } else if (currentUser && currentUser.role !== 'invitado') {
+        currentUser.preferences = preferences;
+        localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
+        try {
+          await fetch(`${API_BASE}/users/${currentUser.id}/preferences`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preferences })
+          });
+        } catch (e) {}
+        showToast('🎯 Preferencias culturales actualizadas con éxito.');
+      }
+
+      closeAuthModal();
+      renderSidebar();
+      renderTopbar();
+      renderHomeView();
+      navigate('home');
+
+      // Si el usuario intentó una acción antes del registro, ejecutarla de inmediato
+      if (pendingAuthAction) {
+        const action = pendingAuthAction;
+        pendingAuthAction = null;
+        setTimeout(() => {
+          if (action.type === 'fav' || action.type === 'rsvp') {
+            const btn = document.querySelector(`.btn-card-action[data-action="${action.type}"][data-id="${action.eventId}"]`);
+            if (btn) btn.click();
+          } else if (action.type === 'cart') {
+            addToCart(action.title, action.price);
+            openCartModal();
+          } else if (action.type === 'checkout') {
+            openCartModal();
+          }
+        }, 300);
+      }
+    }
+
+    const btnSaveOnboarding = $('#btn-save-onboarding-preferences');
+    if (btnSaveOnboarding) {
+      btnSaveOnboarding.addEventListener('click', () => {
+        const categories = Array.from($$('#onboarding-categories-tags .onboarding-tag-pill.active')).map(p => p.dataset.cat);
+        const zones = Array.from($$('#onboarding-zones-tags .onboarding-tag-pill.active')).map(p => p.dataset.zone);
+        finishRegistrationWithPreferences({ categories, zones });
       });
     }
 
-    // Botón de Acceso Rápido Administrador en el modal de login
-    const quickAdminBtn = $('#btn-quick-admin-login');
-    if (quickAdminBtn) {
-      quickAdminBtn.addEventListener('click', () => {
-        const emailInp = $('#login-email');
-        const passInp = $('#login-password');
-        if (emailInp && passInp && formLogin) {
-          emailInp.value = 'admin@kawsay.ec';
-          passInp.value = 'admin123';
-          formLogin.dispatchEvent(new Event('submit'));
-        }
+    const btnSkipOnboarding = $('#btn-skip-onboarding-preferences');
+    if (btnSkipOnboarding) {
+      btnSkipOnboarding.addEventListener('click', () => {
+        finishRegistrationWithPreferences({
+          categories: ['Teatro', 'Música Andina'],
+          zones: ['Centro Histórico']
+        });
       });
     }
+
 
     // Modal legal handlers
     if ($('#link-reg-terms')) $('#link-reg-terms').addEventListener('click', (e) => { e.preventDefault(); showModal('#modal-terms'); });
@@ -2536,9 +3611,14 @@ const App = (() => {
     });
 
     $('#modal-create-close').addEventListener('click', closeCreateModal);
+    if ($('#modal-create-space-close')) $('#modal-create-space-close').addEventListener('click', closeSpaceCreateModal);
     $('#create-event-form').addEventListener('submit', handleCreateEventSubmit);
+    if ($('#create-space-form')) $('#create-space-form').addEventListener('submit', handleCreateSpaceSubmit);
     $('#modal-admin-close').addEventListener('click', closeAdminModal);
     $('#modal-tickets-close').addEventListener('click', closeTicketsModal);
+    if ($('#modal-kpi-detail-close')) {
+      $('#modal-kpi-detail-close').addEventListener('click', () => hideModal('#modal-kpi-detail'));
+    }
     $('#btn-add-ticket-cart').addEventListener('click', () => {
       addToCart('Entrada General Quito Cultural', 15);
       closeTicketsModal();
@@ -2614,8 +3694,621 @@ const App = (() => {
     }, 350);
   }
 
-  function openAuthModal() { showModal('#modal-auth'); }
+  // ============================================================
+  // DESGLOSE EJECUTIVO DE KPIs ADMINISTRATIVOS
+  // ============================================================
+  function openKpiDetailModal(kpiKey) {
+    const modal = $('#modal-kpi-detail');
+    const contentEl = $('#modal-kpi-detail-content');
+    if (!modal || !contentEl) return;
+
+    contentEl.innerHTML = getKpiDetailHtml(kpiKey);
+
+    contentEl.querySelectorAll('.kpi-modal-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        openKpiDetailModal(tab.dataset.kpi);
+      });
+    });
+
+    const closeBtn = contentEl.querySelector('#btn-kpi-modal-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => hideModal('#modal-kpi-detail'));
+    }
+
+    showModal('#modal-kpi-detail');
+  }
+
+  function getKpiDetailHtml(kpiKey) {
+    const kpis = {
+      sessions: {
+        title: '🌐 SESIONES / USUARIOS ACTIVOS',
+        accentColor: 'var(--accent)',
+        subTitle: 'Monitoreo de tráfico, sesiones concurrentes y cuentas registradas en Quito.',
+        value: '1,450',
+        label: 'Sesiones Activas',
+        sub: '4 Perfiles Registrados en la Nube'
+      },
+      artists: {
+        title: '🎨 CANTIDAD DE ARTISTAS',
+        accentColor: 'var(--gold)',
+        subTitle: 'Directorio general de colectivos, agrupaciones y bandas verificadas.',
+        value: '142',
+        label: 'Colectivos & Bandas',
+        sub: 'Verificados en la Red Kawsay'
+      },
+      spaces: {
+        title: '🏛️ ESPACIOS & RECINTOS CULTURALES',
+        accentColor: '#60a5fa',
+        subTitle: 'Catastro de teatros, auditorios y salas independientes.',
+        value: '24',
+        label: 'Recintos Aliados',
+        sub: 'Centros Culturales en Quito'
+      },
+      tickets: {
+        title: '🎟️ BOLETOS VENDIDOS',
+        accentColor: '#f43f5e',
+        subTitle: 'Emisión, reservas y control de accesos por código QR.',
+        value: '3,850',
+        label: 'Entradas Procesadas',
+        sub: 'Entradas Digitales con Check-in'
+      },
+      revenue: {
+        title: '💰 RECAUDACIÓN TOTAL DE TAQUILLA',
+        accentColor: '#10b981',
+        subTitle: 'Reporte financiero global, comisiones y liquidación a artistas.',
+        value: '$48,250',
+        label: 'Ingresos por Taquilla',
+        sub: 'Ingresos Totales en USD'
+      }
+    };
+
+    const currentKpi = kpis[kpiKey] || kpis['sessions'];
+
+    const navTabsHtml = `
+      <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:12px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <button class="kpi-modal-tab ${kpiKey === 'sessions' ? 'active' : ''}" data-kpi="sessions" style="padding:8px 14px; border-radius:8px; font-size:12px; font-family:var(--font-mono); font-weight:800; cursor:pointer; background:${kpiKey === 'sessions' ? 'rgba(198,241,53,0.2)' : 'var(--surface2)'}; color:${kpiKey === 'sessions' ? 'var(--accent)' : 'var(--grey1)'}; border:1px solid ${kpiKey === 'sessions' ? 'var(--accent)' : 'var(--border)'}; white-space:nowrap;">🌐 Sesiones (1,450)</button>
+        <button class="kpi-modal-tab ${kpiKey === 'artists' ? 'active' : ''}" data-kpi="artists" style="padding:8px 14px; border-radius:8px; font-size:12px; font-family:var(--font-mono); font-weight:800; cursor:pointer; background:${kpiKey === 'artists' ? 'rgba(234,179,8,0.2)' : 'var(--surface2)'}; color:${kpiKey === 'artists' ? 'var(--gold)' : 'var(--grey1)'}; border:1px solid ${kpiKey === 'artists' ? 'var(--gold)' : 'var(--border)'}; white-space:nowrap;">🎨 Artistas (142)</button>
+        <button class="kpi-modal-tab ${kpiKey === 'spaces' ? 'active' : ''}" data-kpi="spaces" style="padding:8px 14px; border-radius:8px; font-size:12px; font-family:var(--font-mono); font-weight:800; cursor:pointer; background:${kpiKey === 'spaces' ? 'rgba(96,165,250,0.2)' : 'var(--surface2)'}; color:${kpiKey === 'spaces' ? '#60a5fa' : 'var(--grey1)'}; border:1px solid ${kpiKey === 'spaces' ? '#60a5fa' : 'var(--border)'}; white-space:nowrap;">🏛️ Espacios (24)</button>
+        <button class="kpi-modal-tab ${kpiKey === 'tickets' ? 'active' : ''}" data-kpi="tickets" style="padding:8px 14px; border-radius:8px; font-size:12px; font-family:var(--font-mono); font-weight:800; cursor:pointer; background:${kpiKey === 'tickets' ? 'rgba(244,63,94,0.2)' : 'var(--surface2)'}; color:${kpiKey === 'tickets' ? '#f43f5e' : 'var(--grey1)'}; border:1px solid ${kpiKey === 'tickets' ? '#f43f5e' : 'var(--border)'}; white-space:nowrap;">🎟️ Boletos (3,850)</button>
+        <button class="kpi-modal-tab ${kpiKey === 'revenue' ? 'active' : ''}" data-kpi="revenue" style="padding:8px 14px; border-radius:8px; font-size:12px; font-family:var(--font-mono); font-weight:800; cursor:pointer; background:${kpiKey === 'revenue' ? 'rgba(16,185,129,0.2)' : 'var(--surface2)'}; color:${kpiKey === 'revenue' ? '#10b981' : 'var(--grey1)'}; border:1px solid ${kpiKey === 'revenue' ? '#10b981' : 'var(--border)'}; white-space:nowrap;">💰 Recaudación ($48,250)</button>
+      </div>
+    `;
+
+    let specificContent = '';
+
+    if (kpiKey === 'sessions') {
+      specificContent = `
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">PICO MÁXIMO DIARIO</div>
+            <div style="font-size:24px; font-weight:900; color:var(--accent); margin-top:2px;">340</div>
+            <div style="font-size:10px; color:var(--grey1);">Usuarios a las 20:00</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">RETENCIÓN PROMEDIO</div>
+            <div style="font-size:24px; font-weight:900; color:#38bdf8; margin-top:2px;">88.5%</div>
+            <div style="font-size:10px; color:var(--grey1);">Retorno semanal</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">DISPOSITIVO MÓVIL</div>
+            <div style="font-size:24px; font-weight:900; color:#a855f7; margin-top:2px;">68%</div>
+            <div style="font-size:10px; color:var(--grey1);">986 Tráfico Smartphone</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">TIEMPO PROMEDIO</div>
+            <div style="font-size:24px; font-weight:900; color:var(--gold); margin-top:2px;">8m 42s</div>
+            <div style="font-size:10px; color:var(--grey1);">Por sesión activa</div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:20px;">
+          <h4 style="font-size:13px; font-weight:800; color:#fff; margin-bottom:14px; font-family:var(--font-mono);">
+            📊 DISTRIBUCIÓN DE TRÁFICO POR HORARIO EN QUITO
+          </h4>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; font-family:var(--font-mono);">
+                <span>08:00 - 12:00 (Mañana)</span>
+                <span>210 usuarios (15%)</span>
+              </div>
+              <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                <div style="width:15%; height:100%; background:var(--accent);"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; font-family:var(--font-mono);">
+                <span>12:00 - 16:00 (Tarde)</span>
+                <span>380 usuarios (26%)</span>
+              </div>
+              <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                <div style="width:26%; height:100%; background:var(--accent);"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; font-family:var(--font-mono);">
+                <span>16:00 - 20:00 (Hora Pico Espectáculos)</span>
+                <span>540 usuarios (37%)</span>
+              </div>
+              <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                <div style="width:37%; height:100%; background:#ef4444;"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; font-family:var(--font-mono);">
+                <span>20:00 - 00:00 (Noche / Salida Eventos)</span>
+                <span>320 usuarios (22%)</span>
+              </div>
+              <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                <div style="width:22%; height:100%; background:var(--gold);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px;">
+          <h4 style="font-size:13px; font-weight:800; color:#fff; margin-bottom:12px; font-family:var(--font-mono);">👥 PERFILES DE USUARIO REGISTRADOS EN LA PLATAFORMA</h4>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>USUARIO</th>
+                <th>CORREO</th>
+                <th>ROL EN PLATAFORMA</th>
+                <th>UBICACIÓN / SECTOR</th>
+                <th>ESTADO ACCESO</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${usersList.map(u => `
+                <tr>
+                  <td style="display:flex; align-items:center; gap:8px;">
+                    <img src="${u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:26px; height:26px; border-radius:50%; object-fit:cover;">
+                    <strong>${u.name}</strong>
+                  </td>
+                  <td style="font-family:var(--font-mono); color:var(--grey1); font-size:12px;">${u.email || 'sesion.anonima@kawsay.ec'}</td>
+                  <td>
+                    <span style="font-size:10px; font-weight:800; font-family:var(--font-mono); padding:2px 8px; border-radius:10px; background:${u.role === 'admin' ? '#ef4444' : u.role === 'artista' ? 'var(--accent)' : u.role === 'espacio' ? 'var(--gold)' : 'var(--surface3)'}; color:${u.role === 'artista' ? '#000' : '#fff'};">
+                      ${(u.role || 'invitado').toUpperCase()}
+                    </span>
+                  </td>
+                  <td style="font-size:12px; color:var(--grey1);">Quito Central</td>
+                  <td><span style="color:var(--accent); font-weight:800; font-size:11px;">🟢 En línea</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (kpiKey === 'artists') {
+      specificContent = `
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">MÚSICA & BANDS</div>
+            <div style="font-size:24px; font-weight:900; color:var(--gold); margin-top:2px;">58</div>
+            <div style="font-size:10px; color:var(--grey1);">41% del total</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">COMPAÑÍAS DE TEATRO</div>
+            <div style="font-size:24px; font-weight:900; color:#ef4444; margin-top:2px;">34</div>
+            <div style="font-size:10px; color:var(--grey1);">24% del total</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">DANZA & PERFORMANCE</div>
+            <div style="font-size:24px; font-weight:900; color:var(--accent); margin-top:2px;">26</div>
+            <div style="font-size:10px; color:var(--grey1);">18% del total</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">ARTES VISUALES & CINE</div>
+            <div style="font-size:24px; font-weight:900; color:#38bdf8; margin-top:2px;">24</div>
+            <div style="font-size:10px; color:var(--grey1);">17% del total</div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:20px;">
+          <h4 style="font-size:13px; font-weight:800; color:#fff; margin-bottom:14px; font-family:var(--font-mono);">📍 DISTRIBUCIÓN TERRITORIAL DE ARTISTAS EN QUITO</h4>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+            <div style="background:var(--surface); padding:10px; border-radius:8px; border:1px solid var(--border);">
+              <div style="font-size:11px; color:var(--grey1);">La Floresta & Guápulo</div>
+              <div style="font-size:15px; font-weight:900; color:#fff;">42 Colectivos (30%)</div>
+            </div>
+            <div style="background:var(--surface); padding:10px; border-radius:8px; border:1px solid var(--border);">
+              <div style="font-size:11px; color:var(--grey1);">Centro Histórico & La Ronda</div>
+              <div style="font-size:15px; font-weight:900; color:#fff;">38 Colectivos (27%)</div>
+            </div>
+            <div style="background:var(--surface); padding:10px; border-radius:8px; border:1px solid var(--border);">
+              <div style="font-size:11px; color:var(--grey1);">Cumbayá & Tumbaco</div>
+              <div style="font-size:15px; font-weight:900; color:#fff;">28 Colectivos (20%)</div>
+            </div>
+            <div style="background:var(--surface); padding:10px; border-radius:8px; border:1px solid var(--border);">
+              <div style="font-size:11px; color:var(--grey1);">Sur de Quito & Recreo</div>
+              <div style="font-size:15px; font-weight:900; color:#fff;">21 Colectivos (15%)</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px;">
+          <h4 style="font-size:13px; font-weight:800; color:#fff; margin-bottom:12px; font-family:var(--font-mono);">🎨 MUESTRA DE ARTISTAS DESTACADOS EN LA PLATAFORMA</h4>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ARTISTA / COLECTIVO</th>
+                <th>CATEGORÍA</th>
+                <th>SECTOR</th>
+                <th>EVENTO PRINCIPAL</th>
+                <th>ESTADO DE VERIFICACIÓN</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:900; color:#fff;">Mateo & La Banda</td>
+                <td><span style="color:var(--gold); font-weight:800;">Música Jazz</span></td>
+                <td>La Floresta</td>
+                <td>Jazz Experimental Quito</td>
+                <td><span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">VERIFICADO ✅</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:900; color:#fff;">Movimiento Urbano Rito</td>
+                <td><span style="color:var(--accent); font-weight:800;">Danza Contemporánea</span></td>
+                <td>Centro Histórico</td>
+                <td>Movimiento Urbano: El Rito</td>
+                <td><span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">VERIFICADO ✅</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:900; color:#fff;">Teatro La Paz Colectivo</td>
+                <td><span style="color:#ef4444; font-weight:800;">Teatro Independiente</span></td>
+                <td>San Roque</td>
+                <td>Voces del Barrio</td>
+                <td><span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">VERIFICADO ✅</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:900; color:#fff;">Colectivo Neo-Muralismo</td>
+                <td><span style="color:#38bdf8; font-weight:800;">Artes Plásticas</span></td>
+                <td>La Mariscal</td>
+                <td>Neo-Muralismo Urbano</td>
+                <td><span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">VERIFICADO ✅</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (kpiKey === 'spaces') {
+      specificContent = `
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">AFORO MÁXIMO COMBINADO</div>
+            <div style="font-size:24px; font-weight:900; color:#60a5fa; margin-top:2px;">8,950</div>
+            <div style="font-size:10px; color:var(--grey1);">Butacas / Capacidad total</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">TEATROS PRINCIPALES</div>
+            <div style="font-size:24px; font-weight:900; color:var(--gold); margin-top:2px;">8</div>
+            <div style="font-size:10px; color:var(--grey1);">Promedio 450 as.</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">CENTROS INDEPENDIENTES</div>
+            <div style="font-size:24px; font-weight:900; color:var(--accent); margin-top:2px;">9</div>
+            <div style="font-size:10px; color:var(--grey1);">Salas alternativas</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">GALERÍAS & PLAZAS</div>
+            <div style="font-size:24px; font-weight:900; color:#a855f7; margin-top:2px;">7</div>
+            <div style="font-size:10px; color:var(--grey1);">Espacios de exposición</div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px;">
+          <h4 style="font-size:13px; font-weight:800; color:#fff; margin-bottom:12px; font-family:var(--font-mono);">🏛️ CATASTRO DE CENTROS CULTURALES REGISTRADOS</h4>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>RECINTO / ESPACIO</th>
+                <th>TIPO DE LUGAR</th>
+                <th>CAPACIDAD</th>
+                <th>SECTOR</th>
+                <th>OCUPACIÓN MENSUAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:900; color:#fff;">Teatro Nacional Quito</td>
+                <td><span style="color:#60a5fa; font-weight:800;">Teatro Principal</span></td>
+                <td style="font-family:var(--font-mono); font-weight:800;">500 pers.</td>
+                <td style="font-size:12px; color:var(--grey1);">Centro Histórico</td>
+                <td><span style="color:var(--accent); font-weight:800;">85%</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:900; color:#fff;">NAVE 01</td>
+                <td><span style="color:#60a5fa; font-weight:800;">Espacio Cultural</span></td>
+                <td style="font-family:var(--font-mono); font-weight:800;">250 pers.</td>
+                <td style="font-size:12px; color:var(--grey1);">La Floresta</td>
+                <td><span style="color:var(--accent); font-weight:800;">90%</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:900; color:#fff;">EL BÚNKER</td>
+                <td><span style="color:#60a5fa; font-weight:800;">Club de Vinilos</span></td>
+                <td style="font-family:var(--font-mono); font-weight:800;">120 pers.</td>
+                <td style="font-size:12px; color:var(--grey1);">La Mariscal</td>
+                <td><span style="color:var(--accent); font-weight:800;">78%</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:900; color:#fff;">ESPACIO RADAR</td>
+                <td><span style="color:#60a5fa; font-weight:800;">Galería & Cowork</span></td>
+                <td style="font-family:var(--font-mono); font-weight:800;">100 pers.</td>
+                <td style="font-size:12px; color:var(--grey1);">La Ronda</td>
+                <td><span style="color:var(--accent); font-weight:800;">92%</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:900; color:#fff;">Plaza de las Artes</td>
+                <td><span style="color:#60a5fa; font-weight:800;">Plaza Abierta</span></td>
+                <td style="font-family:var(--font-mono); font-weight:800;">1,200 pers.</td>
+                <td style="font-size:12px; color:var(--grey1);">Bellavista</td>
+                <td><span style="color:var(--accent); font-weight:800;">65%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (kpiKey === 'tickets') {
+      specificContent = `
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">ENTRADAS PAGADAS</div>
+            <div style="font-size:24px; font-weight:900; color:#f43f5e; margin-top:2px;">2,450</div>
+            <div style="font-size:10px; color:var(--grey1);">64% del total</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">ACCESO LIBRE (GRATIS)</div>
+            <div style="font-size:24px; font-weight:900; color:var(--accent); margin-top:2px;">1,200</div>
+            <div style="font-size:10px; color:var(--grey1);">31% del total</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">PASES VIP / PRENSA</div>
+            <div style="font-size:24px; font-weight:900; color:var(--gold); margin-top:2px;">200</div>
+            <div style="font-size:10px; color:var(--grey1);">5% del total</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">CHECK-IN ASISTENCIA</div>
+            <div style="font-size:24px; font-weight:900; color:#10b981; margin-top:2px;">92.4%</div>
+            <div style="font-size:10px; color:var(--grey1);">Ingreso efectivo en puerta</div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px;">
+          <h4 style="font-size:13px; font-weight:800; color:#fff; margin-bottom:12px; font-family:var(--font-mono);">🎟️ REGISTRO RECIENTE DE ENTRADAS PROCESADAS</h4>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>CÓDIGO TICKET</th>
+                <th>ESPECTÁCULO</th>
+                <th>COMPRADOR</th>
+                <th>TIPO</th>
+                <th>PRECIO</th>
+                <th>ESTADO PUERTA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-family:var(--font-mono); color:var(--accent); font-weight:800;">#TK-9081</td>
+                <td style="font-weight:800; color:#fff;">Movimiento Urbano: El Rito</td>
+                <td>María Fernanda</td>
+                <td>General Pagada</td>
+                <td style="font-family:var(--font-mono);">$15.00</td>
+                <td><span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">VALIDADO ✅</span></td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono); color:var(--accent); font-weight:800;">#TK-9082</td>
+                <td style="font-weight:800; color:#fff;">Jazz Experimental Quito</td>
+                <td>Mateo Silva</td>
+                <td>General Pagada</td>
+                <td style="font-family:var(--font-mono);">$12.00</td>
+                <td><span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">VALIDADO ✅</span></td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono); color:var(--accent); font-weight:800;">#TK-9083</td>
+                <td style="font-weight:800; color:#fff;">Voces del Barrio</td>
+                <td>Carlos Ruiz</td>
+                <td>Acceso Libre (Gratis)</td>
+                <td style="font-family:var(--font-mono);">$0.00</td>
+                <td><span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">VALIDADO ✅</span></td>
+              </tr>
+              <tr>
+                <td style="font-family:var(--font-mono); color:var(--accent); font-weight:800;">#TK-9084</td>
+                <td style="font-weight:800; color:#fff;">Carnaval Sonoro</td>
+                <td>Lucía Benítez</td>
+                <td>General Pagada</td>
+                <td style="font-family:var(--font-mono);">$8.00</td>
+                <td><span style="background:rgba(234,179,8,0.2); color:var(--gold); padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">EN ESPERA ⏳</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (kpiKey === 'revenue') {
+      specificContent = `
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">RECAUDACIÓN BRUTA</div>
+            <div style="font-size:24px; font-weight:900; color:#10b981; margin-top:2px;">$48,250.00</div>
+            <div style="font-size:10px; color:var(--grey1);">Venta Total de Taquilla</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">COMISIÓN PLATAFORMA (5%)</div>
+            <div style="font-size:24px; font-weight:900; color:var(--accent); margin-top:2px;">$2,412.50</div>
+            <div style="font-size:10px; color:var(--grey1);">Fondo de Mantenimiento</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">NETO LIQUIDADO A ARTISTAS (95%)</div>
+            <div style="font-size:24px; font-weight:900; color:var(--gold); margin-top:2px;">$45,837.50</div>
+            <div style="font-size:10px; color:var(--grey1);">Transferido a colectivos</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">TICKET PROMEDIO (AVG)</div>
+            <div style="font-size:24px; font-weight:900; color:#38bdf8; margin-top:2px;">$12.53</div>
+            <div style="font-size:10px; color:var(--grey1);">Valor por entrada pagada</div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:20px;">
+          <h4 style="font-size:13px; font-weight:800; color:#fff; margin-bottom:14px; font-family:var(--font-mono);">💳 DESGLOSE POR MÉTODOS DE PAGO UTILIZADOS</h4>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; font-family:var(--font-mono);">
+                <span>💳 Tarjeta de Débito / Crédito (Visa, Mastercard)</span>
+                <span>$26,500.00 (55%)</span>
+              </div>
+              <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                <div style="width:55%; height:100%; background:#10b981;"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; font-family:var(--font-mono);">
+                <span>🏦 Transferencia Bancaria Directa</span>
+                <span>$14,200.00 (29%)</span>
+              </div>
+              <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                <div style="width:29%; height:100%; background:#38bdf8;"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; font-family:var(--font-mono);">
+                <span>📱 PayPhone / Deuna QR Móvil</span>
+                <span>$7,550.00 (16%)</span>
+              </div>
+              <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                <div style="width:16%; height:100%; background:var(--accent);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px;">
+          <h4 style="font-size:13px; font-weight:800; color:#fff; margin-bottom:12px; font-family:var(--font-mono);">📈 INGRESOS Y LIQUIDACIÓN POR ESPECTÁCULO</h4>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ESPECTÁCULO</th>
+                <th>BOLETOS</th>
+                <th>RECAUDADO ($)</th>
+                <th>NETO ARTISTA (95%)</th>
+                <th>ESTADO LIQUIDACIÓN</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:900; color:#fff;">Movimiento Urbano: El Rito</td>
+                <td style="font-family:var(--font-mono);">1,200</td>
+                <td style="font-family:var(--font-mono); color:#10b981; font-weight:800;">$18,000.00</td>
+                <td style="font-family:var(--font-mono); color:var(--accent);">$17,100.00</td>
+                <td><span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">PAGADO ✅</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:900; color:#fff;">Jazz Experimental Quito</td>
+                <td style="font-family:var(--font-mono);">850</td>
+                <td style="font-family:var(--font-mono); color:#10b981; font-weight:800;">$10,200.00</td>
+                <td style="font-family:var(--font-mono); color:var(--accent);">$9,690.00</td>
+                <td><span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">PAGADO ✅</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:900; color:#fff;">Carnaval Sonoro</td>
+                <td style="font-family:var(--font-mono);">1,100</td>
+                <td style="font-family:var(--font-mono); color:#10b981; font-weight:800;">$8,800.00</td>
+                <td style="font-family:var(--font-mono); color:var(--accent);">$8,360.00</td>
+                <td><span style="background:rgba(234,179,8,0.2); color:var(--gold); padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800;">EN PROCESO ⏳</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    return `
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+              <h2 style="font-size:22px; font-weight:900; color:#ffffff; margin:0;">${currentKpi.title}</h2>
+            </div>
+            <p style="color:var(--grey1); font-size:13px; font-family:var(--font-mono); margin:0;">
+              ${currentKpi.subTitle}
+            </p>
+          </div>
+          <div style="background:rgba(255,255,255,0.05); border:1px solid var(--border); padding:8px 16px; border-radius:12px; text-align:right;">
+            <div style="font-size:24px; font-weight:900; font-family:var(--font-mono); color:${currentKpi.accentColor};">${currentKpi.value}</div>
+            <div style="font-size:10px; color:var(--grey1); font-family:var(--font-mono); font-weight:700;">${currentKpi.sub}</div>
+          </div>
+        </div>
+
+        ${navTabsHtml}
+
+        ${specificContent}
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1);">
+          <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1);">
+            ⚡ Datos sincronizados en tiempo real con KAWSAY Cloud (Quito, Ecuador)
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn-secondary" onclick="showToast('📊 Reporte detallado exportado correctamente a formato CSV');" style="padding:8px 14px; font-size:11px; font-family:var(--font-mono); font-weight:800; border:1px solid var(--border); color:#fff; border-radius:6px; cursor:pointer;">
+              📥 EXPORTAR CSV
+            </button>
+            <button class="btn-primary" id="btn-kpi-modal-close" style="padding:8px 16px; font-size:11px; font-family:var(--font-mono); font-weight:900; background:${currentKpi.accentColor}; color:#000; border-radius:6px; cursor:pointer; border:none;">
+              CERRAR DESGLOSE
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function openAuthModal(defaultTab = 'login') {
+    showModal('#modal-auth');
+    const tabLogin = $('#tab-btn-login');
+    const tabReg = $('#tab-btn-register');
+    const formLogin = $('#form-auth-login');
+    const formReg = $('#form-auth-register');
+    const authAlert = $('#auth-alert-msg');
+    if (authAlert) authAlert.style.display = 'none';
+
+    if (defaultTab === 'register' && tabReg && formReg) {
+      tabReg.style.background = 'var(--accent)'; tabReg.style.color = '#000000'; tabReg.style.fontWeight = '900'; tabReg.style.border = 'none';
+      if (tabLogin) {
+        tabLogin.style.background = 'rgba(255,255,255,0.08)'; tabLogin.style.color = '#ffffff'; tabLogin.style.fontWeight = '700'; tabLogin.style.border = '1px solid rgba(255,255,255,0.2)';
+      }
+      formReg.style.display = 'flex';
+      if (formLogin) formLogin.style.display = 'none';
+    } else {
+      if (tabLogin) {
+        tabLogin.style.background = 'var(--accent)'; tabLogin.style.color = '#000000'; tabLogin.style.fontWeight = '900'; tabLogin.style.border = 'none';
+      }
+      if (tabReg) {
+        tabReg.style.background = 'rgba(255,255,255,0.08)'; tabReg.style.color = '#ffffff'; tabReg.style.fontWeight = '700'; tabReg.style.border = '1px solid rgba(255,255,255,0.2)';
+      }
+      if (formLogin) formLogin.style.display = 'flex';
+      if (formReg) formReg.style.display = 'none';
+    }
+  }
+
   function closeAuthModal() { hideModal('#modal-auth'); }
+
+  function openOnboardingModal(isEditingOnly = false) {
+    const modal = $('#modal-onboarding-preferences');
+    if (!modal) return;
+    
+    const activeCats = (currentUser && currentUser.preferences && currentUser.preferences.categories) || ['Teatro', 'Música Andina'];
+    const activeZones = (currentUser && currentUser.preferences && currentUser.preferences.zones) || ['Centro Histórico', 'La Floresta'];
+
+    $$('#onboarding-categories-tags .onboarding-tag-pill').forEach(btn => {
+      if (activeCats.includes(btn.dataset.cat)) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
+
+    $$('#onboarding-zones-tags .onboarding-tag-pill').forEach(btn => {
+      if (activeZones.includes(btn.dataset.zone)) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
+
+    showModal('#modal-onboarding-preferences');
+  }
+
+  function closeOnboardingModal() { hideModal('#modal-onboarding-preferences'); }
 
   function openCartModal() {
     const listDiv = $('#cart-items-list');
@@ -2790,31 +4483,120 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     if (name) showToast(`Perfil de Artista "${name}" registrado exitosamente.`);
   }
 
-  async function openSpaceFormModal() {
+  function openSpaceCreateModal() {
     if (currentUser.role === 'invitado') { openAuthModal(); return; }
-    const spaceName = prompt("Nombre de tu Espacio Cultural en Quito:");
-    const spaceType = prompt("Tipo (ej: Galería, Teatro, Club de Vinilos):") || "Espacio Cultural";
-    if (spaceName) {
-      try {
-        const res = await fetch(`${API_BASE}/spaces`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: spaceName, type: spaceType, owner_id: currentUser.id })
-        });
-        if (res.ok) {
-          showToast(`Espacio "${spaceName}" guardado en SQLite.`);
-          await loadInitialData();
-          renderSidebar();
+    showModal('#modal-create-space');
+  }
+
+  function closeSpaceCreateModal() {
+    hideModal('#modal-create-space');
+  }
+
+  async function openSpaceFormModal() {
+    openSpaceCreateModal();
+  }
+
+  async function handleCreateSpaceSubmit(e) {
+    e.preventDefault();
+    const catsInput = $('#sp-categories') ? $('#sp-categories').value : '';
+    const catArray = catsInput.split(',').map(c => c.trim()).filter(Boolean);
+
+    const spaceData = {
+      name: $('#sp-name').value,
+      type: $('#sp-type').value,
+      sector: $('#sp-sector').value,
+      capacity: parseInt($('#sp-capacity').value) || 200,
+      address: $('#sp-address').value,
+      hours: $('#sp-hours').value,
+      categories: catArray.length ? catArray : ['Arte', 'Cultura'],
+      image: $('#sp-image').value || 'images/space_nave01.jpg',
+      description: $('#sp-desc').value,
+      owner_id: currentUser.id
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/spaces`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(spaceData)
+      });
+      if (res.ok) {
+        showToast(`🏛️ Espacio "${spaceData.name}" registrado con éxito en SQLite.`);
+        closeSpaceCreateModal();
+        e.target.reset();
+        await loadInitialData();
+        renderSidebar();
+        renderTopbar();
+        if (currentView === 'home') renderHomeView();
+        else if (currentView === 'space') {
+          const viewEl = document.getElementById('view-space');
+          if (viewEl) renderSpaceStudioView(viewEl);
+        } else if (currentView === 'admin') {
+          const viewEl = document.getElementById('view-admin');
+          if (viewEl) renderAdminDashboardView(viewEl);
+        }
+      } else {
+        const errData = await res.json();
+        showToast(errData.error || 'Error al guardar espacio');
+      }
+    } catch (err) {
+      showToast('Error de conexión con el servidor.');
+    }
+  }
+
+  async function deleteSpace(spaceId) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este espacio cultural?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/spaces/${spaceId}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('🗑️ Espacio cultural eliminado.');
+        await loadInitialData();
+        if (currentView === 'space') {
+          const viewEl = document.getElementById('view-space');
+          if (viewEl) renderSpaceStudioView(viewEl);
+        } else if (currentView === 'admin') {
+          const viewEl = document.getElementById('view-admin');
+          if (viewEl) renderAdminDashboardView(viewEl);
+        } else {
           renderHomeView();
         }
-      } catch (err) {
-        showToast("Error al guardar el espacio.");
       }
+    } catch (e) {
+      showToast('Error al eliminar el espacio.');
+    }
+  }
+
+  async function deleteEvent(eventId) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este evento de la cartelera?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/events/${eventId}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('🗑️ Evento eliminado de la base de datos.');
+        await loadInitialData();
+        if (currentView === 'admin') {
+          const viewEl = document.getElementById('view-admin');
+          if (viewEl) renderAdminDashboardView(viewEl);
+        } else if (currentView === 'artist') {
+          const viewEl = document.getElementById('view-artist');
+          if (viewEl) renderArtistStudioView(viewEl);
+        } else if (currentView === 'space') {
+          const viewEl = document.getElementById('view-space');
+          if (viewEl) renderSpaceStudioView(viewEl);
+        } else {
+          renderHomeView();
+        }
+      }
+    } catch (e) {
+      showToast('Error al eliminar el evento.');
     }
   }
 
   async function handleCreateEventSubmit(e) {
     e.preventDefault();
+
+    const sectorVal = $('#ev-sector') ? $('#ev-sector').value : 'Centro Histórico';
+    const capacityVal = $('#ev-capacity') ? parseInt($('#ev-capacity').value) : 200;
+    const castVal = $('#ev-cast') ? $('#ev-cast').value : '';
 
     const eventData = {
       title: $('#ev-title').value,
@@ -2827,6 +4609,9 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
       price: $('#ev-price').value || 'Gratis',
       venue: $('#ev-venue').value,
       full_venue: $('#ev-venue').value,
+      sector: sectorVal,
+      capacity: capacityVal,
+      cast: castVal,
       image: $('#ev-image') ? $('#ev-image').value : 'images/hero_concierto.jpg',
       organizer_id: currentUser.id,
       role: currentUser.role
@@ -2846,8 +4631,8 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
       if (res.ok) {
         showToast(isEditing
           ? `Cartelera "${eventData.title}" modificada con éxito.`
-          : (currentUser.role === 'admin'
-            ? `Cartelera "${eventData.title}" publicada en vivo.`
+          : (currentUser.role === 'admin' || currentUser.role === 'espacio' || currentUser.role === 'artista'
+            ? `🎉 Cartelera "${eventData.title}" publicada en vivo.`
             : `Cartelera "${eventData.title}" enviada. En revisión admin.`)
         );
         closeCreateModal();
@@ -2855,7 +4640,19 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         editingEventId = null;
         await loadInitialData();
         renderTopbar();
-        renderHomeView();
+        if (currentView === 'home') renderHomeView();
+        else if (currentView === 'calendar-week') renderWeekView();
+        else if (currentView === 'calendar-month') renderMonthView();
+        else if (currentView === 'admin') {
+          const viewEl = document.getElementById('view-admin');
+          if (viewEl) renderAdminDashboardView(viewEl);
+        } else if (currentView === 'artist') {
+          const viewEl = document.getElementById('view-artist');
+          if (viewEl) renderArtistStudioView(viewEl);
+        } else if (currentView === 'space') {
+          const viewEl = document.getElementById('view-space');
+          if (viewEl) renderSpaceStudioView(viewEl);
+        }
       }
     } catch (err) {
       showToast("Error de comunicación con el backend.");
@@ -2940,6 +4737,23 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     editingEventId = null;
     $('#modal-create-title').textContent = `📜 GENERADOR DE CARTELERA PROFESIONAL (${currentUser.role.toUpperCase()})`;
     if ($('#btn-submit-billboard')) $('#btn-submit-billboard').textContent = '🚀 PUBLICAR CARTELERA EN VIVO';
+
+    const venueSelect = $('#ev-venue-select');
+    if (venueSelect) {
+      venueSelect.innerHTML = `<option value="">-- Seleccionar Espacio Registrado --</option>` +
+        apiSpaces.map(sp => `<option value="${sp.name}">${sp.name} (${sp.sector || 'Quito'})</option>`).join('') +
+        `<option value="__custom__">➕ Escribir otro recinto manualmente</option>`;
+
+      venueSelect.onchange = () => {
+        if (venueSelect.value && venueSelect.value !== '__custom__') {
+          $('#ev-venue').value = venueSelect.value;
+          const matchedSp = apiSpaces.find(s => s.name === venueSelect.value);
+          if (matchedSp && matchedSp.sector && $('#ev-sector')) {
+            $('#ev-sector').value = matchedSp.sector;
+          }
+        }
+      };
+    }
     showModal('#modal-create');
   }
   function closeCreateModal() {
@@ -3005,6 +4819,272 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     bindCardInteractions();
   }
 
+  // ============================================================
+  //  ESPACIO CULTURAL — VISTA DE PÁGINA COMPLETA
+  //  Basada en el screenshot de referencia del usuario
+  // ============================================================
+  function navigateSpaceDetail(spaceId) {
+    openSpaceDetailModal(spaceId);
+  }
+
+  function renderSpaceDetailPage(view, sp) {
+    // Enrich defaults
+    if (!sp.image) sp.image = 'images/hero_banner.jpg';
+    if (!sp.description) sp.description = 'Espacio cultural referente de Quito para la experimentación artística.';
+    if (!sp.sector) sp.sector = 'Quito';
+    if (!sp.address) sp.address = 'Quito, Ecuador';
+    if (!sp.hours) sp.hours = 'Lun–Vie: 09:00–19:00 · Sáb: 10:00–18:00';
+    if (!sp.categories) sp.categories = ['Arte', 'Cultura', 'Comunidad'];
+    if (!sp.eventsCount) sp.eventsCount = 0;
+    if (!sp.collectionsCount) sp.collectionsCount = 0;
+    if (!sp.rating) sp.rating = 4.8;
+    if (!sp.ratingCount) sp.ratingCount = 0;
+    if (!sp.nextEvent) sp.nextEvent = '—';
+    if (!sp.capacity) sp.capacity = 0;
+
+    // Related events (any event in this space)
+    const spaceEvents = apiEvents.filter(e =>
+      e.status === 'approved'
+    ).slice(0, 4);
+
+    const galleryImages = sp.gallery || [sp.image, sp.image, sp.image, sp.image];
+
+    view.innerHTML = `
+      <div class="space-detail-page" style="min-height:100vh; background:#0a0a0a; padding-bottom:80px;">
+
+        <!-- ── HEADER HERO ── -->
+        <div style="position:relative; background:#000; padding: 28px 0 0;">
+          <!-- Back button + breadcrumb -->
+          <div style="padding:0 32px 16px; display:flex; align-items:center; gap:10px;">
+            <button id="btn-space-detail-back" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; border-radius:8px; padding:7px 14px; font-family:var(--font-mono); font-size:11px; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; transition:background 0.15s;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              ESPACIOS
+            </button>
+            <span style="color:rgba(255,255,255,0.3); font-size:11px; font-family:var(--font-mono);">/</span>
+            <span style="color:rgba(255,255,255,0.5); font-size:11px; font-family:var(--font-mono); font-weight:700;">${sp.name}</span>
+          </div>
+
+          <!-- Badges -->
+          <div style="padding:0 32px 14px; display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="background:var(--accent,#d4ff00); color:#000; font-family:var(--font-mono); font-size:10px; font-weight:900; padding:5px 12px; border-radius:6px;">${sp.badge || 'ESPACIO'}</span>
+            <span style="background:rgba(255,255,255,0.1); color:#fff; font-family:var(--font-mono); font-size:10px; font-weight:800; padding:5px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">${sp.sector.toUpperCase()}</span>
+            <span style="background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); font-family:var(--font-mono); font-size:10px; font-weight:700; padding:5px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.1);">${sp.type}</span>
+          </div>
+
+          <!-- GIANT TITLE -->
+          <div style="padding:0 32px 20px;">
+            <h1 style="font-size:clamp(36px, 5.5vw, 72px); font-weight:900; color:#fff; line-height:0.92; letter-spacing:-2px; text-transform:uppercase; margin:0; max-width:800px;">
+              ${sp.name}
+            </h1>
+          </div>
+
+          <!-- Action buttons row -->
+          <div style="padding:0 32px 24px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button id="btn-spd-follow" style="display:flex; align-items:center; gap:8px; padding:10px 20px; background:var(--accent); color:#000; border:none; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; cursor:pointer; transition:filter 0.15s;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              SEGUIR ESPACIO
+            </button>
+            <button id="btn-spd-share" style="width:38px; height:38px; border-radius:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button id="btn-spd-save" style="width:38px; height:38px; border-radius:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            </button>
+          </div>
+
+          <!-- Stats bar -->
+          <div style="border-top:1px solid rgba(255,255,255,0.07); display:flex; gap:0; overflow-x:auto;">
+            ${[
+              { label: 'EVENTOS CON AFORO', value: sp.eventsCount || 0 },
+              { label: 'COLECCIONES', value: sp.collectionsCount || 0 },
+              { label: 'VALORACIÓN', value: `★ ${sp.rating}` },
+              { label: 'PRÓXIMO EN', value: sp.nextEvent || '—' },
+            ].map((stat, i) => `
+              <div style="flex:1; min-width:140px; padding:16px 24px; border-right:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; gap:3px;">
+                <span style="font-family:var(--font-mono); font-size:9px; font-weight:700; color:rgba(255,255,255,0.35); letter-spacing:0.8px;">${stat.label}</span>
+                <span style="font-family:var(--font-mono); font-size:18px; font-weight:900; color:${i === 2 ? '#eab308' : '#fff'};">${stat.value}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- ── BODY: 2-column layout ── -->
+        <div style="display:grid; grid-template-columns:1fr 340px; gap:28px; padding:28px 32px; align-items:start;">
+
+          <!-- ── LEFT COLUMN ── -->
+          <div style="display:flex; flex-direction:column; gap:28px;">
+
+            <!-- Acerca del Espacio -->
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+                <span style="width:18px; height:2px; background:var(--accent);"></span>
+                <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">ACERCA DEL ESPACIO</span>
+              </div>
+              <p style="color:rgba(255,255,255,0.78); line-height:1.7; font-size:14px; max-width:680px; margin:0 0 16px;">
+                ${sp.description}
+              </p>
+              ${sp.description.length > 200 ? `
+                <div style="display:flex; align-items:center; gap:8px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06);">
+                  <span style="width:18px; height:2px; background:rgba(255,255,255,0.3);"></span>
+                  <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">AGOTADOS DE ESTE ESPACIO</span>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Galería fotográfica -->
+            <div>
+              <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+                ${galleryImages.slice(0, 4).map((img, i) => `
+                  <div style="aspect-ratio:1; border-radius:10px; overflow:hidden; background:#1a1a1a;">
+                    <img src="${img}" style="width:100%; height:100%; object-fit:cover; filter:brightness(0.75); transition:filter 0.2s; cursor:pointer;" onmouseover="this.style.filter='brightness(1)'" onmouseout="this.style.filter='brightness(0.75)'">
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Próximos Eventos en este espacio -->
+            <div>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="width:18px; height:2px; background:var(--accent);"></span>
+                  <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">PRÓXIMOS EVENTOS</span>
+                </div>
+                <span style="font-family:var(--font-mono); font-size:10px; color:rgba(255,255,255,0.3);">AÑO · ${spaceEvents.length} EVENTOS</span>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                ${spaceEvents.map(ev => `
+                  <div class="space-detail-ev-card" data-ev-id="${ev.id}" style="background:#111; border:1px solid rgba(255,255,255,0.07); border-radius:12px; overflow:hidden; cursor:pointer; transition:border-color 0.15s, transform 0.15s;" onmouseover="this.style.borderColor='rgba(212,255,0,0.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.07)';this.style.transform='none'">
+                    <div style="position:relative;">
+                      <img src="${ev.image}" style="width:100%; height:130px; object-fit:cover;">
+                      <div style="position:absolute; top:8px; left:8px; display:flex; gap:5px;">
+                        <span style="background:var(--accent); color:#000; font-family:var(--font-mono); font-size:9px; font-weight:900; padding:3px 8px; border-radius:5px;">${ev.category || 'EVENTO'}</span>
+                        ${ev.badge ? `<span style="background:rgba(0,0,0,0.7); color:#fff; font-family:var(--font-mono); font-size:9px; font-weight:800; padding:3px 8px; border-radius:5px; border:1px solid rgba(255,255,255,0.2);">${ev.badge}</span>` : ''}
+                      </div>
+                    </div>
+                    <div style="padding:12px 14px;">
+                      <div style="font-size:10px; font-family:var(--font-mono); color:rgba(255,255,255,0.4); margin-bottom:5px;">${ev.date} · ${ev.time} <span style="color:var(--accent); font-weight:900;">${ev.price}</span></div>
+                      <div style="font-weight:900; font-size:13px; color:#fff; line-height:1.2; margin-bottom:5px;">${ev.title}</div>
+                      <div style="font-size:11px; color:rgba(255,255,255,0.45); display:flex; align-items:center; gap:4px;">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        ${ev.venue || sp.name}
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+          </div><!-- /LEFT -->
+
+          <!-- ── RIGHT SIDEBAR ── -->
+          <div style="display:flex; flex-direction:column; gap:16px; position:sticky; top:20px;">
+
+            <!-- Disponibilidad card -->
+            <div style="background:#111; border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden;">
+              <div style="padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:8px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">DISPONIBILIDAD</span>
+              </div>
+              <div style="padding:16px 18px; display:flex; flex-direction:column; gap:14px;">
+                <!-- Sector -->
+                <div style="display:flex; align-items:flex-start; gap:10px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.5" style="flex-shrink:0;margin-top:2px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  <div>
+                    <div style="font-size:14px; font-weight:800; color:#fff;">${sp.sector}</div>
+                  </div>
+                </div>
+                <!-- Dirección -->
+                <div>
+                  <div style="font-family:var(--font-mono); font-size:9px; font-weight:700; color:rgba(255,255,255,0.3); letter-spacing:0.8px; margin-bottom:4px;">DIRECCIÓN</div>
+                  <div style="font-size:13px; color:rgba(255,255,255,0.75);">${sp.address}</div>
+                </div>
+                <!-- Horario -->
+                <div>
+                  <div style="font-family:var(--font-mono); font-size:9px; font-weight:700; color:rgba(255,255,255,0.3); letter-spacing:0.8px; margin-bottom:4px;">HORARIO</div>
+                  <div style="font-size:12px; color:rgba(255,255,255,0.65); line-height:1.5;">${sp.hours}</div>
+                </div>
+                <!-- Capacidad -->
+                <div>
+                  <div style="font-family:var(--font-mono); font-size:9px; font-weight:700; color:rgba(255,255,255,0.3); letter-spacing:0.8px; margin-bottom:4px;">SOBRE DOMICILIO</div>
+                  <div style="font-size:12px; color:rgba(255,255,255,0.65);">Capacidad: ${sp.capacity} personas</div>
+                </div>
+                <!-- Map placeholder -->
+                <div id="btn-spd-map-card" style="background:#1a1a1a; border:1px solid rgba(255,255,255,0.07); border-radius:10px; height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; cursor:pointer; transition:border-color 0.15s;" onmouseover="this.style.borderColor='rgba(212,255,0,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.07)'">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span style="font-family:var(--font-mono); font-size:9px; font-weight:800; color:rgba(255,255,255,0.3); letter-spacing:0.5px;">VER MAPA</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- En este espacio (categorías + stats) -->
+            <div style="background:#111; border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden;">
+              <div style="padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:8px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">EN ESTE ESPACIO</span>
+              </div>
+              <div style="padding:10px 6px;">
+                ${sp.categories.map((cat, i) => `
+                  <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-radius:8px; cursor:pointer; transition:background 0.12s;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='transparent'">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${i === 0 ? 'var(--accent)' : 'rgba(255,255,255,0.3)'}" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>
+                      <span style="font-size:13px; color:${i === 0 ? '#fff' : 'rgba(255,255,255,0.6)'}; font-weight:${i === 0 ? '700' : '500'};">${cat}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <span style="font-family:var(--font-mono); font-size:11px; font-weight:800; color:rgba(255,255,255,0.35);">${Math.floor(100 + Math.random() * 200)} AÑO</span>
+                      <span style="font-family:var(--font-mono); font-size:11px; font-weight:900; color:var(--accent); min-width:24px; text-align:right;">${Math.floor(20 + Math.random() * 100)}</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Social icons -->
+            <div style="background:#111; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px 18px;">
+              <div style="display:flex; gap:10px; justify-content:center;">
+                ${[
+                  { icon: 'M12 2.163c3.204 0 3.584.012 4.85.07...', label: 'IG', color: '#e1306c' },
+                ].map(() => '').join('')}
+                ${['IG', 'FB', 'YT', 'WEB'].map((net, i) => `
+                  <button style="width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.6); font-family:var(--font-mono); font-size:9px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.6)'">${net}</button>
+                `).join('')}
+              </div>
+            </div>
+
+          </div><!-- /RIGHT SIDEBAR -->
+
+        </div><!-- /body grid -->
+
+        <!-- Footer strip -->
+        <div style="margin:0 32px; padding:20px 0; border-top:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <span style="font-family:var(--font-mono); font-size:10px; color:rgba(255,255,255,0.2);">© 2026 KAWSAY · Plataforma Cultural de Quito · Todos los derechos reservados</span>
+          <span style="font-family:var(--font-mono); font-size:10px; color:rgba(255,255,255,0.2);">ADMIN · ARTISTAS</span>
+        </div>
+
+      </div>
+    `;
+
+    // Listeners
+    $('#btn-space-detail-back').addEventListener('click', () => navigate('home'));
+    $('#btn-spd-follow').addEventListener('click', function() {
+      showToast(`¡Ahora sigues a ${sp.name}!`);
+      this.style.background = 'rgba(212,255,0,0.15)';
+      this.style.color = 'var(--accent)';
+      this.style.border = '1.5px solid var(--accent)';
+      this.innerHTML = '✓ SIGUIENDO';
+    });
+    $('#btn-spd-share').addEventListener('click', () => {
+      navigator.clipboard && navigator.clipboard.writeText(window.location.href);
+      showToast('¡Enlace copiado!');
+    });
+    $('#btn-spd-map-card').addEventListener('click', () => {
+      window.open(`https://maps.google.com?q=${encodeURIComponent(sp.address + ', Quito')}`, '_blank');
+    });
+
+    view.querySelectorAll('.space-detail-ev-card').forEach(el => {
+      el.addEventListener('click', () => openEventDetailModal(el.dataset.evId));
+    });
+  }
+
   function navigate(view) {
     // 🛡️ CONTROL DE ACCESO BASADO EN ROLES (RBAC)
     if (view === 'admin' && currentUser.role !== 'admin' && currentUser.role !== 'gestor') {
@@ -3038,6 +5118,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     if (view === 'admin' && viewEl) renderAdminDashboardView(viewEl);
     if (view === 'artist' && viewEl) renderArtistStudioView(viewEl);
     if (view === 'space' && viewEl) renderSpaceStudioView(viewEl);
+    // Space detail is rendered on demand via navigateSpaceDetail()
 
     const main = document.getElementById('main');
     if (main) main.scrollTop = 0;

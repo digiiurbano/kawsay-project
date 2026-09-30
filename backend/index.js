@@ -52,17 +52,20 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(400).json({ error: 'Correo y contraseña son requeridos' });
   }
 
-  db.get(`SELECT id, name, email, role, avatar, bio FROM users WHERE LOWER(email) = LOWER(?) AND (password = ? OR password IS NULL)`, [email.trim(), password], (err, row) => {
+  db.get(`SELECT id, name, email, role, avatar, bio, preferences FROM users WHERE LOWER(email) = LOWER(?) AND (password = ? OR password IS NULL)`, [email.trim(), password], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!row) {
       return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu correo y contraseña.' });
+    }
+    if (row.preferences && typeof row.preferences === 'string') {
+      try { row.preferences = JSON.parse(row.preferences); } catch (e) {}
     }
     res.json({ message: 'Inicio de sesión exitoso', user: row });
   });
 });
 
 app.post('/api/auth/register', (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, preferences } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Nombre, correo y contraseña son obligatorios' });
   }
@@ -70,31 +73,50 @@ app.post('/api/auth/register', (req, res) => {
   const validRole = ['espectador', 'artista', 'espacio', 'admin', 'gestor'].includes(role) ? role : 'espectador';
   const id = 'usr-' + Date.now();
   const avatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+  const prefStr = preferences ? (typeof preferences === 'string' ? preferences : JSON.stringify(preferences)) : null;
 
-  const sql = `INSERT INTO users (id, name, email, password, role, avatar, bio) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-  db.run(sql, [id, name.trim(), email.trim().toLowerCase(), password, validRole, avatar, `Perfil de ${validRole} en KAWSAY`], function(err) {
+  const sql = `INSERT INTO users (id, name, email, password, role, avatar, bio, preferences) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  db.run(sql, [id, name.trim(), email.trim().toLowerCase(), password, validRole, avatar, `Perfil de ${validRole} en KAWSAY`, prefStr], function(err) {
     if (err) {
-      if (err.message.includes('UNIQUE')) {
+      if (err.message && err.message.includes('UNIQUE')) {
         return res.status(400).json({ error: 'Este correo electrónico ya está registrado.' });
       }
       return res.status(500).json({ error: err.message });
     }
-    const newUser = { id, name, email: email.toLowerCase(), role: validRole, avatar, bio: `Perfil de ${validRole} en KAWSAY` };
+    const newUser = { id, name, email: email.toLowerCase(), role: validRole, avatar, bio: `Perfil de ${validRole} en KAWSAY`, preferences: preferences || null };
     res.status(201).json({ message: 'Usuario registrado exitosamente', user: newUser });
   });
 });
 
-app.get('/api/users', (req, res) => {
-  db.all(`SELECT id, name, email, role, avatar, bio FROM users`, [], (err, rows) => {
+app.post('/api/users/:id/preferences', (req, res) => {
+  const { preferences } = req.body;
+  const prefStr = preferences ? (typeof preferences === 'string' ? preferences : JSON.stringify(preferences)) : null;
+  db.run(`UPDATE users SET preferences = ? WHERE id = ?`, [prefStr, req.params.id], function(err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+    res.json({ message: 'Preferencias guardadas exitosamente', preferences });
+  });
+});
+
+app.get('/api/users', (req, res) => {
+  db.all(`SELECT id, name, email, role, avatar, bio, preferences FROM users`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const formatted = rows.map(r => {
+      if (r.preferences && typeof r.preferences === 'string') {
+        try { r.preferences = JSON.parse(r.preferences); } catch (e) {}
+      }
+      return r;
+    });
+    res.json(formatted);
   });
 });
 
 app.get('/api/users/:id', (req, res) => {
-  db.get(`SELECT id, name, email, role, avatar, bio FROM users WHERE id = ?`, [req.params.id], (err, row) => {
+  db.get(`SELECT id, name, email, role, avatar, bio, preferences FROM users WHERE id = ?`, [req.params.id], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!row) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (row.preferences && typeof row.preferences === 'string') {
+      try { row.preferences = JSON.parse(row.preferences); } catch (e) {}
+    }
     res.json(row);
   });
 });
@@ -144,11 +166,12 @@ app.get('/api/events/:id', (req, res) => {
   });
 });
 
-// Crear Nuevo Evento (Gestor o Admin)
+// Crear Nuevo Evento (Artista, Espacio, Gestor o Admin)
 app.post('/api/events', (req, res) => {
   const {
     title, full_title, badge, description, category,
-    date, time, price, venue, full_venue, image, organizer_id, role
+    date, time, price, venue, full_venue, image, organizer_id, role,
+    sector, capacity, cast
   } = req.body;
 
   if (!title || !category || !date || !time || !venue) {
@@ -156,20 +179,21 @@ app.post('/api/events', (req, res) => {
   }
 
   const id = 'ev-' + Date.now();
-  // Si lo crea un Admin se aprueba automáticamente; si lo crea un Gestor queda 'pending'
-  const initialStatus = (role === 'admin') ? 'approved' : 'pending';
+  // Auto-aprobar si lo crea un Admin, Espacio o Artista
+  const initialStatus = (role === 'admin' || role === 'espacio' || role === 'artista') ? 'approved' : 'pending';
   const defaultImage = image || 'images/hero_banner.jpg';
   const orgId = organizer_id || 'usr-gestor-1';
 
   const sql = `
-    INSERT INTO events (id, title, full_title, badge, description, category, date, time, price, venue, full_venue, image, status, organizer_id, sold_out)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    INSERT INTO events (id, title, full_title, badge, description, category, date, time, price, venue, full_venue, image, status, organizer_id, sold_out, sector, capacity, cast)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
   `;
 
   const params = [
     id, title, full_title || title, badge || category.toUpperCase(),
     description || '', category, date, time, price || 'Gratis',
-    venue, full_venue || venue, defaultImage, initialStatus, orgId
+    venue, full_venue || venue, defaultImage, initialStatus, orgId,
+    sector || 'Centro Histórico', capacity || 200, cast || ''
   ];
 
   db.run(sql, params, function(err) {
@@ -250,7 +274,7 @@ app.put('/api/events/:id/status', (req, res) => {
 app.put('/api/events/:id', (req, res) => {
   const {
     title, full_title, badge, description, category,
-    date, time, price, venue, full_venue, image
+    date, time, price, venue, full_venue, image, sector, capacity, cast
   } = req.body;
 
   if (!title || !category || !date || !time || !venue) {
@@ -260,7 +284,8 @@ app.put('/api/events/:id', (req, res) => {
   const sql = `
     UPDATE events
     SET title = ?, full_title = ?, badge = ?, description = ?, category = ?,
-        date = ?, time = ?, price = ?, venue = ?, full_venue = ?, image = ?
+        date = ?, time = ?, price = ?, venue = ?, full_venue = ?, image = ?,
+        sector = ?, capacity = ?, cast = ?
     WHERE id = ?
   `;
 
@@ -268,6 +293,7 @@ app.put('/api/events/:id', (req, res) => {
     title, full_title || title, badge || category.toUpperCase(),
     description || '', category, date, time, price || 'Gratis',
     venue, full_venue || venue, image || 'images/hero_banner.jpg',
+    sector || 'Centro Histórico', capacity || 200, cast || '',
     req.params.id
   ];
 
@@ -291,22 +317,87 @@ app.delete('/api/events/:id', (req, res) => {
 app.get('/api/spaces', (req, res) => {
   db.all(`SELECT * FROM spaces`, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+    const formatted = rows.map(r => {
+      if (r.categories && typeof r.categories === 'string' && r.categories.startsWith('[')) {
+        try { r.categories = JSON.parse(r.categories); } catch (e) {}
+      }
+      return r;
+    });
+    res.json(formatted);
+  });
+});
+
+app.get('/api/spaces/:id', (req, res) => {
+  db.get(`SELECT * FROM spaces WHERE id = ?`, [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Espacio no encontrado' });
+    if (row.categories && typeof row.categories === 'string' && row.categories.startsWith('[')) {
+      try { row.categories = JSON.parse(row.categories); } catch (e) {}
+    }
+    res.json(row);
   });
 });
 
 app.post('/api/spaces', (req, res) => {
-  const { name, type, image, owner_id } = req.body;
+  const { name, type, image, owner_id, sector, address, hours, categories, description, capacity } = req.body;
   if (!name || !type) {
     return res.status(400).json({ error: 'Nombre y tipo de espacio son obligatorios' });
   }
   const id = 'sp-' + Date.now();
   const img = image || 'images/space_nave01.jpg';
-  const owner = owner_id || 'usr-gestor-1';
+  const owner = owner_id || 'usr-espacio-1';
+  const catStr = Array.isArray(categories) ? JSON.stringify(categories) : (categories || '');
 
-  db.run(`INSERT INTO spaces (id, name, type, image, owner_id) VALUES (?, ?, ?, ?, ?)`, [id, name, type, img, owner], function(err) {
+  const sql = `
+    INSERT INTO spaces (id, name, type, image, owner_id, sector, address, hours, categories, description, capacity)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const params = [
+    id, name, type, img, owner,
+    sector || 'Quito', address || 'Quito, Ecuador',
+    hours || 'Lun-Sáb: 09:00 - 20:00', catStr,
+    description || `Espacio cultural ${name} en Quito.`,
+    capacity || 200
+  ];
+
+  db.run(sql, params, function(err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ message: 'Espacio cultural creado', id });
+    res.status(201).json({ message: 'Espacio cultural creado exitosamente', id });
+  });
+});
+
+app.put('/api/spaces/:id', (req, res) => {
+  const { name, type, image, sector, address, hours, categories, description, capacity } = req.body;
+  if (!name || !type) {
+    return res.status(400).json({ error: 'Nombre y tipo de espacio son obligatorios' });
+  }
+  const catStr = Array.isArray(categories) ? JSON.stringify(categories) : (categories || '');
+
+  const sql = `
+    UPDATE spaces
+    SET name = ?, type = ?, image = ?, sector = ?, address = ?, hours = ?, categories = ?, description = ?, capacity = ?
+    WHERE id = ?
+  `;
+  const params = [
+    name, type, image || 'images/space_nave01.jpg',
+    sector || 'Quito', address || 'Quito, Ecuador',
+    hours || 'Lun-Sáb: 09:00 - 20:00', catStr,
+    description || '', capacity || 200,
+    req.params.id
+  ];
+
+  db.run(sql, params, function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Espacio no encontrado' });
+    res.json({ message: 'Espacio cultural actualizado exitosamente' });
+  });
+});
+
+app.delete('/api/spaces/:id', (req, res) => {
+  db.run(`DELETE FROM spaces WHERE id = ?`, [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Espacio no encontrado' });
+    res.json({ message: 'Espacio eliminado correctamente' });
   });
 });
 
