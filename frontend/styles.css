@@ -503,7 +503,7 @@ input, select { font-family: inherit; }
 .event-card:hover .event-card-img { filter: brightness(0.65) grayscale(100%); }
 
 .event-card-img-wrap {
-  aspect-ratio: 1/1;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--surface2);

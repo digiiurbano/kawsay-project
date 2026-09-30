@@ -970,24 +970,30 @@ const App = (() => {
   // DISEÑO DEDICADO PARA ESPACIO CULTURAL (GESTIÓN DE RECINTO)
   // ============================================================
   function renderSpaceStudioView(view) {
-    const mySpaces = apiSpaces.length > 0 ? apiSpaces : [
-      { id: 'sp-004', name: 'Teatro Nacional Quito', type: 'ARTES ESCÉNICAS', sector: 'Centro Histórico', address: 'Av. 10 de Agosto y Briceño', capacity: 500, image: 'images/space_teatro.jpg' }
-    ];
+    const userOwnedSpaces = apiSpaces.filter(sp => sp.owner_id === currentUser.id);
+    const visibleSpaces = (currentUser.role === 'admin' || currentUser.role === 'gestor') 
+      ? (apiSpaces.length > 0 ? apiSpaces : [{ id: 'sp-004', name: 'Teatro Nacional Quito', type: 'ARTES ESCÉNICAS', sector: 'Centro Histórico', address: 'Av. 10 de Agosto y Briceño', capacity: 500, image: 'images/space_teatro.jpg', owner_id: currentUser.id }])
+      : (userOwnedSpaces.length > 0 ? userOwnedSpaces : apiSpaces.filter(sp => sp.owner_id === currentUser.id || sp.id === 'sp-004'));
+    
+    const activeSpace = visibleSpaces[0] || apiSpaces[0] || { id: 'sp-004', name: 'Teatro Nacional Quito', type: 'ARTES ESCÉNICAS', sector: 'Centro Histórico', address: 'Av. 10 de Agosto y Briceño', capacity: 500, image: 'images/space_teatro.jpg' };
 
     view.innerHTML = `
       <!-- Banner del Espacio Cultural -->
       <div class="space-dashboard-banner">
         <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-          <img src="${mySpaces[0].image || 'images/space_teatro.jpg'}" style="width:100px; height:100px; border-radius:14px; object-fit:cover; border:3px solid var(--gold);" alt="${mySpaces[0].name}">
+          <img src="${activeSpace.image || 'images/space_nave01.jpg'}" style="width:100px; height:100px; border-radius:14px; object-fit:cover; border:3px solid var(--gold);" alt="${activeSpace.name}">
           <div style="flex:1;">
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-              <h1 style="font-size:32px; font-weight:900;">${mySpaces[0].name}</h1>
+              <h1 style="font-size:32px; font-weight:900;">${activeSpace.name}</h1>
               <span class="space-verified-tag">🏛️ RECINTO CULTURAL VERIFICADO</span>
             </div>
             <p style="color:var(--grey1); font-size:14px; font-family:var(--font-mono); margin-bottom:12px;">
-              ${mySpaces[0].sector || 'Quito'} · ${mySpaces[0].address || 'Quito, Ecuador'} · Capacidad: ${mySpaces[0].capacity || 500} Espectadores
+              ${activeSpace.sector || 'Quito'} · ${activeSpace.address || 'Quito, Ecuador'} · Capacidad: ${activeSpace.capacity || 200} Espectadores
             </p>
             <div style="display:flex; gap:12px; flex-wrap:wrap;">
+              <button class="btn-primary" id="btn-space-edit-my-profile" data-id="${activeSpace.id}" style="padding:14px 24px; font-size:13px; font-family:var(--font-mono); font-weight:900; background:#3b82f6; color:#fff; border:none; border-radius:6px; display:inline-flex; align-items:center; gap:8px;">
+                ✏️ EDITAR PERFIL DE MI RECINTO
+              </button>
               <button class="btn-primary" id="btn-space-create-event" style="padding:14px 28px; font-size:13px; font-family:var(--font-mono); font-weight:900; background:var(--gold); color:#000; display:inline-flex; align-items:center; gap:8px;">
                 ${ICONS.plus} + CREAR & PUBLICAR EVENTO EN MI RECINTO
               </button>
@@ -1001,15 +1007,15 @@ const App = (() => {
         <!-- Métricas del Recinto -->
         <div class="artist-stats-grid" style="margin-top:24px;">
           <div class="artist-stat-card">
-            <div class="artist-stat-num" style="color:var(--gold);">${mySpaces[0].capacity || 500}</div>
+            <div class="artist-stat-num" style="color:var(--gold);">${activeSpace.capacity || 200}</div>
             <div class="artist-stat-label">AFORO MÁXIMO</div>
           </div>
           <div class="artist-stat-card">
-            <div class="artist-stat-num" style="color:var(--gold);">${apiSpaces.length}</div>
-            <div class="artist-stat-label">RECINTOS REGISTRADOS</div>
+            <div class="artist-stat-num" style="color:var(--gold);">${visibleSpaces.length}</div>
+            <div class="artist-stat-label">MIS RECINTOS</div>
           </div>
           <div class="artist-stat-card">
-            <div class="artist-stat-num" style="color:var(--gold);">${apiEvents.length}</div>
+            <div class="artist-stat-num" style="color:var(--gold);">${apiEvents.filter(e => e.venue === activeSpace.name || e.full_venue === activeSpace.name).length || apiEvents.length}</div>
             <div class="artist-stat-label">FUNCIONES EN VIVO</div>
           </div>
           <div class="artist-stat-card">
@@ -1019,14 +1025,14 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- SECCIÓN: DIRECTORIO & GESTIÓN DE ESPACIOS CULTURALES -->
+      <!-- SECCIÓN: DIRECTORIO & GESTIÓN DE MIS ESPACIOS CULTURALES -->
       <section class="section">
         <div class="section-header">
-          <h2 class="section-title" style="font-size:22px; font-weight:900;">🏛️ ESPACIOS CULTURALES EN LA PLATAFORMA (${apiSpaces.length})</h2>
+          <h2 class="section-title" style="font-size:22px; font-weight:900;">🏛️ MIS ESPACIOS CULTURALES REGISTRADOS (${visibleSpaces.length})</h2>
           <span class="section-link" id="btn-space-new-space-top">+ REGISTRAR OTRO ESPACIO</span>
         </div>
         <div class="spaces-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
-          ${apiSpaces.map(sp => `
+          ${visibleSpaces.map(sp => `
             <div class="space-card" data-id="${sp.id}" style="background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; cursor:pointer; transition:transform 0.2s, border-color 0.2s;">
               <img src="${sp.image || 'images/space_nave01.jpg'}" style="width:100%; height:140px; object-fit:cover;">
               <div style="padding:16px;">
@@ -1035,7 +1041,8 @@ const App = (() => {
                 <p style="font-size:12px; color:var(--grey1); margin-bottom:10px; display:flex; align-items:center; gap:4px;">
                   📍 ${sp.sector || 'Quito'} · Capacidad ${sp.capacity || 200} pers.
                 </p>
-                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:10px; gap:8px;">
+                  <button class="btn-secondary btn-edit-space-card" data-id="${sp.id}" style="padding:6px 12px; font-size:11px; font-weight:800; background:#3b82f6; color:#fff; border:none; border-radius:6px;">✏️ EDITAR</button>
                   <button class="btn-secondary btn-open-space-profile" data-id="${sp.id}" style="padding:6px 12px; font-size:11px; font-weight:800;">VER PERFIL ➔</button>
                   <button class="btn-action-delete-space" data-id="${sp.id}" style="background:none; border:none; color:#ef4444; font-size:12px; cursor:pointer;" title="Eliminar espacio">🗑️</button>
                 </div>
@@ -1062,6 +1069,18 @@ const App = (() => {
     $('#btn-space-new-event-top').addEventListener('click', openCreateModal);
     if ($('#btn-space-register-new')) $('#btn-space-register-new').addEventListener('click', openSpaceCreateModal);
     if ($('#btn-space-new-space-top')) $('#btn-space-new-space-top').addEventListener('click', openSpaceCreateModal);
+    if ($('#btn-space-edit-my-profile')) {
+      $('#btn-space-edit-my-profile').addEventListener('click', (e) => {
+        openEditSpaceModal(e.currentTarget.dataset.id);
+      });
+    }
+
+    view.querySelectorAll('.btn-edit-space-card').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEditSpaceModal(btn.dataset.id);
+      });
+    });
 
     view.querySelectorAll('.btn-open-space-profile').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -1079,7 +1098,7 @@ const App = (() => {
 
     view.querySelectorAll('.space-card').forEach(card => {
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.btn-action-delete-space')) return;
+        if (e.target.closest('.btn-action-delete-space') || e.target.closest('.btn-edit-space-card')) return;
         const id = card.dataset.id;
         if (id) openSpaceDetailModal(id);
       });
@@ -4480,12 +4499,51 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     if (name) showToast(`Perfil de Artista "${name}" registrado exitosamente.`);
   }
 
+  let editingSpaceId = null;
+
   function openSpaceCreateModal() {
     if (currentUser.role === 'invitado') { openAuthModal(); return; }
+    editingSpaceId = null;
+    const titleEl = document.getElementById('modal-create-space-title');
+    if (titleEl) titleEl.textContent = '🏛️ REGISTRAR NUEVO ESPACIO CULTURAL EN QUITO';
+    const form = document.getElementById('create-space-form');
+    if (form) form.reset();
+    if ($('#sp-name')) $('#sp-name').value = '';
+    if ($('#sp-type')) $('#sp-type').value = 'ESPACIO CULTURAL';
+    if ($('#sp-sector')) $('#sp-sector').value = 'La Floresta';
+    if ($('#sp-capacity')) $('#sp-capacity').value = 200;
+    if ($('#sp-address')) $('#sp-address').value = 'Calle Galavis E9-35 e Isabel La Católica';
+    if ($('#sp-hours')) $('#sp-hours').value = 'Mar–Sáb: 10:00–22:00';
+    if ($('#sp-categories')) $('#sp-categories').value = 'Arte Contemporáneo, Exposiciones, Música';
+    if ($('#sp-image')) $('#sp-image').value = 'images/space_nave01.jpg';
+    if ($('#sp-desc')) $('#sp-desc').value = 'Laboratorio de creación y espacio cultural independiente en Quito.';
+    showModal('#modal-create-space');
+  }
+
+  function openEditSpaceModal(spaceId) {
+    if (currentUser.role === 'invitado') { openAuthModal(); return; }
+    const sp = apiSpaces.find(s => s.id === spaceId);
+    if (!sp) return;
+    editingSpaceId = spaceId;
+    const titleEl = document.getElementById('modal-create-space-title');
+    if (titleEl) titleEl.textContent = `✏️ EDITAR PERFIL DE MI ESPACIO: ${sp.name}`;
+    if ($('#sp-name')) $('#sp-name').value = sp.name || '';
+    if ($('#sp-type')) $('#sp-type').value = sp.type || 'ESPACIO CULTURAL';
+    if ($('#sp-sector')) $('#sp-sector').value = sp.sector || 'La Floresta';
+    if ($('#sp-capacity')) $('#sp-capacity').value = sp.capacity || 200;
+    if ($('#sp-address')) $('#sp-address').value = sp.address || '';
+    if ($('#sp-hours')) $('#sp-hours').value = sp.hours || 'Mar–Sáb: 10:00–22:00';
+    let catText = sp.categories;
+    if (Array.isArray(catText)) catText = catText.join(', ');
+    try { if (typeof catText === 'string' && catText.startsWith('[')) catText = JSON.parse(catText).join(', '); } catch(e){}
+    if ($('#sp-categories')) $('#sp-categories').value = catText || 'Arte, Música, Teatro';
+    if ($('#sp-image')) $('#sp-image').value = sp.image || 'images/space_nave01.jpg';
+    if ($('#sp-desc')) $('#sp-desc').value = sp.description || '';
     showModal('#modal-create-space');
   }
 
   function closeSpaceCreateModal() {
+    editingSpaceId = null;
     hideModal('#modal-create-space');
   }
 
@@ -4512,14 +4570,18 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     };
 
     try {
-      const res = await fetch(`${API_BASE}/spaces`, {
-        method: 'POST',
+      const url = editingSpaceId ? `${API_BASE}/spaces/${editingSpaceId}` : `${API_BASE}/spaces`;
+      const method = editingSpaceId ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(spaceData)
       });
       if (res.ok) {
-        showToast(`🏛️ Espacio "${spaceData.name}" registrado con éxito en SQLite.`);
+        const toastMsg = editingSpaceId ? `✏️ Espacio "${spaceData.name}" actualizado con éxito.` : `🏛️ Espacio "${spaceData.name}" registrado con éxito.`;
+        showToast(toastMsg);
         closeSpaceCreateModal();
+        editingSpaceId = null;
         e.target.reset();
         await loadInitialData();
         renderSidebar();

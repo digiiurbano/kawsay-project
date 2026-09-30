@@ -292,17 +292,63 @@ app.get('/api/spaces', (req, res) => {
 });
 
 app.post('/api/spaces', (req, res) => {
-  const { name, type, image, owner_id } = req.body;
+  const { name, type, image, owner_id, sector, address, hours, categories, description, capacity } = req.body;
   if (!name || !type) {
     return res.status(400).json({ error: 'Nombre y tipo de espacio son obligatorios' });
   }
   const id = 'sp-' + Date.now();
   const img = image || 'images/space_nave01.jpg';
-  const owner = owner_id || 'usr-gestor-1';
+  const owner = owner_id || 'usr-espacio-1';
+  const catStr = Array.isArray(categories) ? JSON.stringify(categories) : (categories || '');
 
-  db.run(`INSERT INTO spaces (id, name, type, image, owner_id) VALUES (?, ?, ?, ?, ?)`, [id, name, type, img, owner], function(err) {
+  const sql = `
+    INSERT INTO spaces (id, name, type, image, owner_id, sector, address, hours, categories, description, capacity)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const params = [
+    id, name, type, img, owner,
+    sector || 'Quito', address || 'Quito, Ecuador',
+    hours || 'Lun-Sáb: 09:00 - 20:00', catStr,
+    description || `Espacio cultural ${name} en Quito.`,
+    capacity || 200
+  ];
+
+  db.run(sql, params, function(err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ message: 'Espacio cultural creado', id });
+    res.status(201).json({ message: 'Espacio cultural creado exitosamente', id });
+  });
+});
+
+app.put('/api/spaces/:id', (req, res) => {
+  const { name, type, image, sector, address, hours, categories, description, capacity } = req.body;
+  if (!name || !type) {
+    return res.status(400).json({ error: 'Nombre y tipo de espacio son obligatorios' });
+  }
+  const catStr = Array.isArray(categories) ? JSON.stringify(categories) : (categories || '');
+
+  const sql = `
+    UPDATE spaces
+    SET name = ?, type = ?, image = ?, sector = ?, address = ?, hours = ?, categories = ?, description = ?, capacity = ?
+    WHERE id = ?
+  `;
+  const params = [
+    name, type, image || 'images/space_nave01.jpg',
+    sector || 'Quito', address || 'Quito, Ecuador',
+    hours || 'Lun-Sáb: 09:00 - 20:00', catStr,
+    description || '', capacity || 200,
+    req.params.id
+  ];
+
+  db.run(sql, params, function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Espacio cultural actualizado exitosamente' });
+  });
+});
+
+app.delete('/api/spaces/:id', (req, res) => {
+  db.run(`DELETE FROM spaces WHERE id = ?`, [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Espacio eliminado correctamente' });
   });
 });
 
