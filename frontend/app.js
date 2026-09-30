@@ -1468,6 +1468,11 @@ const App = (() => {
 
           <!-- Action buttons row -->
           <div style="padding:0 32px 24px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            ${(sp.owner_id === currentUser.id || currentUser.role === 'admin' || currentUser.role === 'gestor') ? `
+              <button id="btn-spd-edit-inline" data-id="${sp.id}" style="display:flex; align-items:center; gap:8px; padding:10px 20px; background:#3b82f6; color:#fff; border:none; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; cursor:pointer; transition:filter 0.15s;">
+                ✏️ EDITAR ESTE ESPACIO
+              </button>
+            ` : ''}
             <button id="btn-spd-follow" style="display:flex; align-items:center; gap:8px; padding:10px 20px; background:var(--accent); color:#000; border:none; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; cursor:pointer; transition:filter 0.15s;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               SEGUIR ESPACIO
@@ -1634,6 +1639,12 @@ const App = (() => {
     // Listeners
     $('#modal-space-back').addEventListener('click', closeEventDetailModal);
     $('#modal-space-close').addEventListener('click', closeEventDetailModal);
+    if ($('#btn-spd-edit-inline')) {
+      $('#btn-spd-edit-inline').addEventListener('click', (e) => {
+        closeEventDetailModal();
+        setTimeout(() => openEditSpaceModal(e.currentTarget.dataset.id), 200);
+      });
+    }
 
     $('#btn-spd-follow').addEventListener('click', function() {
       showToast(`¡Ahora sigues a ${sp.name}!`);
@@ -2967,100 +2978,146 @@ const App = (() => {
           <div style="display:grid; grid-template-columns: 1fr 340px; gap:24px; margin-top:16px;">
             
             <form id="create-event-form" style="max-height: 520px; overflow-y: auto; padding-right: 10px;">
-              <div class="form-group">
-                <label class="form-label">TÍTULO DEL ESPECTÁCULO O CONCIERTO</label>
-                <input class="form-input" id="ev-title" type="text" placeholder="Ej: Mateo & La Banda: Quito Jazz Fest 2026" value="${currentUser.role === 'espacio' ? 'Temporada Teatral: Oedipus Rex en Teatro Nacional' : 'Mateo & La Banda en Concert'}" required>
+              <!-- Barra de Pasos / Wizard -->
+              <div class="event-step-bar" style="display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid #1e293b; padding-bottom:10px;">
+                <button type="button" class="btn-event-step active" data-step="1" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:var(--accent); color:#000; border:none; border-radius:6px; cursor:pointer;">
+                  1. BÁSICOS
+                </button>
+                <button type="button" class="btn-event-step" data-step="2" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
+                  2. FECHA & LUGAR
+                </button>
+                <button type="button" class="btn-event-step" data-step="3" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
+                  3. DETALLES
+                </button>
+                <button type="button" class="btn-event-step" data-step="4" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
+                  4. PLANTILLA
+                </button>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">SUBTÍTULO / SLOGAN PROMOCIONAL</label>
-                <input class="form-input" id="ev-subtitle" type="text" placeholder="Ej: Una experiencia inmersiva de arte y música viva">
-              </div>
-
-              <div class="form-row">
+              <!-- PASO 1: BÁSICOS -->
+              <div class="event-step-pane" id="event-step-pane-1" style="display:block;">
                 <div class="form-group">
-                  <label class="form-label">ETIQUETA DE CARTELERA (BADGE)</label>
-                  <select class="form-select" id="ev-badge">
-                    <option value="ESTRENO EXCLUSIVO">ESTRENO EXCLUSIVO</option>
-                    <option value="ÚLTIMAS ENTRADAS">ÚLTIMAS ENTRADAS</option>
-                    <option value="PREVENTA VIP">PREVENTA VIP</option>
-                    <option value="ENTRADA LIBRE">ENTRADA LIBRE</option>
-                    <option value="FESTIVAL CULTURAL">FESTIVAL CULTURAL</option>
-                  </select>
+                  <label class="form-label">TÍTULO DEL ESPECTÁCULO O CONCIERTO</label>
+                  <input class="form-input" id="ev-title" type="text" placeholder="Ej: Mateo & La Banda: Quito Jazz Fest 2026" value="${currentUser.role === 'espacio' ? 'Temporada Teatral: Oedipus Rex en Teatro Nacional' : 'Mateo & La Banda en Concert'}" required>
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label">CATEGORÍA / DISCIPLINA</label>
-                  <select class="form-select" id="ev-category" required>
-                    <option value="Música">Música (Concierto / Recital)</option>
-                    <option value="Teatro">Teatro</option>
-                    <option value="Danza">Danza</option>
-                    <option value="Artes">Artes Plásticas</option>
-                    <option value="Cine">Cine / Audiovisual</option>
-                  </select>
+                  <label class="form-label">SUBTÍTULO / SLOGAN PROMOCIONAL</label>
+                  <input class="form-input" id="ev-subtitle" type="text" placeholder="Ej: Una experiencia inmersiva de arte y música viva">
                 </div>
-              </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">FECHA DEL EVENTO</label>
-                  <input class="form-input" id="ev-date" type="date" value="2026-10-30" required>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">HORA DE INICIO (SHOW)</label>
-                  <input class="form-input" id="ev-time" type="time" value="20:00" required>
-                </div>
-              </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">ETIQUETA DE CARTELERA (BADGE)</label>
+                    <select class="form-select" id="ev-badge">
+                      <option value="ESTRENO EXCLUSIVO">ESTRENO EXCLUSIVO</option>
+                      <option value="ÚLTIMAS ENTRADAS">ÚLTIMAS ENTRADAS</option>
+                      <option value="PREVENTA VIP">PREVENTA VIP</option>
+                      <option value="ENTRADA LIBRE">ENTRADA LIBRE</option>
+                      <option value="FESTIVAL CULTURAL">FESTIVAL CULTURAL</option>
+                    </select>
+                  </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">SECTOR EN QUITO</label>
-                  <select class="form-select" id="ev-sector">
-                    <option value="Centro Histórico">Centro Histórico</option>
-                    <option value="La Floresta">La Floresta</option>
-                    <option value="Cumbayá">Cumbayá</option>
-                    <option value="Guápulo">Guápulo</option>
-                    <option value="La Mariscal">La Mariscal</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">RECINTO / ESPACIO CULTURAL</label>
-                  <select class="form-select" id="ev-venue-select" style="margin-bottom:6px;">
-                    <option value="">-- Seleccionar Espacio Registrado --</option>
-                  </select>
-                  <input class="form-input" id="ev-venue" type="text" placeholder="Ej: Teatro Nacional Quito, NAVE 01" value="${currentUser.role === 'espacio' ? 'Teatro Nacional Quito' : 'NAVE 01 (La Floresta)'}" required>
+                  <div class="form-group">
+                    <label class="form-label">CATEGORÍA / DISCIPLINA</label>
+                    <select class="form-select" id="ev-category" required>
+                      <option value="Música">Música (Concierto / Recital)</option>
+                      <option value="Teatro">Teatro</option>
+                      <option value="Danza">Danza</option>
+                      <option value="Artes">Artes Plásticas</option>
+                      <option value="Cine">Cine / Audiovisual</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">PRECIO DE ENTRADA ($ USD)</label>
-                  <input class="form-input" id="ev-price" type="text" placeholder="Ej: $15" value="$15">
+              <!-- PASO 2: FECHA & LUGAR -->
+              <div class="event-step-pane" id="event-step-pane-2" style="display:none;">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">FECHA DEL EVENTO</label>
+                    <input class="form-input" id="ev-date" type="date" value="2026-10-30" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">HORA DE INICIO (SHOW)</label>
+                    <input class="form-input" id="ev-time" type="time" value="20:00" required>
+                  </div>
                 </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">SECTOR EN QUITO</label>
+                    <select class="form-select" id="ev-sector">
+                      <option value="Centro Histórico">Centro Histórico</option>
+                      <option value="La Floresta">La Floresta</option>
+                      <option value="Cumbayá">Cumbayá</option>
+                      <option value="Guápulo">Guápulo</option>
+                      <option value="La Mariscal">La Mariscal</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">RECINTO / ESPACIO CULTURAL</label>
+                    <select class="form-select" id="ev-venue-select" style="margin-bottom:6px;">
+                      <option value="">-- Seleccionar Espacio Registrado --</option>
+                    </select>
+                    <input class="form-input" id="ev-venue" type="text" placeholder="Ej: Teatro Nacional Quito, NAVE 01" value="${currentUser.role === 'espacio' ? 'Teatro Nacional Quito' : 'NAVE 01 (La Floresta)'}" required>
+                  </div>
+                </div>
+
                 <div class="form-group">
                   <label class="form-label">AFORO MÁXIMO / ASISTENTES</label>
                   <input class="form-input" id="ev-capacity" type="number" placeholder="Ej: 500" value="500">
                 </div>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">ELENCO / PRODUCCIÓN / ARTISTAS INVITADOS</label>
-                <input class="form-input" id="ev-cast" type="text" placeholder="Ej: Compañía Nacional de Teatro, Elenco Principal">
+              <!-- PASO 3: DETALLES -->
+              <div class="event-step-pane" id="event-step-pane-3" style="display:none;">
+                <div class="form-group">
+                  <label class="form-label">PRECIO DE ENTRADA ($ USD)</label>
+                  <input class="form-input" id="ev-price" type="text" placeholder="Ej: $15" value="$15">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">ELENCO / PRODUCCIÓN / ARTISTAS INVITADOS</label>
+                  <input class="form-input" id="ev-cast" type="text" placeholder="Ej: Compañía Nacional de Teatro, Elenco Principal">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">SINOPSIS / DETALLES DEL SHOW</label>
+                  <textarea class="form-textarea" id="ev-desc" rows="3" placeholder="Resumen del repertorio, ambientación y detalles técnicos...">Presentación especial en nuestro escenario principal con sonido profesional, iluminación DMX y experiencia VIP.</textarea>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">URL AFICHE / BANNER (PROPORCIÓN 16:9 RECOMENDADA)</label>
+                  <input class="form-input" id="ev-image" type="text" placeholder="URL de la imagen del afiche (16:9)..." value="${currentUser.role === 'espacio' ? 'images/space_teatro.jpg' : 'images/hero_concierto.jpg'}">
+                </div>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">SINOPSIS / DETALLES DEL SHOW</label>
-                <textarea class="form-textarea" id="ev-desc" rows="3" placeholder="Resumen del repertorio, ambientación y detalles técnicos...">Presentación especial en nuestro escenario principal con sonido profesional, iluminación DMX y experiencia VIP.</textarea>
+              <!-- PASO 4: PLANTILLA & PUBLICAR -->
+              <div class="event-step-pane" id="event-step-pane-4" style="display:none;">
+                <div style="background:#1e293b; border:1px solid #334155; border-radius:10px; padding:14px; margin-bottom:16px;">
+                  <div style="font-size:12px; font-weight:800; color:var(--accent); font-family:var(--font-mono); margin-bottom:6px;">
+                    ✨ RESUMEN DE PLANTILLA GENERAL
+                  </div>
+                  <p style="font-size:12px; color:#cbd5e1; margin:0;">
+                    Verifica la información a la derecha. Al publicar, se agregará a la cartelera oficial y calendario de KAWSAY.
+                  </p>
+                </div>
+
+                <button class="btn-submit" id="btn-submit-billboard" type="submit" style="width:100%; font-size:14px; font-weight:900; background:var(--accent); color:#000; padding:14px; border:none; border-radius:6px; cursor:pointer;">
+                  🚀 PUBLICAR EVENTO EN LA CARTELERA
+                </button>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">URL AFICHE PROMOCIONAL (IMAGEN)</label>
-                <input class="form-input" id="ev-image" type="text" placeholder="URL de la imagen del afiche..." value="${currentUser.role === 'espacio' ? 'images/space_teatro.jpg' : 'images/hero_concierto.jpg'}">
+              <!-- Navegación de Pasos (Anterior / Siguiente) -->
+              <div style="display:flex; justify-content:space-between; margin-top:16px; border-top:1px solid #1e293b; padding-top:12px;">
+                <button type="button" id="btn-event-step-prev" style="padding:10px 18px; font-size:11px; font-weight:800; background:#1e293b; color:#fff; border:1px solid #334155; border-radius:6px; cursor:pointer; display:none;">
+                  ← PASO ANTERIOR
+                </button>
+                <button type="button" id="btn-event-step-next" style="padding:10px 18px; font-size:11px; font-weight:800; background:var(--gold); color:#000; border:none; border-radius:6px; cursor:pointer; margin-left:auto;">
+                  PASO SIGUIENTE →
+                </button>
               </div>
-
-              <button class="btn-submit" id="btn-submit-billboard" type="submit" style="margin-top:16px; width:100%; font-size:14px; font-weight:900; background:var(--accent); color:#000;">
-                🚀 PUBLICAR CARTELERA EN VIVO
-              </button>
             </form>
 
             <div style="background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:18px; display:flex; flex-direction:column; justify-content:space-between;">
@@ -4792,10 +4849,50 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
   }
 
   function closeAdminModal() { hideModal('#modal-admin'); }
+  let currentCreateEventStep = 1;
+
+  function setCreateEventStep(stepNum) {
+    currentCreateEventStep = stepNum;
+    for (let i = 1; i <= 4; i++) {
+      const pane = document.getElementById(`event-step-pane-${i}`);
+      if (pane) pane.style.display = (i === stepNum) ? 'block' : 'none';
+    }
+    document.querySelectorAll('.btn-event-step').forEach(btn => {
+      const s = parseInt(btn.dataset.step);
+      if (s === stepNum) {
+        btn.style.background = 'var(--accent)';
+        btn.style.color = '#000';
+      } else {
+        btn.style.background = '#1e293b';
+        btn.style.color = '#94a3b8';
+      }
+    });
+    const btnPrev = document.getElementById('btn-event-step-prev');
+    const btnNext = document.getElementById('btn-event-step-next');
+    if (btnPrev) btnPrev.style.display = (stepNum > 1) ? 'block' : 'none';
+    if (btnNext) btnNext.style.display = (stepNum < 4) ? 'block' : 'none';
+  }
+
   function openCreateModal() {
     editingEventId = null;
     $('#modal-create-title').textContent = `📜 GENERADOR DE CARTELERA PROFESIONAL (${currentUser.role.toUpperCase()})`;
     if ($('#btn-submit-billboard')) $('#btn-submit-billboard').textContent = '🚀 PUBLICAR CARTELERA EN VIVO';
+
+    setCreateEventStep(1);
+
+    document.querySelectorAll('.btn-event-step').forEach(btn => {
+      btn.onclick = () => setCreateEventStep(parseInt(btn.dataset.step));
+    });
+    if ($('#btn-event-step-prev')) {
+      $('#btn-event-step-prev').onclick = () => {
+        if (currentCreateEventStep > 1) setCreateEventStep(currentCreateEventStep - 1);
+      };
+    }
+    if ($('#btn-event-step-next')) {
+      $('#btn-event-step-next').onclick = () => {
+        if (currentCreateEventStep < 4) setCreateEventStep(currentCreateEventStep + 1);
+      };
+    }
 
     const venueSelect = $('#ev-venue-select');
     if (venueSelect) {
