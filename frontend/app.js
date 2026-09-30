@@ -1459,18 +1459,27 @@ const App = (() => {
             <span style="background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); font-family:var(--font-mono); font-size:10px; font-weight:700; padding:5px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.1);">${sp.type}</span>
           </div>
 
-          <!-- GIANT TITLE -->
+          <!-- GIANT TITLE WITH INLINE EDIT -->
           <div style="padding:0 32px 20px;">
-            <h1 style="font-size:clamp(32px, 5vw, 64px); font-weight:900; color:#fff; line-height:0.95; letter-spacing:-2px; text-transform:uppercase; margin:0; max-width:850px;">
-              ${sp.name}
-            </h1>
+            <div id="spd-title-display">
+              <h1 style="font-size:clamp(32px, 5vw, 64px); font-weight:900; color:#fff; line-height:0.95; letter-spacing:-2px; text-transform:uppercase; margin:0; max-width:850px;">
+                ${sp.name}
+              </h1>
+            </div>
+            <div id="spd-title-edit" style="display:none; max-width:850px;">
+              <label style="font-size:11px; font-family:var(--font-mono); color:var(--accent); font-weight:800;">NOMBRE DEL ESPACIO (EDICIÓN DIRECTA):</label>
+              <input id="spd-inline-name" type="text" value="${sp.name}" style="width:100%; font-size:24px; font-weight:900; background:#1e293b; color:#fff; border:1px solid var(--accent); border-radius:8px; padding:8px 12px; margin-top:4px;">
+            </div>
           </div>
 
           <!-- Action buttons row -->
           <div style="padding:0 32px 24px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            ${(sp.owner_id === currentUser.id || currentUser.role === 'admin' || currentUser.role === 'gestor') ? `
-              <button id="btn-spd-edit-inline" data-id="${sp.id}" style="display:flex; align-items:center; gap:8px; padding:10px 20px; background:#3b82f6; color:#fff; border:none; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; cursor:pointer; transition:filter 0.15s;">
-                ✏️ EDITAR ESTE ESPACIO
+            ${(sp.owner_id === currentUser.id || currentUser.role === 'admin' || currentUser.role === 'gestor' || currentUser.role === 'espacio') ? `
+              <button id="btn-spd-toggle-edit" style="display:flex; align-items:center; gap:8px; padding:10px 20px; background:#3b82f6; color:#fff; border:none; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; cursor:pointer; transition:filter 0.15s;">
+                ✏️ EDITAR DIRECTAMENTE EN ESTA PANTALLA
+              </button>
+              <button id="btn-spd-save-inline" style="display:none; align-items:center; gap:8px; padding:10px 20px; background:var(--gold); color:#000; border:none; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; cursor:pointer; transition:filter 0.15s;">
+                💾 GUARDAR CAMBIOS DIRECTAMENTE
               </button>
             ` : ''}
             <button id="btn-spd-follow" style="display:flex; align-items:center; gap:8px; padding:10px 20px; background:var(--accent); color:#000; border:none; border-radius:8px; font-family:var(--font-mono); font-size:12px; font-weight:900; cursor:pointer; transition:filter 0.15s;">
@@ -1513,9 +1522,14 @@ const App = (() => {
                 <span style="width:18px; height:2px; background:var(--accent);"></span>
                 <span style="font-family:var(--font-mono); font-size:10px; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:1px;">ACERCA DEL ESPACIO</span>
               </div>
-              <p style="color:rgba(255,255,255,0.78); line-height:1.7; font-size:14px; max-width:680px; margin:0 0 16px;">
-                ${sp.description}
-              </p>
+              <div id="spd-desc-display">
+                <p style="color:rgba(255,255,255,0.78); line-height:1.7; font-size:14px; max-width:680px; margin:0 0 16px;">
+                  ${sp.description}
+                </p>
+              </div>
+              <div id="spd-desc-edit" style="display:none; max-width:680px; margin-bottom:16px;">
+                <textarea id="spd-inline-desc" rows="4" style="width:100%; background:#1e293b; color:#fff; border:1px solid var(--accent); border-radius:8px; padding:10px; font-size:13px; font-family:inherit;">${sp.description}</textarea>
+              </div>
             </div>
 
             <!-- Galería fotográfica -->
@@ -1639,10 +1653,68 @@ const App = (() => {
     // Listeners
     $('#modal-space-back').addEventListener('click', closeEventDetailModal);
     $('#modal-space-close').addEventListener('click', closeEventDetailModal);
-    if ($('#btn-spd-edit-inline')) {
-      $('#btn-spd-edit-inline').addEventListener('click', (e) => {
-        closeEventDetailModal();
-        setTimeout(() => openEditSpaceModal(e.currentTarget.dataset.id), 200);
+    if ($('#btn-spd-toggle-edit')) {
+      let isEditingInline = false;
+      $('#btn-spd-toggle-edit').addEventListener('click', () => {
+        isEditingInline = !isEditingInline;
+        const displayTitle = $('#spd-title-display');
+        const editTitle = $('#spd-title-edit');
+        const displayDesc = $('#spd-desc-display');
+        const editDesc = $('#spd-desc-edit');
+        const saveBtn = $('#btn-spd-save-inline');
+
+        if (isEditingInline) {
+          if (displayTitle) displayTitle.style.display = 'none';
+          if (editTitle) editTitle.style.display = 'block';
+          if (displayDesc) displayDesc.style.display = 'none';
+          if (editDesc) editDesc.style.display = 'block';
+          if (saveBtn) saveBtn.style.display = 'inline-flex';
+          $('#btn-spd-toggle-edit').textContent = '❌ CANCELAR EDICIÓN';
+        } else {
+          if (displayTitle) displayTitle.style.display = 'block';
+          if (editTitle) editTitle.style.display = 'none';
+          if (displayDesc) displayDesc.style.display = 'block';
+          if (editDesc) editDesc.style.display = 'none';
+          if (saveBtn) saveBtn.style.display = 'none';
+          $('#btn-spd-toggle-edit').textContent = '✏️ EDITAR DIRECTAMENTE EN ESTA PANTALLA';
+        }
+      });
+    }
+
+    if ($('#btn-spd-save-inline')) {
+      $('#btn-spd-save-inline').addEventListener('click', async () => {
+        const newName = $('#spd-inline-name') ? $('#spd-inline-name').value : sp.name;
+        const newDesc = $('#spd-inline-desc') ? $('#spd-inline-desc').value : sp.description;
+
+        const updatedData = {
+          ...sp,
+          name: newName,
+          description: newDesc,
+          type: sp.type || 'ESPACIO CULTURAL',
+          sector: sp.sector || 'Quito',
+          address: sp.address || 'Quito, Ecuador',
+          hours: sp.hours || 'Lun-Sáb: 09:00 - 20:00',
+          categories: sp.categories || ['Arte', 'Cultura'],
+          capacity: sp.capacity || 200,
+          image: sp.image || 'images/space_nave01.jpg'
+        };
+
+        try {
+          const res = await fetch(`${API_BASE}/spaces/${sp.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+          });
+          if (res.ok) {
+            showToast(`💾 ¡Cambios de "${newName}" guardados directamente en SQLite!`);
+            await loadInitialData();
+            openSpaceDetailModal(sp.id);
+          } else {
+            showToast('Error al guardar cambios del espacio.');
+          }
+        } catch (err) {
+          showToast('Error de conexión al guardar cambios.');
+        }
       });
     }
 
@@ -3172,12 +3244,29 @@ const App = (() => {
           </div>
 
           <form id="create-space-form" style="display:flex; flex-direction:column; gap:14px; margin-top:16px;">
-            <div class="form-row">
-              <div class="form-group" style="flex:1;">
+            <!-- Barra de Pasos / Wizard Espacio -->
+            <div class="space-step-bar" style="display:flex; gap:6px; margin-bottom:12px; border-bottom:1px solid #1e293b; padding-bottom:10px;">
+              <button type="button" class="btn-space-step active" data-step="1" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:var(--accent); color:#000; border:none; border-radius:6px; cursor:pointer;">
+                1. BÁSICOS
+              </button>
+              <button type="button" class="btn-space-step" data-step="2" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
+                2. UBICACIÓN & AFORO
+              </button>
+              <button type="button" class="btn-space-step" data-step="3" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
+                3. HORARIOS
+              </button>
+              <button type="button" class="btn-space-step" data-step="4" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
+                4. PORTADA & PUBLICAR
+              </button>
+            </div>
+
+            <!-- PASO 1: BÁSICOS -->
+            <div class="space-step-pane" id="space-step-pane-1" style="display:block;">
+              <div class="form-group" style="margin-bottom:12px;">
                 <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">NOMBRE DEL ESPACIO / RECINTO</label>
                 <input class="form-input" id="sp-name" type="text" placeholder="Ej: Centro Cultural La Casa Rosa" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
               </div>
-              <div class="form-group" style="flex:1;">
+              <div class="form-group">
                 <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">TIPO / CATEGORÍA</label>
                 <select class="form-select" id="sp-type" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
                   <option value="ESPACIO CULTURAL">Espacio Cultural / Multidisciplinario</option>
@@ -3190,54 +3279,71 @@ const App = (() => {
               </div>
             </div>
 
-            <div class="form-row">
-              <div class="form-group" style="flex:1;">
-                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">SECTOR EN QUITO</label>
-                <select class="form-select" id="sp-sector" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
-                  <option value="La Floresta">La Floresta</option>
-                  <option value="Centro Histórico">Centro Histórico</option>
-                  <option value="La Mariscal">La Mariscal</option>
-                  <option value="Cumbayá">Cumbayá & Tumbaco</option>
-                  <option value="Guápulo">Guápulo</option>
-                  <option value="Norte de Quito">Norte de Quito</option>
-                  <option value="Sur de Quito">Sur de Quito</option>
-                </select>
+            <!-- PASO 2: UBICACIÓN & AFORO -->
+            <div class="space-step-pane" id="space-step-pane-2" style="display:none;">
+              <div class="form-row" style="margin-bottom:12px;">
+                <div class="form-group" style="flex:1;">
+                  <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">SECTOR EN QUITO</label>
+                  <select class="form-select" id="sp-sector" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+                    <option value="La Floresta">La Floresta</option>
+                    <option value="Centro Histórico">Centro Histórico</option>
+                    <option value="La Mariscal">La Mariscal</option>
+                    <option value="Cumbayá">Cumbayá & Tumbaco</option>
+                    <option value="Guápulo">Guápulo</option>
+                    <option value="Norte de Quito">Norte de Quito</option>
+                    <option value="Sur de Quito">Sur de Quito</option>
+                  </select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                  <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">AFORO / CAPACIDAD MÁXIMA</label>
+                  <input class="form-input" id="sp-capacity" type="number" placeholder="Ej: 200" value="200" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+                </div>
               </div>
-              <div class="form-group" style="flex:1;">
-                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">AFORO / CAPACIDAD MÁXIMA</label>
-                <input class="form-input" id="sp-capacity" type="number" placeholder="Ej: 200" value="200" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+
+              <div class="form-group">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DIRECCIÓN EXACTA</label>
+                <input class="form-input" id="sp-address" type="text" placeholder="Ej: Calle Galavis E9-35 e Isabel La Católica" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
               </div>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DIRECCIÓN EXACTA</label>
-              <input class="form-input" id="sp-address" type="text" placeholder="Ej: Calle Galavis E9-35 e Isabel La Católica" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
-            </div>
-
-            <div class="form-row">
-              <div class="form-group" style="flex:1;">
+            <!-- PASO 3: HORARIOS & DISCIPLINAS -->
+            <div class="space-step-pane" id="space-step-pane-3" style="display:none;">
+              <div class="form-group" style="margin-bottom:12px;">
                 <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">HORARIO DE ATENCIÓN</label>
                 <input class="form-input" id="sp-hours" type="text" placeholder="Ej: Mar–Sáb: 10:00–22:00" value="Mar–Sáb: 10:00–22:00" style="background:#1e293b; border:1px solid #334155; color:#fff;">
               </div>
-              <div class="form-group" style="flex:1;">
+              <div class="form-group">
                 <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DISCIPLINAS (SEPARADAS POR COMA)</label>
                 <input class="form-input" id="sp-categories" type="text" placeholder="Arte, Música, Teatro" value="Arte, Música, Teatro" style="background:#1e293b; border:1px solid #334155; color:#fff;">
               </div>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">URL FOTO DE PORTADA</label>
-              <input class="form-input" id="sp-image" type="text" placeholder="URL de la imagen del recinto..." value="images/space_nave01.jpg" style="background:#1e293b; border:1px solid #334155; color:#fff;">
+            <!-- PASO 4: PORTADA & PUBLICAR -->
+            <div class="space-step-pane" id="space-step-pane-4" style="display:none;">
+              <div class="form-group" style="margin-bottom:12px;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">URL FOTO DE PORTADA (PROPORCIÓN 16:9 RECOMENDADA)</label>
+                <input class="form-input" id="sp-image" type="text" placeholder="URL de la imagen del recinto..." value="images/space_nave01.jpg" style="background:#1e293b; border:1px solid #334155; color:#fff;">
+              </div>
+
+              <div class="form-group" style="margin-bottom:16px;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DESCRIPCIÓN / PROPUESTA CULTURAL</label>
+                <textarea class="form-textarea" id="sp-desc" rows="3" placeholder="Resumen de la propuesta del espacio..." style="background:#1e293b; border:1px solid #334155; color:#fff;">Espacio cultural independiente en Quito enfocado en la creación y expresión artística.</textarea>
+              </div>
+
+              <button class="btn-submit" id="btn-submit-space-form" type="submit" style="background:var(--gold); color:#000; font-weight:900; font-size:14px; padding:14px; border:none; border-radius:6px; cursor:pointer; width:100%;">
+                ✨ REGISTRAR Y PUBLICAR ESPACIO CULTURAL
+              </button>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DESCRIPCIÓN / PROPUESTA CULTURAL</label>
-              <textarea class="form-textarea" id="sp-desc" rows="3" placeholder="Resumen de la propuesta del espacio..." style="background:#1e293b; border:1px solid #334155; color:#fff;">Espacio cultural independiente en Quito enfocado en la creación y expresión artística.</textarea>
+            <!-- Navegación de Pasos (Anterior / Siguiente) -->
+            <div style="display:flex; justify-content:space-between; margin-top:14px; border-top:1px solid #1e293b; padding-top:10px;">
+              <button type="button" id="btn-space-step-prev" style="padding:10px 18px; font-size:11px; font-weight:800; background:#1e293b; color:#fff; border:1px solid #334155; border-radius:6px; cursor:pointer; display:none;">
+                ← PASO ANTERIOR
+              </button>
+              <button type="button" id="btn-space-step-next" style="padding:10px 18px; font-size:11px; font-weight:800; background:var(--gold); color:#000; border:none; border-radius:6px; cursor:pointer; margin-left:auto;">
+                PASO SIGUIENTE →
+              </button>
             </div>
-
-            <button class="btn-submit" type="submit" style="background:var(--gold); color:#000; font-weight:900; font-size:14px; padding:14px; border:none; border-radius:6px; cursor:pointer; margin-top:6px;">
-              ✨ REGISTRAR Y PUBLICAR ESPACIO CULTURAL
-            </button>
           </form>
         </div>
       </div>
@@ -4557,6 +4663,46 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
   }
 
   let editingSpaceId = null;
+  let currentCreateSpaceStep = 1;
+
+  function setCreateSpaceStep(stepNum) {
+    currentCreateSpaceStep = stepNum;
+    for (let i = 1; i <= 4; i++) {
+      const pane = document.getElementById(`space-step-pane-${i}`);
+      if (pane) pane.style.display = (i === stepNum) ? 'block' : 'none';
+    }
+    document.querySelectorAll('.btn-space-step').forEach(btn => {
+      const s = parseInt(btn.dataset.step);
+      if (s === stepNum) {
+        btn.style.background = 'var(--accent)';
+        btn.style.color = '#000';
+      } else {
+        btn.style.background = '#1e293b';
+        btn.style.color = '#94a3b8';
+      }
+    });
+    const btnPrev = document.getElementById('btn-space-step-prev');
+    const btnNext = document.getElementById('btn-space-step-next');
+    if (btnPrev) btnPrev.style.display = (stepNum > 1) ? 'block' : 'none';
+    if (btnNext) btnNext.style.display = (stepNum < 4) ? 'block' : 'none';
+  }
+
+  function bindSpaceStepEvents() {
+    setCreateSpaceStep(1);
+    document.querySelectorAll('.btn-space-step').forEach(btn => {
+      btn.onclick = () => setCreateSpaceStep(parseInt(btn.dataset.step));
+    });
+    if ($('#btn-space-step-prev')) {
+      $('#btn-space-step-prev').onclick = () => {
+        if (currentCreateSpaceStep > 1) setCreateSpaceStep(currentCreateSpaceStep - 1);
+      };
+    }
+    if ($('#btn-space-step-next')) {
+      $('#btn-space-step-next').onclick = () => {
+        if (currentCreateSpaceStep < 4) setCreateSpaceStep(currentCreateSpaceStep + 1);
+      };
+    }
+  }
 
   function openSpaceCreateModal() {
     if (currentUser.role === 'invitado') { openAuthModal(); return; }
@@ -4574,6 +4720,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     if ($('#sp-categories')) $('#sp-categories').value = 'Arte Contemporáneo, Exposiciones, Música';
     if ($('#sp-image')) $('#sp-image').value = 'images/space_nave01.jpg';
     if ($('#sp-desc')) $('#sp-desc').value = 'Laboratorio de creación y espacio cultural independiente en Quito.';
+    bindSpaceStepEvents();
     showModal('#modal-create-space');
   }
 
@@ -4596,6 +4743,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     if ($('#sp-categories')) $('#sp-categories').value = catText || 'Arte, Música, Teatro';
     if ($('#sp-image')) $('#sp-image').value = sp.image || 'images/space_nave01.jpg';
     if ($('#sp-desc')) $('#sp-desc').value = sp.description || '';
+    bindSpaceStepEvents();
     showModal('#modal-create-space');
   }
 
