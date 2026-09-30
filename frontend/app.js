@@ -5430,6 +5430,10 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     renderMobileBottomNav();
   }
 
+  function renderMobileBottomNav() {
+    // Helper para navegación móvil
+  }
+
   function bindGlobalEvents() {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
