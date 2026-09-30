@@ -327,7 +327,7 @@ const App = (() => {
         </div>
         <div class="nav-item ${currentView === 'join' ? 'active' : ''}" data-view="join" id="nav-join" style="font-size:14px; padding:12px 18px;">
           <div class="nav-icon-wrap">${ICONS.artist}</div>
-          <span>PORTAL DE PERFILES</span>
+          <span>PERFILES / REGISTRO</span>
         </div>
       </nav>
 
@@ -2221,9 +2221,9 @@ const App = (() => {
     const view = document.getElementById('view-join');
     view.innerHTML = `
       <div class="join-header">
-        <h1 class="join-header-title">PORTAL DE PERFILES Y PRUEBAS EN VIVO</h1>
+        <h1 class="join-header-title">PORTAL DE PERFILES</h1>
         <p class="join-header-desc">
-          Selecciona cualquiera de los 4 perfiles requeridos para iniciar sesión al instante y probar la lógica y permisos de la plataforma KAWSAY.
+          Selecciona un perfil para iniciar sesión y acceder a las funciones correspondientes de KAWSAY.
         </p>
       </div>
 
