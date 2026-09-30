@@ -325,10 +325,6 @@ const App = (() => {
           <div class="nav-icon-wrap" style="color:#eab308;">📢</div>
           <span>CONVOCATORIAS & FONDOS</span>
         </div>
-        <div class="nav-item ${currentView === 'join' ? 'active' : ''}" data-view="join" id="nav-join" style="font-size:14px; padding:12px 18px;">
-          <div class="nav-icon-wrap">${ICONS.artist}</div>
-          <span>PERFILES / REGISTRO</span>
-        </div>
       </nav>
 
       <div class="sidebar-library">
@@ -2219,6 +2215,7 @@ const App = (() => {
 
   function renderJoinView() {
     const view = document.getElementById('view-join');
+    if (!view) return;
     view.innerHTML = `
       <div class="join-header">
         <h1 class="join-header-title">PORTAL DE PERFILES</h1>
