@@ -37,11 +37,106 @@ const App = (() => {
 
   let usersList = [
     guestUser,
-    { id: 'usr-espectador-1', name: 'María Fernanda', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' },
+    { id: 'usr-espectador-1', name: 'Mateo Sandoval', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' },
     { id: 'usr-artista-1', name: 'Mateo & La Banda', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150' },
     { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
     { id: 'usr-admin-1', name: 'Admin Kawsay', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150' }
   ];
+
+  // ---- Friends & Social Layer State (Espectador) ----
+  let friendsState = {
+    totalConnections: 128,
+    onlineCount: 42,
+    searchQuery: '',
+    friends: [
+      {
+        id: 'fr-carlos',
+        name: 'CARLOS MOLINA',
+        statusType: 'event',
+        statusPrefix: 'ASISTIRÁ A:',
+        statusText: 'OSCURA RADIO (24 OCT)',
+        online: true,
+        avatar: 'images/event_voices.jpg'
+      },
+      {
+        id: 'fr-sofia',
+        name: 'SOFIA TERÁN',
+        statusType: 'event',
+        statusPrefix: 'ASISTIRÁ A:',
+        statusText: 'INDIE QUITO W4 (02 NOV)',
+        online: false,
+        avatar: 'images/event_portraits.jpg'
+      },
+      {
+        id: 'fr-roberto',
+        name: 'ROBERTO PAZ',
+        statusType: 'none',
+        statusPrefix: '',
+        statusText: 'SIN EVENTOS PRÓXIMOS',
+        online: false,
+        avatar: 'images/event_mural.jpg'
+      }
+    ],
+    sharedPlans: [
+      {
+        id: 'plan-cine',
+        title: 'FESTIVAL DE CINE INDEPENDIENTE',
+        meta: '15 NOV — TEATRO BOLÍVAR',
+        interestedCount: 5,
+        image: 'images/event_cinema.jpg',
+        avatars: [
+          'images/event_portraits.jpg',
+          'images/event_voices.jpg',
+          'images/event_carnival.jpg'
+        ],
+        extraCount: 2,
+        eventId: 'fe-001'
+      },
+      {
+        id: 'plan-jazz',
+        title: 'NOCHE DE JAZZ & VINO',
+        meta: '18 NOV — LA CAPILLA',
+        interestedCount: 2,
+        image: 'images/event_jazz.jpg',
+        avatars: [
+          'images/event_mural.jpg',
+          'images/space_radar.jpg'
+        ],
+        extraCount: 0,
+        eventId: 'ue-002'
+      }
+    ],
+    requests: [
+      {
+        id: 'req-polo',
+        name: 'POLO SANTAMARÍA',
+        mutual: '3 AMIGOS EN COMÚN',
+        avatar: 'images/event_carnival.jpg'
+      },
+      {
+        id: 'req-elena',
+        name: 'ELENA G.',
+        mutual: '8 AMIGOS EN COMÚN',
+        avatar: 'images/space_radar.jpg'
+      }
+    ],
+    similarMatches: [
+      {
+        id: 'mat-diego',
+        name: 'DIEGO V.',
+        percentage: 94,
+        description: 'AMBOS HAN ASISTIDO A 12 EVENTOS DE POST-PUNK Y CINE CLÁSICO ESTE AÑO.',
+        avatar: 'images/event_voices.jpg'
+      },
+      {
+        id: 'mat-ana',
+        name: 'ANA MARÍA',
+        percentage: 82,
+        description: 'INTERÉS COMPARTIDO EN FESTIVALES DE DISEÑO Y FERIAS DE ARTE LOCAL.',
+        avatar: 'images/space_museo.jpg'
+      }
+    ]
+  };
 
   let currentUser = guestUser;
   let currentLocation = 'TODOS';
@@ -163,12 +258,20 @@ const App = (() => {
     renderModals();
     bindGlobalEvents();
 
-    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'gestor')) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const profileParam = urlParams.get('profile');
+
+    if (profileParam) {
+      activeProfileKey = userProfilesData[profileParam] ? profileParam : 'mateo';
+      navigate('user');
+    } else if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'gestor')) {
       navigate('admin');
     } else if (currentUser && currentUser.role === 'artista') {
       navigate('artist');
     } else if (currentUser && currentUser.role === 'espacio') {
       navigate('space');
+    } else if (currentUser && (currentUser.role === 'espectador' || currentUser.role === 'usuario')) {
+      navigate('user');
     } else {
       navigate('home');
     }
@@ -184,6 +287,15 @@ const App = (() => {
       } else if (currentView === 'space') {
         const viewEl = document.getElementById('view-space');
         if (viewEl) renderSpaceStudioView(viewEl);
+      } else if (currentView === 'user') {
+        const viewEl = document.getElementById('view-user');
+        if (viewEl) renderUserProfileView(viewEl);
+      } else if (currentView === 'spaces-map') {
+        const viewEl = document.getElementById('view-spaces-map');
+        if (viewEl) renderSpacesMapView(viewEl);
+      } else if (currentView === 'friends') {
+        const viewEl = document.getElementById('view-friends');
+        if (viewEl) renderFriendsView(viewEl);
       } else if (currentView === 'home') {
         renderHomeView();
       } else if (currentView === 'calendar-month') {
@@ -285,10 +397,6 @@ const App = (() => {
         KAWSAY <span style="color:var(--accent); font-size:12px; font-weight:700;">QUITO</span>
       </div>
 
-      <!-- Estado de Autenticación en Sidebar -->
-      <div style="margin: 12px 18px 4px; padding: 10px 12px; background: ${currentUser.role === 'invitado' ? '#222' : 'var(--surface3)'}; border: 1px solid ${currentUser.role === 'invitado' ? 'var(--accent)' : 'var(--border)'}; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; color: ${currentUser.role === 'invitado' ? '#fff' : 'var(--accent)'}; font-weight: 800;">
-        ${currentUser.role === 'invitado' ? '🌐 VISITANTE (SIN INICIAR SESIÓN)' : `PERFIL: ${currentUser.role.toUpperCase()} (${currentUser.name})`}
-      </div>
 
       <nav class="sidebar-nav">
         <div class="nav-item ${currentView === 'home' ? 'active' : ''}" data-view="home" id="nav-inicio" style="font-size:14px; padding:12px 18px;">
@@ -321,44 +429,69 @@ const App = (() => {
           <div class="nav-icon-wrap">${ICONS.calendar}</div>
           <span>CALENDARIO MES</span>
         </div>
+        <div class="nav-item ${currentView === 'spaces-map' ? 'active' : ''}" data-view="spaces-map" id="nav-spaces" style="font-size:14px; padding:12px 18px;">
+          <div class="nav-icon-wrap" style="color:var(--accent);">${ICONS.landmark || '🏛️'}</div>
+          <span>ESPACIOS CULTURALES</span>
+        </div>
+        <div class="nav-item ${currentView === 'friends' ? 'active' : ''}" data-view="friends" id="nav-amigos" style="font-size:14px; padding:12px 18px;">
+          <div class="nav-icon-wrap" style="color:var(--accent);">👥</div>
+          <span>COMUNIDAD & AMIGOS</span>
+        </div>
         <div class="nav-item ${currentView === 'convocatorias' ? 'active' : ''}" data-view="convocatorias" id="nav-convocatorias" style="font-size:14px; padding:12px 18px;">
           <div class="nav-icon-wrap" style="color:#eab308;">📢</div>
           <span>CONVOCATORIAS & FONDOS</span>
         </div>
       </nav>
 
-      <div class="sidebar-library">
-        <div class="library-header" style="font-size:12px;">
-          <span>TU BIBLIOTECA</span>
-          <div class="library-add-btn" id="lib-add-btn" title="Añadir">${ICONS.plus}</div>
+      ${currentUser.role === 'invitado' ? `
+        <div class="sidebar-library" style="padding: 16px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 10px;">
+          <div style="color: var(--grey1); font-size: 12px; margin-bottom: 12px;">
+            Inicia sesión para crear tu biblioteca de eventos, favoritos y espacios culturales.
+          </div>
+          <button id="lib-login-btn" style="background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 8px 16px; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 700; width: 100%; transition: all 0.2s ease;">INICIAR SESIÓN</button>
         </div>
+      ` : `
+        <div class="sidebar-library">
+          <div class="library-header" style="font-size:12px;">
+            <span>TU BIBLIOTECA</span>
+            <div class="library-add-btn" id="lib-add-btn" title="Añadir">${ICONS.plus}</div>
+          </div>
 
-        <div class="library-item" data-view="calendar-month" id="lib-calendar">
-          <div class="lib-icon cal">${ICONS.calendar}</div>
-          <div class="lib-text">
-            <div class="lib-text-title" style="font-size:13px; font-weight:700;">TU CALENDARIO</div>
-            <div class="lib-text-sub">${apiEvents.filter(e => e.status === 'approved').length} EVENTOS</div>
+          <div class="library-item" data-view="calendar-month" id="lib-calendar">
+            <div class="lib-icon cal">${ICONS.calendar}</div>
+            <div class="lib-text">
+              <div class="lib-text-title" style="font-size:13px; font-weight:700;">TU CALENDARIO</div>
+              <div class="lib-text-sub">${apiEvents.filter(e => e.status === 'approved').length} EVENTOS</div>
+            </div>
+          </div>
+
+          <div class="library-item" id="lib-saved">
+            <div class="lib-icon save">${ICONS.heartFill}</div>
+            <div class="lib-text">
+              <div class="lib-text-title" style="font-size:13px; font-weight:700;">MIS FAVORITOS</div>
+              <div class="lib-text-sub">${Object.values(userInteractions).filter(i => i.is_favorite).length} ITEMS</div>
+            </div>
+          </div>
+
+          <div class="library-item ${currentView === 'friends' ? 'active' : ''}" data-view="friends" id="lib-friends">
+            <div class="lib-icon" style="background:linear-gradient(135deg, #c6f135, #10b981); color:#000;">👥</div>
+            <div class="lib-text">
+              <div class="lib-text-title" style="font-size:13px; font-weight:700;">RED DE AMIGOS</div>
+              <div class="lib-text-sub">${friendsState.totalConnections} CONEXIONES • ${friendsState.onlineCount} ONLINE</div>
+            </div>
+          </div>
+
+          <div class="library-item" data-view="user" id="lib-profile">
+            <div class="lib-icon" style="background:linear-gradient(135deg, #10b981, #3b82f6); color:#fff;">👤</div>
+            <div class="lib-text">
+              <div class="lib-text-title" style="font-size:13px; font-weight:700;">MI PERFIL</div>
+              <div class="lib-text-sub">TU CUENTA Y ESTADÍSTICAS</div>
+            </div>
           </div>
         </div>
+      `}
 
-        <div class="library-item" id="lib-saved">
-          <div class="lib-icon save">${ICONS.heartFill}</div>
-          <div class="lib-text">
-            <div class="lib-text-title" style="font-size:13px; font-weight:700;">MIS FAVORITOS</div>
-            <div class="lib-text-sub">${Object.values(userInteractions).filter(i => i.is_favorite).length} ITEMS</div>
-          </div>
-        </div>
-
-        <div class="library-item" id="lib-spaces">
-          <div class="lib-icon fol">${ICONS.landmark}</div>
-          <div class="lib-text">
-            <div class="lib-text-title" style="font-size:13px; font-weight:700;">ESPACIOS CULTURALES</div>
-            <div class="lib-text-sub">${apiSpaces.length} LUGARES</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- KAWSAY PREMIUM RESALTADO -->
+      <!-- KAWSAY PREMIUM RESALTADO OCULTO TEMPORALMENTE
       <div class="sidebar-premium-highlight">
         <div class="premium-badge-gold" style="display:inline-flex; align-items:center; gap:6px;">
           ${ICONS.star} KAWSAY PREMIUM
@@ -367,6 +500,7 @@ const App = (() => {
         <div class="sidebar-premium-desc">Preventas exclusivas y descuentos en recintos de Quito.</div>
         <button class="btn-premium-gold" id="btn-sidebar-premium">ÚNETE AHORA</button>
       </div>
+      -->
 
       ${actionBtnText ? `
         <button class="create-event-btn" id="create-event-btn" style="font-size:12px; padding:14px; display:flex; align-items:center; justify-content:center; gap:8px;">
@@ -377,7 +511,13 @@ const App = (() => {
 
     sidebar.addEventListener('click', (e) => {
       const item = e.target.closest('[data-view]');
-      if (item) navigate(item.dataset.view);
+      if (item) {
+        if (item.dataset.view === 'user') {
+          activeProfileKey = 'mateo';
+          activeProfileTab = 'eventos';
+        }
+        navigate(item.dataset.view);
+      }
     });
 
     const createBtn = $('#create-event-btn');
@@ -389,14 +529,29 @@ const App = (() => {
     }
 
     $('#sidebar-logo').addEventListener('click', () => navigate('home'));
-    $('#lib-saved').addEventListener('click', () => {
-      if (currentUser.role === 'invitado') openAuthModal();
-      else filterFavorites();
-    });
-    $('#btn-sidebar-premium').addEventListener('click', () => {
-      if (currentUser.role === 'invitado') openAuthModal();
-      else showToast('Bienvenido a KAWSAY PREMIUM VIP');
-    });
+    
+    const libSavedBtn = $('#lib-saved');
+    if (libSavedBtn) {
+      libSavedBtn.addEventListener('click', () => {
+        filterFavorites();
+      });
+    }
+
+    const libLoginBtn = $('#lib-login-btn');
+    if (libLoginBtn) {
+      libLoginBtn.addEventListener('click', () => openAuthModal());
+    }
+
+
+    /* Oculto temporalmente:
+    const btnSidebarPremium = $('#btn-sidebar-premium');
+    if (btnSidebarPremium) {
+      btnSidebarPremium.addEventListener('click', () => {
+        if (currentUser.role === 'invitado') openAuthModal();
+        else showToast('Bienvenido a KAWSAY PREMIUM VIP');
+      });
+    }
+    */
   }
 
   // ============================================================
@@ -483,7 +638,12 @@ const App = (() => {
         if (currentUser.role === 'admin' || currentUser.role === 'gestor') navigate('admin');
         else if (currentUser.role === 'artista') navigate('artist');
         else if (currentUser.role === 'espacio') navigate('space');
-        else navigate('join');
+        else if (currentUser.role === 'espectador' || currentUser.role === 'usuario') {
+          activeProfileKey = 'mateo';
+          activeProfileTab = 'eventos';
+          navigate('user');
+        }
+        else navigate('home');
       });
     }
 
@@ -741,6 +901,11 @@ const App = (() => {
   // PANEL DE CONTROL EXECUTIVE & ANALÍTICAS DE ADMINISTRACIÓN
   // ============================================================
   function renderAdminDashboardView(view) {
+    if (currentUser.role !== 'admin' && currentUser.role !== 'gestor') {
+      view.innerHTML = `<div style="padding:40px; text-align:center; color:#ef4444; font-weight:bold;">⛔ Acceso denegado: Se requiere perfil de Administrador.</div>`;
+      return;
+    }
+
     const pendingEvents = apiEvents.filter(e => e.status === 'pending');
 
     view.innerHTML = `
@@ -970,6 +1135,11 @@ const App = (() => {
   // DISEÑO DEDICADO PARA ESPACIO CULTURAL (GESTIÓN DE RECINTO)
   // ============================================================
   function renderSpaceStudioView(view) {
+    if (currentUser.role !== 'espacio' && currentUser.role !== 'admin' && currentUser.role !== 'gestor') {
+      view.innerHTML = `<div style="padding:40px; text-align:center; color:#ef4444; font-weight:bold;">⛔ Acceso denegado: Se requiere perfil de Espacio Cultural.</div>`;
+      return;
+    }
+
     const userOwnedSpaces = apiSpaces.filter(sp => sp.owner_id === currentUser.id);
     const visibleSpaces = (currentUser.role === 'admin' || currentUser.role === 'gestor') 
       ? (apiSpaces.length > 0 ? apiSpaces : [{ id: 'sp-004', name: 'Teatro Nacional Quito', type: 'ARTES ESCÉNICAS', sector: 'Centro Histórico', address: 'Av. 10 de Agosto y Briceño', capacity: 500, image: 'images/space_teatro.jpg', owner_id: currentUser.id }])
@@ -1106,9 +1276,2309 @@ const App = (() => {
   }
 
   // ============================================================
+  // DISEÑO DE EXPLORAR ESPACIOS (MAPA)
+  // ============================================================
+  function renderSpacesMapView(view) {
+    view.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border);">
+        <h1 style="font-size: 32px; font-weight: 900; text-transform: uppercase;">EXPLORAR ESPACIOS</h1>
+        <button style="background: transparent; border: 1px solid var(--border); color: #fff; padding: 8px 16px; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">
+          Filter CATEGORÍAS
+        </button>
+      </div>
+      <div style="padding: 16px 24px; display: flex; gap: 12px; overflow-x: auto; border-bottom: 1px solid var(--border);">
+        <button style="background: var(--accent); color: #000; border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 900; cursor: pointer;">TODOS LOS SECTORES</button>
+        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">CENTRO HISTÓRICO</button>
+        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">LA MARISCAL</button>
+        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">FLORESTA</button>
+        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">GUÁPULO</button>
+        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">CUMBAYÁ</button>
+      </div>
+
+      <div style="display: flex; height: calc(100vh - 160px);">
+        <!-- Mapa -->
+        <div style="flex: 1; position: relative; border-right: 1px solid var(--border);">
+          <div id="spaces-map" style="width: 100%; height: 100%; background: #111;"></div>
+          <div style="position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; font-family: var(--font-mono); font-size: 10px; color: var(--grey1); z-index: 1000;">
+            COORD: 0.2282° S, 78.5125° W
+          </div>
+        </div>
+
+        <!-- Lista de Espacios -->
+        <div style="width: 400px; overflow-y: auto; background: var(--surface); padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+          ${apiSpaces.map(sp => `
+            <div onclick="navigateSpaceDetail('${sp.id}')" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; gap: 16px; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+              <img src="${sp.image}" style="width: 120px; height: 100px; border-radius: 8px; object-fit: cover;" alt="${sp.name}">
+              <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                    <span style="color: var(--accent); font-family: var(--font-mono); font-size: 9px; font-weight: 900; letter-spacing: 0.5px;">${sp.type.toUpperCase()}</span>
+                    <span style="color: var(--accent); font-family: var(--font-mono); font-size: 11px; font-weight: 900;">4.8 ★</span>
+                  </div>
+                  <h3 style="font-size: 16px; font-weight: 900; line-height: 1.2; margin-bottom: 8px;">${sp.name}</h3>
+                </div>
+                <div>
+                  <div style="font-family: var(--font-mono); font-size: 8px; color: var(--grey1); margin-bottom: 2px;">PRÓXIMO EVENTO</div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; font-weight: 800;">PROGRAMACIÓN CONTINUA</span>
+                    <span style="font-family: var(--font-mono); font-size: 9px; color: var(--grey1);">HOY</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      
+      <div style="padding: 12px 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 10px; color: var(--grey1);">
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <span>${apiSpaces.length} ESPACIOS ENCONTRADOS</span>
+          <span style="color: #fff; display: flex; align-items: center; gap: 6px;"><span style="display:inline-block; width:8px; height:8px; background:var(--accent); border-radius:50%;"></span> ${apiSpaces.length} ACTIVOS AHORA</span>
+        </div>
+        <div style="display: flex; gap: 16px;">
+          <span style="cursor: pointer;">REGISTRAR MI ESPACIO</span>
+          <span style="cursor: pointer;">SOPORTE TÉCNICO</span>
+        </div>
+      </div>
+    `;
+
+    // Initialize Map after rendering HTML
+    setTimeout(() => {
+      const mapEl = document.getElementById('spaces-map');
+      if (mapEl && !mapEl._leaflet_id && typeof L !== 'undefined') {
+        const map = L.map('spaces-map').setView([-0.2282, -78.5125], 13); // Quito Center
+        
+        // CartoDB Dark Matter tile layer for a dark theme map
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+          subdomains: 'abcd',
+          maxZoom: 20
+        }).addTo(map);
+
+        // Custom Kawsay Marker Icon
+        const kawsayIcon = L.divIcon({
+          html: `<div style="width:24px; height:24px; background:var(--accent); border-radius:50%; border:3px solid #000; box-shadow:0 0 10px var(--accent); display:flex; align-items:center; justify-content:center; color:#000; font-size:12px;">📍</div>`,
+          className: '',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        // Add markers for spaces (mock coordinates based on Quito)
+        apiSpaces.forEach((sp, idx) => {
+          const lat = -0.21 + (Math.random() * 0.05 - 0.025);
+          const lng = -78.50 + (Math.random() * 0.05 - 0.025);
+          L.marker([lat, lng], { icon: kawsayIcon }).addTo(map)
+            .bindPopup(`<b>${sp.name}</b><br>${sp.type}`);
+        });
+      }
+    }, 100);
+  }
+
+  // ============================================================
+  // DISEÑO DEDICADO DE PERFIL DE ESPECTADOR / PERFIL PÚBLICO
+  // ============================================================
+  let activeProfileKey = 'mateo';
+  let activeProfileTab = 'eventos';
+
+  function getProfileFriends(currentKey) {
+    const allFriendsCatalog = [
+      { key: 'mateo', id: 'fr-mateo', name: 'Mateo Velasco', statusText: 'Asistiendo a Quito Jazz Festival', online: true, avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200' },
+      { key: 'carlos', id: 'fr-carlos', name: 'Carlos Molina', statusText: 'Asistiendo a Oscura Radio (24 OCT)', online: true, avatar: 'images/event_voices.jpg' },
+      { key: 'sofia', id: 'fr-sofia', name: 'Sofia Terán', statusText: 'Asistiendo a Festival Indie (02 NOV)', online: true, avatar: 'images/event_portraits.jpg' },
+      { key: 'roberto', id: 'fr-roberto', name: 'Roberto Paz', statusText: 'Asistiendo a Las Bodas de Fígaro', online: false, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' }
+    ];
+    return allFriendsCatalog.filter(f => f.key !== currentKey);
+  }
+
+  const userProfilesData = {
+    'mateo': {
+      id: 'usr-mateo',
+      name: 'MATEO VELASCO',
+      handle: 'MATEO_88',
+      role: 'espectador',
+      memberSince: 'JUNIO 2023',
+      city: 'QUITO, EC',
+      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200',
+      bio: 'Explorador cultural y asistente habitual a conciertos de jazz, rutas nocturnas de teatro y exposiciones independientes en Quito.',
+      tags: ['ENTUSIASTA DEL JAZZ', 'EXPLORADOR URBANO', 'CINE DE AUTOR'],
+      stats: {
+        events: 6,
+        spaces: 4,
+        pointsK: 850,
+        friends: 128
+      },
+      upcoming: [
+        {
+          id: 'up-1',
+          category: 'MÚSICA',
+          status: 'CONFIRMADO',
+          title: 'QUITO JAZZ FESTIVAL 2024',
+          venue: 'TEATRO NACIONAL SUCRE',
+          date: '16 OCT, 20:00',
+          ticketCode: 'TICKET #AA819',
+          eventId: 'ue-002',
+          seat: 'Platea Baja • Fila E Asiento 12'
+        },
+        {
+          id: 'up-2',
+          category: 'TEATRO',
+          status: 'CONFIRMADO',
+          title: 'LAS BODAS DE FÍGARO',
+          venue: 'TEATRO NACIONAL SUCRE',
+          date: '22 OCT, 19:30',
+          ticketCode: 'TICKET #AA452',
+          eventId: 'fe-001',
+          seat: 'Palco 1 • Butaca 4'
+        },
+        {
+          id: 'up-3',
+          category: 'ARTES',
+          status: 'CONFIRMADO',
+          title: 'NOCHE DE GALERÍAS Y VINO',
+          venue: 'NAVE 01 • LA FLORESTA',
+          date: '29 OCT, 19:00',
+          ticketCode: 'TICKET #GL904',
+          eventId: 'ev-today-01',
+          seat: 'Acceso General • Copa de Bienvenida'
+        }
+      ],
+      spaces: [
+        {
+          id: 'sp-004',
+          name: 'TEATRO NACIONAL SUCRE',
+          sector: 'CENTRO HISTÓRICO, QUITO',
+          rating: '4.9',
+          eventsBadge: '3 PRÓX. EVENTOS',
+          verified: true
+        },
+        {
+          id: 'sp-001',
+          name: 'LA IDEAL',
+          sector: 'LA FLORESTA, QUITO',
+          rating: '4.7',
+          eventsBadge: '1 PRÓX. EVENTO',
+          verified: false
+        },
+        {
+          id: 'sp-003',
+          name: 'ESPACIO RADAR',
+          sector: 'CUMBAYÁ, QUITO',
+          rating: '4.8',
+          eventsBadge: '2 PRÓX. EVENTOS',
+          verified: true
+        },
+        {
+          id: 'sp-002',
+          name: 'EL BÚNKER',
+          sector: 'LA MARISCAL, QUITO',
+          rating: '4.9',
+          eventsBadge: '4 PRÓX. EVENTOS',
+          verified: true
+        }
+      ],
+      history: [
+        {
+          id: 'hist-1',
+          title: 'RETROSPECTIVA MODERNA',
+          meta: '02 NOV 2023 • DANZA',
+          price: '$20.00',
+          status: 'FINALIZADO',
+          image: 'images/event_portraits.jpg',
+          eventId: 'ev-003',
+          rating: 5,
+          review: 'Impresionante montaje coreográfico. La acústica y la puesta en escena fueron impecables.'
+        },
+        {
+          id: 'hist-2',
+          title: 'ELECTRONIC SESSIONS',
+          meta: '14 SEP 2023 • NOCTURNO',
+          price: '$15.00',
+          status: 'FINALIZADO',
+          image: 'images/event_carnival.jpg',
+          eventId: 'ev-004',
+          rating: 4,
+          review: 'Gran energía y visuales de alta vanguardia.'
+        },
+        {
+          id: 'hist-3',
+          title: 'CARNAVAL SONORO',
+          meta: '28 JUL 2023 • MÚSICA EN VIVO',
+          price: 'Gratis',
+          status: 'FINALIZADO',
+          image: 'images/space_radio.jpg',
+          eventId: 'ue-003',
+          rating: 5,
+          review: 'Increíble energía y acústica en la plaza. Gran vibra comunitaria.'
+        }
+      ],
+      communities: [
+        {
+          id: 'com-postpunk',
+          name: 'QUITO POST-PUNK & DARKWAVE',
+          badge: 'MÚSICA',
+          members: 1280,
+          meetups: 'Encuentro mensual en Teatro Bolívar',
+          joined: true,
+          description: 'Comunidad dedicada a la difusión del post-punk, darkwave y synthpop ecuatoriano e internacional.'
+        },
+        {
+          id: 'com-cineclub',
+          name: 'CINE CLUB CENTRO',
+          badge: 'CINE',
+          members: 856,
+          meetups: 'Proyecciones cada jueves en La Mariscal',
+          joined: true,
+          description: 'Debates cinematográficos, ciclos de directores independientes y estrenos alternativos en Quito.'
+        },
+        {
+          id: 'com-jazz',
+          name: 'JAZZ & VINILOS QUITO',
+          badge: 'JAZZ',
+          members: 540,
+          meetups: 'Jam sessions cada 15 días en Guápulo',
+          joined: true,
+          description: 'Coleccionistas de vinilos, jam sessions acústicas e intercambio de prensajes selectos.'
+        },
+        {
+          id: 'com-arte',
+          name: 'ARTE CONTEMPORÁNEO UIO',
+          badge: 'ARTE',
+          members: 420,
+          meetups: 'Ruta de galerías en La Floresta',
+          joined: false,
+          description: 'Red de exploradores de arte conceptual, instalaciones urbanas y muestras de diseño emergente.'
+        }
+      ],
+      recommendations: [
+        {
+          id: 'rec-1',
+          title: 'JAM SESSION DE JAZZ EN VIVO',
+          category: 'MÚSICA',
+          venue: 'Café Libro • La Floresta',
+          date: '18 OCT, 21:00',
+          price: '$10.00',
+          affinity: '99% AFINIDAD',
+          image: 'images/event_voices.jpg',
+          eventId: 'ue-002'
+        },
+        {
+          id: 'rec-2',
+          title: 'CICLO DE TEATRO CONTEMPORÁNEO',
+          category: 'TEATRO',
+          venue: 'Teatro Variedades Ernesto Albán',
+          date: '28 OCT, 19:00',
+          price: '$12.00',
+          affinity: '94% AFINIDAD',
+          image: 'images/event_carnival.jpg',
+          eventId: 'fe-001'
+        },
+        {
+          id: 'rec-3',
+          title: 'RUTA NOCTURNA CENTRO HISTÓRICO',
+          category: 'URBANO',
+          venue: 'Plaza Grande • Quito',
+          date: '03 NOV, 18:30',
+          price: 'Gratis',
+          affinity: '92% AFINIDAD',
+          image: 'images/event_portraits.jpg',
+          eventId: 'ev-003'
+        }
+      ]
+    },
+    'carlos': {
+      id: 'fr-carlos',
+      name: 'CARLOS MOLINA',
+      handle: 'carlos_m',
+      role: 'espectador',
+      memberSince: 'MARZO 2023',
+      city: 'QUITO, EC',
+      avatar: 'images/event_voices.jpg',
+      tags: ['POST-PUNK', 'AUDIOFILO'],
+      stats: {
+        events: 19,
+        spaces: 8,
+        pointsK: 640,
+        friends: 94
+      },
+      upcoming: [
+        {
+          id: 'up-c1',
+          category: 'MÚSICA',
+          status: 'CONFIRMADO',
+          title: 'OSCURA RADIO EN VIVO: POST-PUNK',
+          venue: 'TEATRO BOLÍVAR',
+          date: '24 OCT, 20:00',
+          ticketCode: 'TICKET #CR102',
+          eventId: 'fe-001',
+          seat: 'General • Pista Central'
+        }
+      ],
+      spaces: [
+        {
+          id: 'sp-002',
+          name: 'EL BÚNKER',
+          sector: 'CENTRO HISTÓRICO, QUITO',
+          rating: '4.9',
+          eventsBadge: '2 PRÓX. EVENTOS',
+          verified: true
+        }
+      ],
+      history: [
+        {
+          id: 'hist-c1',
+          title: 'POST-PUNK SESSIONS',
+          meta: '12 AGO 2023 • UNDERGROUND',
+          price: '$15.00',
+          status: 'FINALIZADO',
+          image: 'images/event_voices.jpg',
+          eventId: 'fe-001',
+          rating: 5,
+          review: 'Sonido crudo, reverb impecable y ambiente fraternal.'
+        }
+      ],
+      communities: [
+        {
+          id: 'com-postpunk',
+          name: 'QUITO POST-PUNK & DARKWAVE',
+          badge: 'MÚSICA',
+          members: 1280,
+          meetups: 'Encuentro mensual en Teatro Bolívar',
+          joined: true,
+          description: 'Comunidad dedicada a la difusión del post-punk y sintetizadores oscuros.'
+        }
+      ],
+      recommendations: [
+        {
+          id: 'rec-c1',
+          title: 'FESTIVAL SÓNICO QUITO',
+          category: 'MÚSICA',
+          venue: 'El Búnker • Quito',
+          date: '10 NOV, 20:30',
+          price: '$14.00',
+          affinity: '98% AFINIDAD',
+          image: 'images/event_carnival.jpg',
+          eventId: 'fe-001'
+        }
+      ]
+    },
+    'sofia': {
+      id: 'fr-sofia',
+      name: 'SOFIA TERÁN',
+      handle: 'sofia_t',
+      role: 'espectador',
+      memberSince: 'AGOSTO 2023',
+      city: 'QUITO, EC',
+      avatar: 'images/event_portraits.jpg',
+      tags: ['CINE CLUB', 'ARTE INDIE'],
+      stats: {
+        events: 21,
+        spaces: 14,
+        pointsK: 730,
+        friends: 112
+      },
+      upcoming: [
+        {
+          id: 'up-s1',
+          category: 'FESTIVAL',
+          status: 'CONFIRMADO',
+          title: 'INDIE QUITO W4',
+          venue: 'NAVE 01',
+          date: '02 NOV, 18:00',
+          ticketCode: 'TICKET #SF920',
+          eventId: 'ev-002',
+          seat: 'Acceso General All-Days'
+        }
+      ],
+      spaces: [
+        {
+          id: 'sp-001',
+          name: 'NAVE 01',
+          sector: 'LA FLORESTA, QUITO',
+          rating: '4.8',
+          eventsBadge: '4 PRÓX. EVENTOS',
+          verified: true
+        }
+      ],
+      history: [
+        {
+          id: 'hist-s1',
+          title: 'FESTIVAL DE CINE FRANCÉS',
+          meta: '10 MAY 2023 • CINE',
+          price: '$8.00',
+          status: 'FINALIZADO',
+          image: 'images/event_cinema.jpg',
+          eventId: 'ev-003',
+          rating: 5,
+          review: 'Excelente selección de cine de autor y foro posterior con los críticos.'
+        }
+      ],
+      communities: [
+        {
+          id: 'com-cineclub',
+          name: 'CINE CLUB CENTRO',
+          badge: 'CINE',
+          members: 856,
+          meetups: 'Proyecciones cada jueves en La Mariscal',
+          joined: true,
+          description: 'Debates cinematográficos y ciclos temáticos.'
+        }
+      ],
+      recommendations: [
+        {
+          id: 'rec-s1',
+          title: 'NOCHE DE CORTOMETRAJES QUITEÑOS',
+          category: 'CINE',
+          venue: 'Nave 01 • La Floresta',
+          date: '08 NOV, 19:30',
+          price: '$6.00',
+          affinity: '97% AFINIDAD',
+          image: 'images/event_cinema.jpg',
+          eventId: 'ev-002'
+        }
+      ]
+    },
+    'roberto': {
+      id: 'fr-roberto',
+      name: 'ROBERTO PAZ',
+      handle: 'roberto_p',
+      role: 'espectador',
+      memberSince: 'FEBRERO 2023',
+      city: 'QUITO, EC',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+      tags: ['ARTES ESCÉNICAS', 'FOTOGRAFÍA'],
+      stats: {
+        events: 16,
+        spaces: 9,
+        pointsK: 510,
+        friends: 65
+      },
+      upcoming: [
+        {
+          id: 'up-r1',
+          category: 'TEATRO',
+          status: 'CONFIRMADO',
+          title: 'LAS BODAS DE FÍGARO',
+          venue: 'TEATRO NACIONAL SUCRE',
+          date: '22 OCT, 19:30',
+          ticketCode: 'TICKET #RP401',
+          eventId: 'fe-001',
+          seat: 'Platea Alta • Butaca 8'
+        }
+      ],
+      spaces: [
+        {
+          id: 'sp-004',
+          name: 'TEATRO NACIONAL SUCRE',
+          sector: 'CENTRO HISTÓRICO, QUITO',
+          rating: '4.9',
+          eventsBadge: '3 PRÓX. EVENTOS',
+          verified: true
+        }
+      ],
+      history: [
+        {
+          id: 'hist-r1',
+          title: 'RETRATOS CALLEJEROS',
+          meta: '10 JUN 2023 • FOTO',
+          price: 'Gratis',
+          status: 'FINALIZADO',
+          image: 'images/event_portraits.jpg',
+          eventId: 'ev-003',
+          rating: 5,
+          review: 'Hermosa retrospectiva fotográfica sobre el centro de Quito.'
+        }
+      ],
+      communities: [
+        {
+          id: 'com-arte',
+          name: 'ARTE CONTEMPORÁNEO UIO',
+          badge: 'ARTE',
+          members: 420,
+          meetups: 'Ruta de galerías en La Floresta',
+          joined: true,
+          description: 'Red de exploradores de arte conceptual e instalaciones.'
+        }
+      ],
+      recommendations: [
+        {
+          id: 'rec-r1',
+          title: 'EXPOSICIÓN FOTOGRÁFICA URBANA',
+          category: 'FOTO',
+          venue: 'Biblioteca Nacional Eugenio Espejo',
+          date: '12 NOV, 16:00',
+          price: 'Gratis',
+          affinity: '96% AFINIDAD',
+          image: 'images/event_portraits.jpg',
+          eventId: 'ev-003'
+        }
+      ]
+    }
+  };
+
+  window.openUserProfile = (key) => {
+    if (userProfilesData[key]) {
+      activeProfileKey = key;
+    } else {
+      activeProfileKey = 'mateo';
+    }
+    activeProfileTab = 'eventos';
+    navigate('user');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const mainEl = document.getElementById('main');
+    if (mainEl) mainEl.scrollTop = 0;
+    const targetUser = userProfilesData[activeProfileKey];
+    if (targetUser && activeProfileKey !== 'mateo') {
+      showToast(`👤 Viendo perfil público de ${targetUser.name}`);
+    }
+  };
+
+  // Helper de Cierre de Modales de Perfil
+  function closeProfileModals() {
+    const existing = document.querySelectorAll('.profile-modal-overlay');
+    existing.forEach(m => m.remove());
+  }
+
+  // Modal 1: Visualizador de Ticket QR & Código de Entrada
+  function openTicketQRModal(ticket) {
+    closeProfileModals();
+    const container = document.getElementById('modals-container') || document.body;
+    const modal = document.createElement('div');
+    modal.className = 'profile-modal-overlay';
+    modal.innerHTML = `
+      <div class="profile-modal-card" style="text-align: center; max-width: 440px;">
+        <div class="profile-modal-header">
+          <div class="profile-modal-title">BOLETO CULTURAL OFICIAL</div>
+          <button class="profile-modal-close" id="btn-close-ticket-modal">✕</button>
+        </div>
+        
+        <div style="background: #ffffff; padding: 20px; border-radius: 12px; display: inline-block; margin-bottom: 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+          <!-- QR Simulado SVG de Alto Contraste -->
+          <svg width="180" height="180" viewBox="0 0 100 100" fill="#000000">
+            <rect width="100" height="100" fill="#ffffff"/>
+            <rect x="10" y="10" width="24" height="24"/>
+            <rect x="14" y="14" width="16" height="16" fill="#ffffff"/>
+            <rect x="18" y="18" width="8" height="8"/>
+            <rect x="66" y="10" width="24" height="24"/>
+            <rect x="70" y="14" width="16" height="16" fill="#ffffff"/>
+            <rect x="74" y="18" width="8" height="8"/>
+            <rect x="10" y="66" width="24" height="24"/>
+            <rect x="14" y="70" width="16" height="16" fill="#ffffff"/>
+            <rect x="18" y="74" width="8" height="8"/>
+            <rect x="42" y="10" width="8" height="14"/>
+            <rect x="54" y="18" width="8" height="18"/>
+            <rect x="42" y="42" width="16" height="16"/>
+            <rect x="66" y="42" width="8" height="8"/>
+            <rect x="80" y="48" width="10" height="10"/>
+            <rect x="42" y="66" width="10" height="18"/>
+            <rect x="58" y="76" width="18" height="8"/>
+            <rect x="80" y="70" width="10" height="18"/>
+          </svg>
+        </div>
+
+        <div style="font-family: var(--font-mono); font-size: 14px; font-weight: 900; color: var(--accent); letter-spacing: 1.5px; margin-bottom: 6px;">
+          ${ticket.ticketCode}
+        </div>
+        <div style="font-size: 17px; font-weight: 900; text-transform: uppercase; color: #fff; margin-bottom: 4px;">
+          ${ticket.title}
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 11px; color: #888; margin-bottom: 12px;">
+          ${ticket.venue} • ${ticket.date}
+        </div>
+        <div style="background: #18181c; border: 1px solid #27272b; padding: 10px 14px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; color: #d4d4d8; margin-bottom: 20px;">
+          📍 ${ticket.seat || 'Entrada General • Zona A'}
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button id="btn-download-ticket-pdf" style="flex: 1; background: var(--accent); color: #000; border: none; font-family: var(--font-mono); font-size: 11px; font-weight: 900; padding: 12px; border-radius: 8px; cursor: pointer;">
+            DESCARGAR PDF
+          </button>
+          <button id="btn-wallet-ticket" style="background: #18181c; border: 1px solid #333; color: #fff; font-family: var(--font-mono); font-size: 11px; font-weight: 700; padding: 12px 16px; border-radius: 8px; cursor: pointer;">
+            APPLE / GOOGLE WALLET
+          </button>
+        </div>
+      </div>
+    `;
+    container.appendChild(modal);
+
+    modal.querySelector('#btn-close-ticket-modal').addEventListener('click', closeProfileModals);
+    modal.querySelector('#btn-download-ticket-pdf').addEventListener('click', () => {
+      showToast('📥 Descargando boleto digital en PDF: ' + ticket.ticketCode);
+      closeProfileModals();
+    });
+    modal.querySelector('#btn-wallet-ticket').addEventListener('click', () => {
+      showToast('📲 Boleto sincronizado con tu Wallet');
+      closeProfileModals();
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeProfileModals();
+    });
+  }
+
+  // Modal 2: Desglose y Canje de Puntos K (Loyalty)
+  function openLoyaltyPointsModal(profile) {
+    closeProfileModals();
+    const container = document.getElementById('modals-container') || document.body;
+    const modal = document.createElement('div');
+    modal.className = 'profile-modal-overlay';
+    modal.innerHTML = `
+      <div class="profile-modal-card" style="max-width: 480px;">
+        <div class="profile-modal-header">
+          <div class="profile-modal-title">PUNTOS KAWSAY (${profile.stats.pointsK} K)</div>
+          <button class="profile-modal-close" id="btn-close-points-modal">✕</button>
+        </div>
+
+        <div style="text-align: center; background: linear-gradient(135deg, rgba(198,241,53,0.1), rgba(0,0,0,0.6)); border: 1px solid rgba(198,241,53,0.3); border-radius: 12px; padding: 20px; margin-bottom: 22px;">
+          <div style="font-family: var(--font-mono); font-size: 38px; font-weight: 900; color: var(--accent); line-height: 1;">
+            ${profile.stats.pointsK}
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 10px; color: #aaa; letter-spacing: 1px; margin-top: 6px; text-transform: uppercase;">
+            PUNTOS DE FIDELIZACIÓN CULTURAL ACUMULADOS
+          </div>
+        </div>
+
+        <div style="font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: #fff; margin-bottom: 12px; text-transform: uppercase;">
+          RECOMPENSAS DISPONIBLES PARA CANJEAR:
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #18181c; border: 1px solid #27272b; padding: 12px 14px; border-radius: 8px;">
+            <div>
+              <div style="font-weight: 800; font-size: 13px; color: #fff;">$5 Descuento en Cafetería Sucre</div>
+              <div style="font-family: var(--font-mono); font-size: 10px; color: #888;">Canjeable en Teatro Sucre y Variedades</div>
+            </div>
+            <button class="btn-redeem-reward" data-cost="200" data-reward="$5 Descuento Cafetería" style="background: var(--accent); color: #000; border: none; font-family: var(--font-mono); font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+              200 K
+            </button>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #18181c; border: 1px solid #27272b; padding: 12px 14px; border-radius: 8px;">
+            <div>
+              <div style="font-weight: 800; font-size: 13px; color: #fff;">Pase 2x1 en Cine Club Centro</div>
+              <div style="font-family: var(--font-mono); font-size: 10px; color: #888;">Ciclos independientes de autor</div>
+            </div>
+            <button class="btn-redeem-reward" data-cost="350" data-reward="Pase 2x1 Cine Club" style="background: var(--accent); color: #000; border: none; font-family: var(--font-mono); font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+              350 K
+            </button>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #18181c; border: 1px solid #27272b; padding: 12px 14px; border-radius: 8px;">
+            <div>
+              <div style="font-weight: 800; font-size: 13px; color: #fff;">Acceso VIP a Preventas Exclusivas</div>
+              <div style="font-family: var(--font-mono); font-size: 10px; color: #888;">Garantía de entradas sin fila digital</div>
+            </div>
+            <button class="btn-redeem-reward" data-cost="500" data-reward="Acceso VIP Preventas" style="background: var(--accent); color: #000; border: none; font-family: var(--font-mono); font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+              500 K
+            </button>
+          </div>
+        </div>
+
+        <button id="btn-close-points-done" style="width: 100%; background: #222227; border: 1px solid #333; color: #aaa; font-family: var(--font-mono); font-size: 11px; padding: 10px; border-radius: 8px; cursor: pointer;">
+          CERRAR
+        </button>
+      </div>
+    `;
+    container.appendChild(modal);
+
+    modal.querySelector('#btn-close-points-modal').addEventListener('click', closeProfileModals);
+    modal.querySelector('#btn-close-points-done').addEventListener('click', closeProfileModals);
+    modal.querySelectorAll('.btn-redeem-reward').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const cost = parseInt(e.currentTarget.dataset.cost);
+        const reward = e.currentTarget.dataset.reward;
+        if (profile.stats.pointsK >= cost) {
+          profile.stats.pointsK -= cost;
+          showToast(`🎉 ¡Canje exitoso! Disfruta tu "${reward}". Saldo: ${profile.stats.pointsK} K`);
+          closeProfileModals();
+          const pEl = document.getElementById('view-user');
+          if (pEl) renderUserProfileView(pEl);
+        } else {
+          showToast('⚠️ No tienes suficientes Puntos K para esta recompensa.');
+        }
+      });
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeProfileModals();
+    });
+  }
+
+  // Modal 3: Edición de Perfil de Espectador (Nombre, Foto desde Dispositivo, Ciudad, Bio, Intereses)
+  function openEditProfileModal(profile) {
+    closeProfileModals();
+    const container = document.getElementById('modals-container') || document.body;
+    const modal = document.createElement('div');
+    modal.className = 'profile-modal-overlay';
+
+    let currentAvatarData = profile.avatar;
+
+    modal.innerHTML = `
+      <div class="profile-modal-card" style="max-width: 520px;">
+        <div class="profile-modal-header">
+          <div class="profile-modal-title">EDITAR PERFIL & FOTO</div>
+          <button class="profile-modal-close" id="btn-close-edit-modal">✕</button>
+        </div>
+
+        <form id="form-edit-profile">
+
+          <!-- Zona de Subida de Foto de Perfil Directa desde Dispositivo -->
+          <div class="avatar-upload-box">
+            <div class="avatar-preview-wrapper">
+              <img class="avatar-preview-img" id="edit-avatar-preview" src="${profile.avatar}" alt="Vista previa">
+            </div>
+            <div class="avatar-upload-controls">
+              <input type="file" id="edit-avatar-file-input" accept="image/*" style="display:none;">
+              <button type="button" class="btn-avatar-upload" id="btn-browse-avatar">
+                📁 SUBIR FOTO DESDE DISPOSITIVO
+              </button>
+              <span style="font-family: var(--font-mono); font-size: 10px; color: #71717a;">
+                Formatos compatibles: JPG, PNG, WEBP (Máx. 5MB)
+              </span>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="profile-modal-form-group">
+              <label class="profile-modal-label">Nombre Completo</label>
+              <input class="profile-modal-input" id="edit-profile-name" value="${profile.name}" required>
+            </div>
+
+            <div class="profile-modal-form-group">
+              <label class="profile-modal-label">Ciudad / Sector</label>
+              <input class="profile-modal-input" id="edit-profile-city" value="${profile.city}" required>
+            </div>
+          </div>
+
+          <div class="profile-modal-form-group">
+            <label class="profile-modal-label">Biografía Cultural</label>
+            <textarea class="profile-modal-input" id="edit-profile-bio" rows="2" style="resize: vertical; min-height: 56px;" placeholder="Cuéntale a la comunidad tus gustos artísticos...">${profile.bio || ''}</textarea>
+          </div>
+
+          <div class="profile-modal-form-group">
+            <label class="profile-modal-label">Intereses Culturales (Separados por coma)</label>
+            <input class="profile-modal-input" id="edit-profile-tags" value="${profile.tags.join(', ')}">
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button type="submit" class="btn-modal-save" style="flex: 2; margin-top: 0;">GUARDAR CAMBIOS</button>
+            <button type="button" class="profile-modal-close-btn" id="btn-cancel-edit-modal" style="flex: 1; background: #1a1a1e; border: 1px solid #333; color: #aaa; font-family: var(--font-mono); font-size: 11px; font-weight: 700; border-radius: 8px; cursor: pointer;">CANCELAR</button>
+          </div>
+        </form>
+      </div>
+    `;
+    container.appendChild(modal);
+
+    const previewImg = modal.querySelector('#edit-avatar-preview');
+    const fileInput = modal.querySelector('#edit-avatar-file-input');
+    const btnBrowse = modal.querySelector('#btn-browse-avatar');
+
+    // Manejador de Subida de Archivo desde Dispositivo
+    btnBrowse.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+          showToast('⚠️ La imagen no debe superar los 5MB');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          currentAvatarData = ev.target.result;
+          previewImg.src = currentAvatarData;
+          showToast('📸 Foto cargada correctamente en la vista previa');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    modal.querySelector('#btn-close-edit-modal').addEventListener('click', closeProfileModals);
+    modal.querySelector('#btn-cancel-edit-modal').addEventListener('click', closeProfileModals);
+
+    // Envío del Formulario
+    modal.querySelector('#form-edit-profile').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newName = modal.querySelector('#edit-profile-name').value.trim() || profile.name;
+      const newCity = modal.querySelector('#edit-profile-city').value.trim() || profile.city;
+      const newBio = modal.querySelector('#edit-profile-bio').value.trim();
+      const rawTags = modal.querySelector('#edit-profile-tags').value;
+      const newTags = rawTags.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0);
+      const newAvatar = currentAvatarData || profile.avatar;
+
+      profile.name = newName;
+      profile.city = newCity;
+      profile.bio = newBio;
+      profile.tags = newTags;
+      profile.avatar = newAvatar;
+
+      // Sincronizar con la sesión activa (currentUser) y almacenamiento local
+      if (currentUser && (activeProfileKey === 'mateo' || currentUser.name === newName || currentUser.role === 'espectador')) {
+        currentUser.name = newName;
+        currentUser.avatar = newAvatar;
+        currentUser.city = newCity;
+        currentUser.bio = newBio;
+        currentUser.tags = newTags;
+        try {
+          localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
+        } catch(err) {}
+        renderTopbar();
+        renderSidebar();
+      }
+
+      // Persistir en backend API si está disponible
+      const syncUserId = (currentUser && currentUser.id) ? currentUser.id : profile.id || 'usr-espectador-1';
+      fetchWithTimeout(`${API_BASE}/users/${syncUserId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newName,
+          avatar: newAvatar,
+          city: newCity,
+          bio: newBio,
+          tags: newTags
+        })
+      }).catch(() => console.log('Sincronización en modo local Kawsay.'));
+
+      closeProfileModals();
+      showToast('✅ ¡Perfil y foto actualizados exitosamente!');
+      const pEl = document.getElementById('view-user');
+      if (pEl) renderUserProfileView(pEl);
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeProfileModals();
+    });
+  }
+
+  // Modal 4: Dejar Reseña en Evento Pasado
+  function openReviewModal(pastItem) {
+    closeProfileModals();
+    const container = document.getElementById('modals-container') || document.body;
+    const modal = document.createElement('div');
+    modal.className = 'profile-modal-overlay';
+    modal.innerHTML = `
+      <div class="profile-modal-card">
+        <div class="profile-modal-header">
+          <div class="profile-modal-title">RESEÑA • ${pastItem.title}</div>
+          <button class="profile-modal-close" id="btn-close-review-modal">✕</button>
+        </div>
+
+        <div style="font-family: var(--font-mono); font-size: 11px; color: #888; margin-bottom: 14px;">
+          Califica tu experiencia cultural. Tu reseña otorga <strong>+20 PUNTOS K</strong> a tu cuenta.
+        </div>
+
+        <div style="display: flex; gap: 8px; font-size: 24px; cursor: pointer; margin-bottom: 16px;" id="star-rating-box">
+          <span data-star="1" style="color: var(--accent);">★</span>
+          <span data-star="2" style="color: var(--accent);">★</span>
+          <span data-star="3" style="color: var(--accent);">★</span>
+          <span data-star="4" style="color: var(--accent);">★</span>
+          <span data-star="5" style="color: var(--accent);">★</span>
+        </div>
+
+        <textarea id="review-text-input" placeholder="Cuéntale a la comunidad qué te pareció el sonido, la actuación o el espacio..." style="width: 100%; min-height: 100px; background: #18181c; border: 1px solid #28282e; border-radius: 8px; padding: 12px; color: #fff; font-family: inherit; font-size: 13px; resize: vertical; margin-bottom: 16px; outline: none;">${pastItem.review || ''}</textarea>
+
+        <button id="btn-submit-review" class="btn-modal-save">PUBLICAR RESEÑA & GANAR +20 K</button>
+      </div>
+    `;
+    container.appendChild(modal);
+
+    let selectedRating = pastItem.rating || 5;
+    const starBox = modal.querySelector('#star-rating-box');
+    starBox.querySelectorAll('span').forEach(star => {
+      star.addEventListener('click', (e) => {
+        selectedRating = parseInt(e.currentTarget.dataset.star);
+        starBox.querySelectorAll('span').forEach((s, idx) => {
+          s.style.color = (idx < selectedRating) ? 'var(--accent)' : '#444';
+        });
+      });
+    });
+
+    modal.querySelector('#btn-close-review-modal').addEventListener('click', closeProfileModals);
+    modal.querySelector('#btn-submit-review').addEventListener('click', () => {
+      const reviewText = modal.querySelector('#review-text-input').value.trim();
+      pastItem.rating = selectedRating;
+      pastItem.review = reviewText;
+      const profile = userProfilesData[activeProfileKey] || userProfilesData['mateo'];
+      profile.stats.pointsK += 20;
+
+      closeProfileModals();
+      showToast(`⭐ ¡Reseña publicada! +20 Puntos K acreditados (Total: ${profile.stats.pointsK} K)`);
+      const pEl = document.getElementById('view-user');
+      if (pEl) renderUserProfileView(pEl);
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeProfileModals();
+    });
+  }
+
+  // Modal 5: Ver Foro / Encuentros de una Comunidad
+  function openCommunityModal(comm) {
+    closeProfileModals();
+    const container = document.getElementById('modals-container') || document.body;
+    const modal = document.createElement('div');
+    modal.className = 'profile-modal-overlay';
+    modal.innerHTML = `
+      <div class="profile-modal-card" style="max-width: 500px;">
+        <div class="profile-modal-header">
+          <div class="profile-modal-title">${comm.name}</div>
+          <button class="profile-modal-close" id="btn-close-comm-modal">✕</button>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <span class="profile-com-badge">${comm.badge}</span>
+          <span style="font-family: var(--font-mono); font-size: 11px; color: #888; margin-left: 8px;">${comm.members} MIEMBROS ACTIVOS</span>
+        </div>
+
+        <p style="font-size: 13px; color: #ccc; line-height: 1.5; margin-bottom: 18px;">
+          ${comm.description}
+        </p>
+
+        <div style="background: #18181c; border: 1px solid #27272b; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
+          <div style="font-family: var(--font-mono); font-size: 10px; font-weight: 800; color: var(--accent); margin-bottom: 4px;">
+            PRÓXIMO ENCUENTRO OFICIAL
+          </div>
+          <div style="font-size: 13px; font-weight: 700; color: #fff;">
+            📍 ${comm.meetups}
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button id="btn-comm-share-plan" style="flex: 1; background: var(--accent); color: #000; border: none; font-family: var(--font-mono); font-size: 11px; font-weight: 900; padding: 10px; border-radius: 6px; cursor: pointer;">
+            PROPONER PLAN AL GRUPO
+          </button>
+          <button id="btn-comm-close" style="background: #18181c; border: 1px solid #333; color: #888; font-family: var(--font-mono); font-size: 11px; padding: 10px 16px; border-radius: 6px; cursor: pointer;">
+            CERRAR
+          </button>
+        </div>
+      </div>
+    `;
+    container.appendChild(modal);
+
+    modal.querySelector('#btn-close-comm-modal').addEventListener('click', closeProfileModals);
+    modal.querySelector('#btn-comm-close').addEventListener('click', closeProfileModals);
+    modal.querySelector('#btn-comm-share-plan').addEventListener('click', () => {
+      closeProfileModals();
+      showToast(`📢 Tu propuesta fue enviada al canal de "${comm.name}".`);
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeProfileModals();
+    });
+  }
+
+  // ============================================================
+  // RENDER PRINCIPAL DE LA VISTA DE PERFIL DE ESPECTADOR
+  // ============================================================
+  function renderUserProfileView(view) {
+    const profile = userProfilesData[activeProfileKey] || userProfilesData['mateo'];
+    const isSelf = (activeProfileKey === 'mateo');
+
+    // Sincronizar datos de la sesión activa con el perfil personal de espectador
+    if (isSelf && currentUser && currentUser.role !== 'invitado') {
+      if (currentUser.name && currentUser.name !== 'Visitante (Sin Iniciar Sesión)') {
+        profile.name = currentUser.name.toUpperCase();
+      }
+      if (currentUser.avatar) profile.avatar = currentUser.avatar;
+      if (currentUser.city) profile.city = currentUser.city;
+      if (currentUser.bio) profile.bio = currentUser.bio;
+      if (currentUser.tags && currentUser.tags.length) profile.tags = currentUser.tags;
+    }
+
+    // Coherencia y consistencia lógica en los contadores estadísticos
+    const totalEvents = (profile.upcoming && profile.history) ? (profile.upcoming.length + profile.history.length) : profile.stats.events;
+    const totalSpaces = (profile.spaces && profile.spaces.length) ? profile.spaces.length : profile.stats.spaces;
+    const totalPoints = profile.stats.pointsK;
+    const friendsCount = profile.stats.friends || (friendsState ? friendsState.totalConnections : 128);
+
+    view.innerHTML = `
+      <div class="public-profile-wrapper">
+
+        <!-- Contenedor Principal del Perfil -->
+        <div class="public-profile-container">
+
+          ${!isSelf ? `
+            <!-- Barra de Contexto al Visitar Otro Perfil -->
+            <div class="public-profile-guest-bar">
+              <button class="btn-profile-back" id="btn-back-to-myprofile">
+                ← VOLVER A MI PERFIL
+              </button>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="btn-profile-msg" id="btn-msg-other-user" data-name="${profile.name}">
+                  💬 ENVIAR MENSAJE
+                </button>
+                <button class="btn-profile-connect" id="btn-toggle-friendship" data-name="${profile.name}">
+                  ✓ CONECTADO
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Cabecera de Perfil de Usuario -->
+          <div class="public-profile-header">
+            <div class="public-profile-user-info">
+              <div class="public-profile-avatar-container" id="profile-avatar-container" ${isSelf ? 'style="cursor: pointer;" title="Clic para subir o cambiar foto de perfil"' : ''}>
+                <img class="public-profile-avatar-img" src="${profile.avatar}" alt="${profile.name}">
+                ${isSelf ? `
+                  <div class="public-profile-avatar-badge" id="btn-edit-avatar" title="Subir / cambiar foto">
+                    📷
+                  </div>
+                ` : ''}
+              </div>
+
+              <div>
+                <h1 class="public-profile-name">${profile.name}</h1>
+                <div class="public-profile-meta">
+                  MIEMBRO DESDE ${profile.memberSince} • ${profile.city}
+                </div>
+                ${profile.bio ? `
+                  <p style="font-size: 13px; color: #a1a1aa; line-height: 1.5; margin-bottom: 12px; max-width: 580px;">${profile.bio}</p>
+                ` : ''}
+                <div class="public-profile-tags">
+                  ${profile.tags.map(tag => `<span class="public-profile-tag-pill" data-tag="${tag}">${tag}</span>`).join('')}
+                </div>
+                ${isSelf ? `
+                  <div style="margin-top: 14px;">
+                    <button class="btn-edit-profile-action" id="btn-open-edit-profile">
+                      ✏️ EDITAR PERFIL & FOTO
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Métricas / Estadísticas del Usuario (Lógicamente Coherentes) -->
+            <div class="public-profile-stats">
+              <div class="public-profile-stat-box" id="stat-btn-events" style="cursor: pointer;" title="Ver eventos comprados y pasados">
+                <div class="public-profile-stat-num">${totalEvents}</div>
+                <div class="public-profile-stat-lbl">EVENTOS</div>
+              </div>
+              <div class="public-profile-stat-box" id="stat-btn-spaces" style="cursor: pointer;" title="Ver espacios culturales que sigues">
+                <div class="public-profile-stat-num">${totalSpaces}</div>
+                <div class="public-profile-stat-lbl">ESPACIOS</div>
+              </div>
+              <div class="public-profile-stat-box" id="stat-btn-points" style="cursor: pointer;" title="Canjear Puntos Kawsay">
+                <div class="public-profile-stat-num highlight">${totalPoints}</div>
+                <div class="public-profile-stat-lbl">PUNTOS K</div>
+              </div>
+              <div class="public-profile-stat-box" id="stat-btn-friends" style="cursor: pointer;" title="Ver red de amigos">
+                <div class="public-profile-stat-num">${friendsCount}</div>
+                <div class="public-profile-stat-lbl">AMIGOS</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pestañas de Sub-Navegación del Perfil -->
+          <div class="public-profile-tabs">
+            <div class="public-profile-tab ${activeProfileTab === 'eventos' || activeProfileTab === 'compras' ? 'active' : ''}" data-ptab="eventos">MIS EVENTOS</div>
+            <div class="public-profile-tab ${activeProfileTab === 'pasados' ? 'active' : ''}" data-ptab="pasados">EVENTOS PASADOS</div>
+            <div class="public-profile-tab ${activeProfileTab === 'comunidades' ? 'active' : ''}" data-ptab="comunidades">COMUNIDADES</div>
+            <div class="public-profile-tab ${activeProfileTab === 'amigos' ? 'active' : ''}" data-ptab="amigos">AMIGOS (${friendsCount})</div>
+            <div class="public-profile-tab ${activeProfileTab === 'recomendaciones' ? 'active' : ''}" data-ptab="recomendaciones">RECOMENDACIONES</div>
+          </div>
+
+          <!-- PESTAÑA 1: MIS EVENTOS -->
+          <div class="profile-tab-content ${activeProfileTab === 'eventos' || activeProfileTab === 'compras' ? 'active' : ''}" id="tab-content-eventos">
+            <!-- Próximas Asistencias / Boletos Activos -->
+            <section style="margin-bottom: 40px;">
+              <h2 class="profile-section-title">PRÓXIMAS ASISTENCIAS</h2>
+              <div class="profile-attendance-grid">
+                ${profile.upcoming.map(ticket => `
+                  <div class="profile-ticket-card" data-event-id="${ticket.eventId}">
+                    <div>
+                      <div class="profile-ticket-top">
+                        <span class="profile-ticket-badge">${ticket.category}</span>
+                        <span class="profile-ticket-confirmed">${ticket.status}</span>
+                      </div>
+                      <h3 class="profile-ticket-title">${ticket.title}</h3>
+                      <div class="profile-ticket-meta">${ticket.venue} • ${ticket.date}</div>
+                    </div>
+
+                    <div class="profile-ticket-bottom">
+                      <div class="profile-ticket-code btn-ticket-qr" data-ticket-id="${ticket.id}" style="cursor: pointer;" title="Mostrar QR del boleto">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm13-2h2v2h-2zm-2 2h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm-2-6h2v2h-2zm2 2h2v2h-2z"/>
+                        </svg>
+                        <span>${ticket.ticketCode}</span>
+                      </div>
+                      <span class="profile-ticket-details-btn" data-event-id="${ticket.eventId}">VER DETALLES</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </section>
+
+            <!-- Espacios que Sigues -->
+            <section style="margin-bottom: 40px;" id="section-espacios-seguidos">
+              <div class="profile-spaces-header">
+                <h2 class="profile-section-title" style="margin-bottom: 0;">ESPACIOS QUE SIGUES</h2>
+                <span class="profile-spaces-link-all" id="btn-see-all-spaces">VER TODOS</span>
+              </div>
+
+              <div class="profile-spaces-grid">
+                ${profile.spaces.map(sp => `
+                  <div class="profile-space-card" data-space-id="${sp.id}">
+                    ${sp.verified ? `
+                      <div class="profile-space-badge-verified" title="Espacio Verificado">✓</div>
+                    ` : ''}
+                    <div>
+                      <h3 class="profile-space-title">${sp.name}</h3>
+                      <div class="profile-space-sector">${sp.sector}</div>
+                    </div>
+
+                    <div class="profile-space-bottom">
+                      <div class="profile-space-rating">
+                        <span style="color: var(--accent);">★</span> ${sp.rating}
+                      </div>
+                      <div>${sp.eventsBadge}</div>
+                    </div>
+                  </div>
+                `).join('')}
+
+                <!-- Tarjeta Explorar Más -->
+                <div class="profile-space-more-card" id="btn-profile-explore-more">
+                  <div class="profile-space-more-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                  </div>
+                  <div class="profile-space-more-text">EXPLORAR MÁS</div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- PESTAÑA 2: EVENTOS PASADOS -->
+          <div class="profile-tab-content ${activeProfileTab === 'pasados' ? 'active' : ''}" id="tab-content-pasados">
+            <section style="margin-bottom: 50px;">
+              <h2 class="profile-section-title">HISTORIAL DE ASISTENCIA & RESEÑAS</h2>
+              <div class="profile-history-stack">
+                ${profile.history.map(item => `
+                  <div class="profile-history-item" data-event-id="${item.eventId}">
+                    <div class="profile-history-left">
+                      <img class="profile-history-thumb" src="${item.image}" alt="${item.title}">
+                      <div>
+                        <div class="profile-history-title">${item.title}</div>
+                        <div class="profile-history-meta">${item.meta} • ${item.rating ? '★ '.repeat(item.rating) : 'Sin calificar'}</div>
+                        ${item.review ? `<div style="font-size: 11px; color: #a1a1aa; margin-top: 4px; font-style: italic;">"${item.review}"</div>` : ''}
+                      </div>
+                    </div>
+                    <div class="profile-history-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                      <div class="profile-history-price">${item.price}</div>
+                      <div style="display: flex; gap: 8px;">
+                        <button class="btn-leave-review" data-hist-id="${item.id}" style="background: #1f1f24; border: 1px solid #333; color: var(--accent); font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                          ⭐ RESEÑA
+                        </button>
+                        <button class="btn-view-hist-event" data-event-id="${item.eventId}" style="background: transparent; border: 1px solid #333; color: #aaa; font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                          VER EVENTO
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </section>
+          </div>
+
+          <!-- PESTAÑA 3: COMUNIDADES -->
+          <div class="profile-tab-content ${activeProfileTab === 'comunidades' ? 'active' : ''}" id="tab-content-comunidades">
+            <div class="profile-spaces-header">
+              <h2 class="profile-section-title" style="margin-bottom: 0;">COMUNIDADES CULTURALES EN QUITO</h2>
+              <button id="btn-suggest-community" style="background: #18181c; border: 1px solid #333; color: var(--accent); font-family: var(--font-mono); font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 6px; cursor: pointer;">
+                + CREAR COMUNIDAD
+              </button>
+            </div>
+            <div class="profile-communities-grid">
+              ${(profile.communities || []).map(comm => `
+                <div class="profile-community-card">
+                  <div>
+                    <div class="profile-com-header">
+                      <span class="profile-com-badge">${comm.badge}</span>
+                      <span style="font-family: var(--font-mono); font-size: 10px; color: #888;">👥 ${comm.members}</span>
+                    </div>
+                    <h3 class="profile-com-title">${comm.name}</h3>
+                    <p class="profile-com-desc">${comm.description}</p>
+                    <div class="profile-com-meta">
+                      <span>📍 ${comm.meetups}</span>
+                    </div>
+                  </div>
+
+                  <div class="profile-com-actions">
+                    <button class="btn-com-join ${comm.joined ? 'joined' : ''}" data-comm-id="${comm.id}">
+                      ${comm.joined ? '✓ MIEMBRO ACTIVO' : '+ UNIRME'}
+                    </button>
+                    <button class="btn-com-forum" data-comm-id="${comm.id}">
+                      VER ENCUENTROS
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- PESTAÑA 4: AMIGOS -->
+          <div class="profile-tab-content ${activeProfileTab === 'amigos' ? 'active' : ''}" id="tab-content-amigos">
+            <div class="profile-spaces-header">
+              <h2 class="profile-section-title" style="margin-bottom: 0;">RED DE CONEXIONES CULTURALES (${friendsCount})</h2>
+              <button id="btn-profile-find-friends" style="background: var(--accent); color: #000; border: none; font-family: var(--font-mono); font-size: 11px; font-weight: 900; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                + DESCUBRIR PERSONAS
+              </button>
+            </div>
+
+            <div class="profile-friends-grid">
+              ${getProfileFriends(activeProfileKey).map(f => `
+                <div class="profile-friend-card">
+                  <div class="profile-friend-top" data-profile-key="${f.key}" style="cursor: pointer;" title="Ver perfil público de ${f.name}">
+                    <img class="profile-friend-avatar" src="${f.avatar}" alt="${f.name}">
+                    <div>
+                      <div class="profile-friend-name" data-profile-key="${f.key}">${f.name}</div>
+                      <div class="profile-friend-meta">${f.statusText || 'Conectado a la red cultural'}</div>
+                    </div>
+                  </div>
+
+                  <div class="profile-friend-actions">
+                    <button class="btn-profile-friend-action primary" data-action="view-profile" data-profile-key="${f.key}">
+                      VER PERFIL
+                    </button>
+                    <button class="btn-profile-friend-action" data-action="message" data-name="${f.name}">
+                      MENSAJE
+                    </button>
+                    <button class="btn-profile-friend-action" data-action="invite" data-name="${f.name}">
+                      INVITAR
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- PESTAÑA 5: RECOMENDACIONES -->
+          <div class="profile-tab-content ${activeProfileTab === 'recomendaciones' ? 'active' : ''}" id="tab-content-recomendaciones">
+            <h2 class="profile-section-title">SELECCIÓN PERSONALIZADA PARA TI</h2>
+            <div class="profile-recom-grid">
+              ${(profile.recommendations || []).map(rec => `
+                <div class="profile-recom-card">
+                  <div class="profile-recom-img-wrap">
+                    <img class="profile-recom-img" src="${rec.image}" alt="${rec.title}">
+                    <span class="profile-recom-match-badge">${rec.affinity}</span>
+                  </div>
+
+                  <div class="profile-recom-body">
+                    <div>
+                      <div class="profile-recom-category">${rec.category}</div>
+                      <h3 class="profile-recom-title">${rec.title}</h3>
+                      <div class="profile-recom-meta">${rec.venue} • ${rec.date} • ${rec.price}</div>
+                    </div>
+
+                    <div class="profile-recom-actions">
+                      <button class="btn-recom-buy" data-event-id="${rec.eventId}" data-event-title="${rec.title}">
+                        COMPRAR ENTRADA
+                      </button>
+                      <button class="btn-recom-details" data-event-id="${rec.eventId}">
+                        DETALLES
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Footer Integrado de Plataforma Cultural -->
+          <footer class="public-profile-footer">
+            <div class="public-profile-footer-content">
+              <div>
+                <div class="public-profile-footer-brand">
+                  <div class="friends-brand-icon" style="width:22px; height:22px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M10 7v10M10 12l5-5M11 11l5 6" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <span>KAWSAY</span>
+                </div>
+                <p class="public-profile-footer-desc">
+                  Tu pase personal al latido cultural de la ciudad. Gestiona tus experiencias desde un solo lugar.
+                </p>
+              </div>
+
+              <div>
+                <div class="public-profile-footer-col-title">EXPLORAR</div>
+                <div class="public-profile-footer-link" id="pfooter-agenda">Agenda</div>
+                <div class="public-profile-footer-link" id="pfooter-espacios">Espacios</div>
+                <div class="public-profile-footer-link" id="pfooter-comunidad">Comunidad</div>
+              </div>
+
+              <div>
+                <div class="public-profile-footer-col-title">CUENTA</div>
+                <div class="public-profile-footer-link" id="pfooter-perfil">Perfil</div>
+                <div class="public-profile-footer-link" id="pfooter-pagos">Métodos de Pago</div>
+                <div class="public-profile-footer-link" id="pfooter-soporte">Soporte</div>
+              </div>
+
+              <div>
+                <div class="public-profile-footer-col-title">SOCIAL</div>
+                <div class="public-profile-footer-socials">
+                  <div class="public-profile-social-btn" title="Instagram" id="pfooter-ig">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+                    </svg>
+                  </div>
+                  <div class="public-profile-social-btn" title="X / Twitter" id="pfooter-x">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="public-profile-footer-bottom">
+              <div>© 2024 KAWSAY PLATAFORMA CULTURAL.</div>
+              <div style="display: flex; gap: 20px;">
+                <span style="cursor: pointer;" id="pfooter-privacy">PRIVACIDAD</span>
+                <span style="cursor: pointer;" id="pfooter-credits">CRÉDITOS</span>
+              </div>
+            </div>
+          </footer>
+
+        </div><!-- /public-profile-container -->
+
+      </div><!-- /public-profile-wrapper -->
+    `;
+
+    // 1. Manejo de Pestañas
+    const tabs = view.querySelectorAll('.public-profile-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        tabs.forEach(t => t.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        const ptab = e.currentTarget.dataset.ptab;
+        activeProfileTab = ptab;
+
+        view.querySelectorAll('.profile-tab-content').forEach(c => c.classList.remove('active'));
+        const targetContent = view.querySelector('#tab-content-' + ptab);
+        if (targetContent) targetContent.classList.add('active');
+      });
+    });
+
+    // 2. Botón Volver a Mi Perfil (al visitar otro usuario)
+    const btnBackSelf = view.querySelector('#btn-back-to-myprofile');
+    if (btnBackSelf) {
+      btnBackSelf.addEventListener('click', () => {
+        activeProfileKey = 'mateo';
+        activeProfileTab = 'eventos';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const mainEl = document.getElementById('main');
+        if (mainEl) mainEl.scrollTop = 0;
+        renderUserProfileView(view);
+      });
+    }
+
+    const btnMsgOther = view.querySelector('#btn-msg-other-user');
+    if (btnMsgOther) {
+      btnMsgOther.addEventListener('click', () => {
+        openFriendMessageModal(btnMsgOther.dataset.name);
+      });
+    }
+
+    const btnToggleFriend = view.querySelector('#btn-toggle-friendship');
+    if (btnToggleFriend) {
+      btnToggleFriend.addEventListener('click', (e) => {
+        const isConn = e.currentTarget.textContent.includes('CONECTADO');
+        if (isConn) {
+          e.currentTarget.textContent = '+ CONECTAR';
+          e.currentTarget.style.background = '#1a1a20';
+          e.currentTarget.style.color = '#aaa';
+          showToast(`Conexión con ${profile.name} pausada.`);
+        } else {
+          e.currentTarget.textContent = '✓ CONECTADO';
+          e.currentTarget.style.background = 'var(--accent)';
+          e.currentTarget.style.color = '#000';
+          showToast(`🎉 ¡Ahora estás conectado con ${profile.name}!`);
+        }
+      });
+    }
+
+    // 3. Edición de Perfil & Subida de Foto
+    const btnOpenEdit = view.querySelector('#btn-open-edit-profile');
+    if (btnOpenEdit) {
+      btnOpenEdit.addEventListener('click', () => openEditProfileModal(profile));
+    }
+
+    const avatarContainer = view.querySelector('#profile-avatar-container');
+    if (avatarContainer && isSelf) {
+      avatarContainer.addEventListener('click', () => openEditProfileModal(profile));
+    }
+
+    const btnEditAvatar = view.querySelector('#btn-edit-avatar');
+    if (btnEditAvatar) {
+      btnEditAvatar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEditProfileModal(profile);
+      });
+    }
+
+    // 4. Métricas / Contadores Interactivos
+    const statEvents = view.querySelector('#stat-btn-events');
+    if (statEvents) {
+      statEvents.addEventListener('click', () => {
+        const tabEventos = view.querySelector('[data-ptab="eventos"]');
+        if (tabEventos) tabEventos.click();
+      });
+    }
+
+    const statSpaces = view.querySelector('#stat-btn-spaces');
+    if (statSpaces) {
+      statSpaces.addEventListener('click', () => {
+        const tabEventos = view.querySelector('[data-ptab="eventos"]');
+        if (tabEventos) tabEventos.click();
+        const secSpaces = view.querySelector('#section-espacios-seguidos');
+        if (secSpaces) secSpaces.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    const statPoints = view.querySelector('#stat-btn-points');
+    if (statPoints) {
+      statPoints.addEventListener('click', () => openLoyaltyPointsModal(profile));
+    }
+
+    const statFriends = view.querySelector('#stat-btn-friends');
+    if (statFriends) {
+      statFriends.addEventListener('click', () => {
+        const tabAmigos = view.querySelector('[data-ptab="amigos"]');
+        if (tabAmigos) tabAmigos.click();
+      });
+    }
+
+    // 5. Clicks en Tickets QR & Detalles
+    view.querySelectorAll('.btn-ticket-qr').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const ticketId = e.currentTarget.dataset.ticketId;
+        const targetTicket = profile.upcoming.find(t => t.id === ticketId) || profile.upcoming[0];
+        if (targetTicket) openTicketQRModal(targetTicket);
+      });
+    });
+
+    view.querySelectorAll('.profile-ticket-details-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const evId = e.currentTarget.dataset.eventId;
+        if (evId) openEventDetailModal(evId);
+      });
+    });
+
+    // 6. Clicks en Espacios
+    view.querySelectorAll('.profile-space-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        const spId = e.currentTarget.dataset.spaceId;
+        if (spId && window.navigateSpaceDetail) window.navigateSpaceDetail(spId);
+      });
+    });
+
+    const exploreMoreBtn = view.querySelector('#btn-profile-explore-more');
+    if (exploreMoreBtn) exploreMoreBtn.addEventListener('click', () => navigate('spaces-map'));
+
+    const seeAllSpaces = view.querySelector('#btn-see-all-spaces');
+    if (seeAllSpaces) seeAllSpaces.addEventListener('click', () => navigate('spaces-map'));
+
+    // 7. Clicks en Historial de Asistencia y Reseñas
+    view.querySelectorAll('.btn-leave-review').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const histId = e.currentTarget.dataset.histId;
+        const targetHist = profile.history.find(h => h.id === histId) || profile.history[0];
+        if (targetHist) openReviewModal(targetHist);
+      });
+    });
+
+    view.querySelectorAll('.btn-view-hist-event').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const evId = e.currentTarget.dataset.eventId;
+        if (evId) openEventDetailModal(evId);
+      });
+    });
+
+    // 8. Clicks en Comunidades (Unirse / Ver Foro)
+    view.querySelectorAll('.btn-com-join').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const commId = e.currentTarget.dataset.commId;
+        const targetComm = profile.communities.find(c => c.id === commId);
+        if (targetComm) {
+          targetComm.joined = !targetComm.joined;
+          targetComm.members += targetComm.joined ? 1 : -1;
+          e.currentTarget.classList.toggle('joined', targetComm.joined);
+          e.currentTarget.textContent = targetComm.joined ? '✓ MIEMBRO ACTIVO' : '+ UNIRME';
+          showToast(targetComm.joined ? `🎉 ¡Te has unido a "${targetComm.name}"!` : `Has salido de "${targetComm.name}".`);
+        }
+      });
+    });
+
+    view.querySelectorAll('.btn-com-forum').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const commId = e.currentTarget.dataset.commId;
+        const targetComm = profile.communities.find(c => c.id === commId);
+        if (targetComm) openCommunityModal(targetComm);
+      });
+    });
+
+    const btnSuggestComm = view.querySelector('#btn-suggest-community');
+    if (btnSuggestComm) {
+      btnSuggestComm.addEventListener('click', () => {
+        showToast('💡 Formulario de creación de comunidad cultural abierto.');
+      });
+    }
+
+    // 9. Clicks en Amigos dentro de la Pestaña
+    view.querySelectorAll('[data-action="view-profile"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pKey = e.currentTarget.dataset.profileKey;
+        if (pKey) window.openUserProfile(pKey);
+      });
+    });
+
+    view.querySelectorAll('.profile-friend-name, .profile-friend-top, .profile-friend-avatar').forEach(nameEl => {
+      nameEl.addEventListener('click', (e) => {
+        const pKey = e.currentTarget.dataset.profileKey || (e.currentTarget.closest('[data-profile-key]') ? e.currentTarget.closest('[data-profile-key]').dataset.profileKey : null);
+        if (pKey) window.openUserProfile(pKey);
+      });
+    });
+
+    view.querySelectorAll('[data-action="message"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        openFriendMessageModal(btn.dataset.name);
+      });
+    });
+
+    view.querySelectorAll('[data-action="invite"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        openFriendInviteModal(btn.dataset.name);
+      });
+    });
+
+    const btnFindFriends = view.querySelector('#btn-profile-find-friends');
+    if (btnFindFriends) {
+      btnFindFriends.addEventListener('click', () => openFindMorePeopleModal());
+    }
+
+    // 10. Clicks en Recomendaciones
+    view.querySelectorAll('.btn-recom-buy').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const evId = e.currentTarget.dataset.eventId;
+        const title = e.currentTarget.dataset.eventTitle;
+        cartItems.push({ id: evId, title: title, price: 12.00, qty: 1 });
+        renderTopbar();
+        showToast(`🎟️ "${title}" agregado al carrito.`);
+      });
+    });
+
+    view.querySelectorAll('.btn-recom-details').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const evId = e.currentTarget.dataset.eventId;
+        if (evId) openEventDetailModal(evId);
+      });
+    });
+
+    // 11. Footer links
+    const fAgenda = view.querySelector('#pfooter-agenda');
+    if (fAgenda) fAgenda.addEventListener('click', () => navigate('calendar-month'));
+    const fEspacios = view.querySelector('#pfooter-espacios');
+    if (fEspacios) fEspacios.addEventListener('click', () => navigate('spaces-map'));
+    const fComunidad = view.querySelector('#pfooter-comunidad');
+    if (fComunidad) fComunidad.addEventListener('click', () => navigate('friends'));
+    const fPerfil = view.querySelector('#pfooter-perfil');
+    if (fPerfil) fPerfil.addEventListener('click', () => {
+      activeProfileKey = 'mateo';
+      renderUserProfileView(view);
+    });
+    const fPagos = view.querySelector('#pfooter-pagos');
+    if (fPagos) fPagos.addEventListener('click', () => showToast('💳 Métodos de pago vinculados: Visa Débito Banco Pichincha (•••• 4192)'));
+    const fSoporte = view.querySelector('#pfooter-soporte');
+    if (fSoporte) fSoporte.addEventListener('click', () => showToast('✉️ Soporte Cultural: soporte@kawsayquito.ec'));
+    const fPrivacy = view.querySelector('#pfooter-privacy');
+    if (fPrivacy) fPrivacy.addEventListener('click', () => showToast('🔒 Privacidad KAWSAY: Tus datos culturales nunca se comparten con terceros.'));
+    const fCredits = view.querySelector('#pfooter-credits');
+    if (fCredits) fCredits.addEventListener('click', () => showToast('🏛️ KAWSAY Quito • Proyecto Cultural 2024'));
+    const fIg = view.querySelector('#pfooter-ig');
+    if (fIg) fIg.addEventListener('click', () => showToast('Instagram: @kawsayquito'));
+    const fX = view.querySelector('#pfooter-x');
+    if (fX) fX.addEventListener('click', () => showToast('X / Twitter: @kawsayquito'));
+  }
+
+  // ============================================================
+  // PÁGINA DE AMIGOS & COMUNIDAD CULTURAL (PERFIL ESPECTADOR)
+  // ============================================================
+  function closeFriendsModal() {
+    const existing = document.getElementById('modal-friends-action');
+    if (existing) existing.remove();
+  }
+
+  function openFriendMessageModal(friendName) {
+    closeFriendsModal();
+    const container = document.getElementById('modals-container') || document.body;
+    const modal = document.createElement('div');
+    modal.id = 'modal-friends-action';
+    modal.className = 'friends-modal-overlay';
+    modal.innerHTML = `
+      <div class="friends-modal-card">
+        <div class="friends-modal-header">
+          <div class="friends-modal-title">MENSAJE DIRECTO • ${friendName}</div>
+          <button class="friends-modal-close" id="btn-close-friend-modal">✕</button>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 11px; color: #888; margin-bottom: 14px;">
+          CANAL DIRECTO KAWSAY RED • COORDINACIÓN DE EVENTOS
+        </div>
+        <textarea id="friend-msg-input" placeholder="¡Hola! ¿Vamos a Oscura Radio o al festival este fin de semana?" style="width: 100%; min-height: 100px; background: #0e0e11; border: 1px solid #27272b; border-radius: 8px; padding: 12px; color: #fff; font-family: var(--font-body); font-size: 13px; resize: vertical; margin-bottom: 16px; outline: none;"></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button id="btn-cancel-msg" style="padding: 8px 16px; background: #18181c; border: 1px solid #27272a; color: #888; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">CANCELAR</button>
+          <button id="btn-send-friend-msg" style="padding: 8px 20px; background: var(--accent); border: none; color: #000; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 900; cursor: pointer;">ENVIAR MENSAJE</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(modal);
+
+    modal.querySelector('#btn-close-friend-modal').addEventListener('click', closeFriendsModal);
+    modal.querySelector('#btn-cancel-msg').addEventListener('click', closeFriendsModal);
+    modal.querySelector('#btn-send-friend-msg').addEventListener('click', () => {
+      const text = modal.querySelector('#friend-msg-input').value.trim();
+      if (!text) {
+        showToast('Por favor escribe un mensaje.');
+        return;
+      }
+      closeFriendsModal();
+      showToast(`💬 Mensaje enviado a ${friendName}`);
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeFriendsModal();
+    });
+  }
+
+  function openFriendInviteModal(friendName) {
+    closeFriendsModal();
+    const container = document.getElementById('modals-container') || document.body;
+    const modal = document.createElement('div');
+    modal.id = 'modal-friends-action';
+    modal.className = 'friends-modal-overlay';
+
+    const eventsList = (apiEvents && apiEvents.length > 0)
+      ? apiEvents.filter(e => e.status === 'approved').slice(0, 4)
+      : [
+          { id: 'fe-001', title: 'OSCURA RADIO EN VIVO: POST-PUNK', date: '24 OCT', venue: 'Teatro Bolívar' },
+          { id: 'ev-002', title: 'INDIE QUITO W4', date: '02 NOV', venue: 'Nave 01' },
+          { id: 'ev-003', title: 'FESTIVAL DE CINE INDEPENDIENTE', date: '15 NOV', venue: 'Teatro Bolívar' }
+        ];
+
+    modal.innerHTML = `
+      <div class="friends-modal-card">
+        <div class="friends-modal-header">
+          <div class="friends-modal-title">INVITAR A ${friendName} A UN EVENTO</div>
+          <button class="friends-modal-close" id="btn-close-friend-modal">✕</button>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 11px; color: #888; margin-bottom: 16px;">
+          SELECCIONA EL EVENTO DE LA CARTELERA PARA COMPARTIR BOLETOS O COORDINAR ASISTENCIA:
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; margin-bottom: 20px;">
+          ${eventsList.map(ev => `
+            <div style="display: flex; align-items: center; justify-content: space-between; background: #18181c; border: 1px solid #27272b; padding: 12px 14px; border-radius: 8px;">
+              <div style="flex: 1; padding-right: 12px;">
+                <div style="font-weight: 800; font-size: 13px; color: #fff; margin-bottom: 2px;">${ev.title}</div>
+                <div style="font-family: var(--font-mono); font-size: 10px; color: #888;">${ev.date} • ${ev.venue || 'Quito'}</div>
+              </div>
+              <button class="btn-do-invite" data-event-title="${ev.title}" style="background: var(--accent); border: none; color: #000; font-family: var(--font-mono); font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                INVITAR
+              </button>
+            </div>
+          `).join('')}
+        </div>
+        <div style="text-align: right;">
+          <button id="btn-cancel-invite" style="padding: 8px 16px; background: #18181c; border: 1px solid #27272a; color: #888; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">CERRAR</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(modal);
+
+    modal.querySelector('#btn-close-friend-modal').addEventListener('click', closeFriendsModal);
+    modal.querySelector('#btn-cancel-invite').addEventListener('click', closeFriendsModal);
+    modal.querySelectorAll('.btn-do-invite').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const title = e.currentTarget.dataset.eventTitle;
+        closeFriendsModal();
+        showToast(`🎉 ¡Invitación a "${title}" enviada a ${friendName}!`);
+      });
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeFriendsModal();
+    });
+  }
+
+  function openFriendProposeModal(friendName) {
+    closeFriendsModal();
+    const container = document.getElementById('modals-container') || document.body;
+    const modal = document.createElement('div');
+    modal.id = 'modal-friends-action';
+    modal.className = 'friends-modal-overlay';
+    modal.innerHTML = `
+      <div class="friends-modal-card">
+        <div class="friends-modal-header">
+          <div class="friends-modal-title">PROPONER SALIDA A ${friendName}</div>
+          <button class="friends-modal-close" id="btn-close-friend-modal">✕</button>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 11px; color: #888; margin-bottom: 16px;">
+          COORDINAR UN PLAN CULTURAL PERSONALIZADO:
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+          <div>
+            <label style="font-family: var(--font-mono); font-size: 10px; color: #888; display: block; margin-bottom: 6px;">SECTOR PREFERIDO</label>
+            <select id="propose-sector" style="width: 100%; background: #0e0e11; border: 1px solid #27272b; color: #fff; padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px;">
+              <option value="La Floresta">La Floresta (Galerías y Cafés)</option>
+              <option value="Centro Histórico">Centro Histórico (Teatros y Patrimonio)</option>
+              <option value="La Mariscal">La Mariscal (Espacios Alternativos)</option>
+              <option value="Guápulo">Guápulo (Música y Vistas)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-family: var(--font-mono); font-size: 10px; color: #888; display: block; margin-bottom: 6px;">TIPO DE PLAN</label>
+            <select id="propose-type" style="width: 100%; background: #0e0e11; border: 1px solid #27272b; color: #fff; padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px;">
+              <option value="Concierto / Jazz en vivo">Concierto / Jazz en vivo</option>
+              <option value="Exposición de Arte Visual">Exposición de Arte Visual</option>
+              <option value="Cine Foro Independiente">Cine Foro Independiente</option>
+              <option value="Teatro Experimental">Teatro Experimental</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button id="btn-cancel-propose" style="padding: 8px 16px; background: #18181c; border: 1px solid #27272a; color: #888; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">CANCELAR</button>
+          <button id="btn-send-propose" style="padding: 8px 20px; background: var(--accent); border: none; color: #000; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 900; cursor: pointer;">ENVIAR PROPUESTA</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(modal);
+
+    modal.querySelector('#btn-close-friend-modal').addEventListener('click', closeFriendsModal);
+    modal.querySelector('#btn-cancel-propose').addEventListener('click', closeFriendsModal);
+    modal.querySelector('#btn-send-propose').addEventListener('click', () => {
+      const sector = modal.querySelector('#propose-sector').value;
+      const type = modal.querySelector('#propose-type').value;
+      closeFriendsModal();
+      showToast(`☕ Propuesta enviada a ${friendName}: ${type} en ${sector}`);
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeFriendsModal();
+    });
+  }
+
+  function openFindMorePeopleModal() {
+    closeFriendsModal();
+    const container = document.getElementById('modals-container') || document.body;
+    const modal = document.createElement('div');
+    modal.id = 'modal-friends-action';
+    modal.className = 'friends-modal-overlay';
+    modal.innerHTML = `
+      <div class="friends-modal-card">
+        <div class="friends-modal-header">
+          <div class="friends-modal-title">ENCUENTRA MÁS PERSONAS EN QUITO</div>
+          <button class="friends-modal-close" id="btn-close-friend-modal">✕</button>
+        </div>
+        <p style="font-family: var(--font-mono); font-size: 11px; color: #888; margin-bottom: 20px; line-height: 1.5;">
+          EXPANDE TU CÍRCULO CULTURAL. SINCRONIZA TUS CONTACTOS O DESCUBRE ESPECTADORES CON TUS MISMOS INTERESES ARTÍSTICOS.
+        </p>
+
+        <button id="btn-sync-contacts" style="width: 100%; padding: 12px; background: #1c1c21; border: 1px dashed var(--accent); border-radius: 8px; color: var(--accent); font-family: var(--font-mono); font-size: 11px; font-weight: 700; cursor: pointer; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          🔄 SINCRONIZAR CONTACTOS DEL DISPOSITIVO
+        </button>
+
+        <div style="font-family: var(--font-mono); font-size: 10px; color: #71717a; margin-bottom: 12px; letter-spacing: 0.5px;">
+          SUGERENCIAS BASADAS EN TUS EVENTOS ASISTIDOS:
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #18181c; border: 1px solid #27272b; padding: 10px 14px; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <img src="images/event_voices.jpg" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+              <div>
+                <div style="font-size: 12px; font-weight: 800; color: #fff;">CAMILA VÁSQUEZ</div>
+                <div style="font-family: var(--font-mono); font-size: 9px; color: #888;">ASISTE A FESTIVALES DE JAZZ</div>
+              </div>
+            </div>
+            <button class="btn-connect-person" data-person-name="Camila Vásquez" style="background: var(--accent); color: #000; border: none; font-family: var(--font-mono); font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 4px; cursor: pointer;">+ CONECTAR</button>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #18181c; border: 1px solid #27272b; padding: 10px 14px; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <img src="images/event_portraits.jpg" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+              <div>
+                <div style="font-size: 12px; font-weight: 800; color: #fff;">ANDRÉS MORENO</div>
+                <div style="font-family: var(--font-mono); font-size: 9px; color: #888;">AFICIONADO AL CINE INDEPENDIENTE</div>
+              </div>
+            </div>
+            <button class="btn-connect-person" data-person-name="Andrés Moreno" style="background: var(--accent); color: #000; border: none; font-family: var(--font-mono); font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 4px; cursor: pointer;">+ CONECTAR</button>
+          </div>
+        </div>
+
+        <div style="text-align: right;">
+          <button id="btn-close-discover" style="padding: 8px 16px; background: #18181c; border: 1px solid #27272a; color: #888; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">CERRAR</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(modal);
+
+    modal.querySelector('#btn-close-friend-modal').addEventListener('click', closeFriendsModal);
+    modal.querySelector('#btn-close-discover').addEventListener('click', closeFriendsModal);
+    modal.querySelector('#btn-sync-contacts').addEventListener('click', () => {
+      friendsState.totalConnections += 3;
+      const statEl = document.getElementById('stat-total-connections');
+      if (statEl) statEl.textContent = friendsState.totalConnections;
+      closeFriendsModal();
+      showToast('📱 ¡Contactos sincronizados! Se agregaron 3 conexiones a tu red.');
+    });
+    modal.querySelectorAll('.btn-connect-person').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const name = e.currentTarget.dataset.personName;
+        e.currentTarget.textContent = 'SOLICITADO';
+        e.currentTarget.style.background = '#27272a';
+        e.currentTarget.style.color = '#888';
+        e.currentTarget.disabled = true;
+        showToast(`✨ Solicitud de amistad enviada a ${name}`);
+      });
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeFriendsModal();
+    });
+  }
+
+  function renderFriendsView(view) {
+    if (!view) return;
+
+    const query = (friendsState.searchQuery || '').toLowerCase().trim();
+    const filteredFriends = friendsState.friends.filter(f => {
+      if (!query) return true;
+      return f.name.toLowerCase().includes(query) || (f.statusText && f.statusText.toLowerCase().includes(query));
+    });
+
+    const activeUserHandle = currentUser.username || (currentUser.name ? currentUser.name.toUpperCase().replace(/\s+/g, '_') : 'MATEO_88');
+    const activeAvatar = currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+
+    view.innerHTML = `
+      <div class="friends-view-wrapper">
+
+        <!-- Top Navigation Bar con estética KAWSAY -->
+        <header class="friends-topbar">
+          <div class="friends-brand" id="friends-brand-logo" title="Volver a la cartelera pública">
+            <div class="friends-brand-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" fill="#000" />
+                <path d="M10 7v10M10 12l5-5M11 11l5 6" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span>KAWSAY</span>
+          </div>
+
+          <nav class="friends-nav-links">
+            <div class="friends-nav-link" id="nav-link-eventos">EVENTOS</div>
+            <div class="friends-nav-link" id="nav-link-espacios">ESPACIOS</div>
+            <div class="friends-nav-link active" id="nav-link-amigos">AMIGOS</div>
+            <div class="friends-nav-link" id="nav-link-tickets">TICKETS</div>
+          </nav>
+
+          <div class="friends-user-badge" id="friends-top-user" title="Ver mi Perfil de Espectador">
+            <img src="${activeAvatar}" alt="${currentUser.name || 'Mateo'}">
+            <span>${activeUserHandle}</span>
+          </div>
+        </header>
+
+        <!-- Contenedor Principal de la Página -->
+        <div class="friends-container">
+
+          <!-- Marca de Agua de Fondo COMUNIDAD AMIGOS -->
+          <div class="friends-watermark-bg" aria-hidden="true">COMUNIDAD AMIGOS</div>
+
+          <!-- Cabecera de Página / Hero -->
+          <div class="friends-hero-area">
+            <div>
+              <span class="friends-tag-pill">TU RED KAWSAY</span>
+              <h1 class="friends-hero-title">AMIGOS</h1>
+              <p class="friends-hero-subtitle">Coordina tu próxima salida cultural con tu círculo cercano.</p>
+            </div>
+
+            <div class="friends-stat-card">
+              <div class="friends-stat-label">TOTAL CONEXIONES</div>
+              <div class="friends-stat-value" id="stat-total-connections">${friendsState.totalConnections}</div>
+            </div>
+          </div>
+
+          <!-- Cuerpo: Watermark Lateral + Grilla Principal -->
+          <div class="friends-body-wrap">
+            <div class="friends-side-meta" aria-hidden="true">
+              <span>SOCIAL LAYER V2.0</span>
+              <span>AMIGOS Y COMUNIDAD</span>
+            </div>
+
+            <div class="friends-main-grid">
+
+              <!-- Columna Principal Izquierda -->
+              <div class="friends-feed-col">
+
+                <!-- Header de Lista de Amigos -->
+                <div class="friends-list-header">
+                  <div class="friends-list-title">LISTA DE AMIGOS (${friendsState.onlineCount} ONLINE)</div>
+                  <div class="friends-search-box">
+                    <input type="text" class="friends-search-input" id="friends-search-input" placeholder="BUSCAR AMIGO..." value="${friendsState.searchQuery}">
+                  </div>
+                </div>
+
+                <!-- Lista de Tarjetas de Amigos -->
+                <div class="friends-cards-stack" id="friends-cards-container">
+                  ${filteredFriends.length === 0 ? `
+                    <div style="padding: 32px; background: #131316; border: 1px dashed #27272b; border-radius: 10px; text-align: center; color: #71717a; font-family: var(--font-mono); font-size: 12px;">
+                      NO SE ENCONTRARON AMIGOS CON ESE CRITERIO.
+                    </div>
+                  ` : filteredFriends.map(f => `
+                    <div class="friend-card" data-friend-id="${f.id}" data-friend-name="${f.name}">
+                      <div class="friend-card-left">
+                        <div class="friend-avatar-wrap">
+                          <img class="friend-avatar-img" src="${f.avatar}" alt="${f.name}">
+                          ${f.online ? `<span class="friend-status-dot" title="En línea"></span>` : ''}
+                        </div>
+                        <div class="friend-info">
+                          <div class="friend-name">${f.name}</div>
+                          <div class="friend-event-status ${f.statusType === 'none' ? 'empty' : ''}">
+                            ${f.statusPrefix ? `${f.statusPrefix} ` : ''}<strong>${f.statusText}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="friend-actions">
+                        <button class="btn-friend-view-profile" data-action="view-profile" data-friend-id="${f.id}" data-friend-name="${f.name}">VER PERFIL</button>
+                        <button class="btn-friend-msg" data-action="message" data-name="${f.name}">MENSAJE</button>
+                        ${f.statusType === 'event' ? `
+                          <button class="btn-friend-invite" data-action="invite" data-name="${f.name}">INVITAR EVENTO</button>
+                        ` : `
+                          <button class="btn-friend-propose" data-action="propose" data-name="${f.name}">PROPONER SALIDA</button>
+                        `}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+
+                <!-- Sección: Planes para Compartir -->
+                <div class="friends-plans-section">
+                  <h2 class="friends-plans-title">PLANES PARA COMPARTIR</h2>
+                  <div class="friends-plans-grid">
+                    ${friendsState.sharedPlans.map(plan => `
+                      <div class="friend-plan-card" data-plan-id="${plan.id}" data-event-id="${plan.eventId}" data-plan-title="${plan.title}">
+                        <div class="friend-plan-media">
+                          <img class="friend-plan-img" src="${plan.image}" alt="${plan.title}">
+                          <div class="friend-plan-badge">${plan.interestedCount} AMIGOS INTERESADOS</div>
+                          <div class="friend-plan-avatars">
+                            ${plan.avatars.map(av => `<img class="friend-plan-avatar" src="${av}" alt="Amigo">`).join('')}
+                            ${plan.extraCount > 0 ? `<div class="friend-plan-more">+${plan.extraCount}</div>` : ''}
+                          </div>
+                        </div>
+                        <div class="friend-plan-details">
+                          <div class="friend-plan-title">${plan.title}</div>
+                          <div class="friend-plan-meta">${plan.meta}</div>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+
+              </div><!-- /friends-feed-col -->
+
+              <!-- Columna Lateral Derecha -->
+              <aside class="friends-sidebar">
+
+                <!-- Tarjeta: Solicitudes de Amistad -->
+                <div class="friends-sidebar-card" id="card-friend-requests">
+                  <div class="friends-sidebar-title-red" id="req-header-title">SOLICITUDES (${friendsState.requests.length})</div>
+                  <div id="requests-list-container">
+                    ${friendsState.requests.length === 0 ? `
+                      <div style="font-family: var(--font-mono); font-size: 11px; color: #52525b; text-align: center; padding: 12px 0;">
+                        SIN SOLICITUDES PENDIENTES
+                      </div>
+                    ` : friendsState.requests.map(req => `
+                      <div class="friend-request-item" data-req-id="${req.id}">
+                        <div class="friend-request-left">
+                          <img class="friend-request-avatar" src="${req.avatar}" alt="${req.name}">
+                          <div>
+                            <div class="friend-request-name">${req.name}</div>
+                            <div class="friend-request-mutual">${req.mutual}</div>
+                          </div>
+                        </div>
+                        <div class="friend-request-btns">
+                          <button class="btn-req-accept" data-req-id="${req.id}" data-req-name="${req.name}" title="Aceptar solicitud">✓</button>
+                          <button class="btn-req-reject" data-req-id="${req.id}" data-req-name="${req.name}" title="Rechazar solicitud">✕</button>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Tarjeta: Gustos Similares -->
+                <div class="friends-sidebar-card">
+                  <div class="friends-sidebar-title-green">GUSTOS SIMILARES</div>
+                  ${friendsState.similarMatches.map(m => `
+                    <div class="friend-match-item" style="cursor: pointer;" data-match-name="${m.name}" title="Click para conectar">
+                      <div class="friend-match-top">
+                        <div class="friend-match-user">
+                          <img class="friend-match-avatar" src="${m.avatar}" alt="${m.name}">
+                          <span class="friend-match-name">${m.name}</span>
+                        </div>
+                        <span class="friend-match-pct">${m.percentage}% Match</span>
+                      </div>
+                      <div class="friend-match-bar">
+                        <div class="friend-match-bar-fill" style="width: ${m.percentage}%;"></div>
+                      </div>
+                      <p class="friend-match-desc">${m.description}</p>
+                    </div>
+                  `).join('')}
+                </div>
+
+                <!-- Tarjeta: Encuentra Más Personas (Dashed Border) -->
+                <div class="friends-discover-card" id="btn-discover-people">
+                  <div class="friends-discover-icon-wrap">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <line x1="19" y1="8" x2="19" y2="14"/>
+                      <line x1="22" y1="11" x2="16" y2="11"/>
+                    </svg>
+                  </div>
+                  <div class="friends-discover-title">ENCUENTRA MÁS PERSONAS</div>
+                  <p class="friends-discover-desc">SINCRONIZA TUS CONTACTOS O BUSCA POR INTERESES CULTURALES.</p>
+                </div>
+
+              </aside><!-- /friends-sidebar -->
+
+            </div><!-- /friends-main-grid -->
+          </div><!-- /friends-body-wrap -->
+
+          <!-- Footer Integrado de Kawsay Red -->
+          <footer class="friends-footer">
+            <div class="friends-footer-brand">
+              <div class="friends-footer-logo">
+                <div class="friends-brand-icon" style="width:22px; height:22px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M10 7v10M10 12l5-5M11 11l5 6" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <span>KAWSAY RED</span>
+              </div>
+              <div class="friends-footer-tagline">TU COMUNIDAD CULTURAL</div>
+              <p class="friends-footer-manifesto">
+                LA RED SOCIAL DE KAWSAY ESTÁ DISEÑADA PARA FORTALECER EL TEJIDO CULTURAL DE LA CIUDAD A TRAVÉS DE CONEXIONES REALES Y PRESENCIALES.
+              </p>
+            </div>
+
+            <div class="friends-footer-links-wrap">
+              <div>
+                <div class="friends-footer-col-title">POLÍTICAS</div>
+                <div class="friends-footer-col-link" id="footer-privacidad">PRIVACIDAD Y SEGURIDAD</div>
+              </div>
+              <div>
+                <div class="friends-footer-col-title">SOPORTE</div>
+                <div class="friends-footer-col-link" id="footer-soporte">REPORTAR UN PROBLEMA</div>
+              </div>
+            </div>
+
+            <div class="friends-footer-copyright">
+              © 2024 KAWSAY PLATFORM — TU ESPACIO, TUS REGLAS, TU CULTURA.
+            </div>
+          </footer>
+
+        </div><!-- /friends-container -->
+
+      </div><!-- /friends-view-wrapper -->
+    `;
+
+    // Bindings de Navegación
+    const logoBtn = view.querySelector('#friends-brand-logo');
+    if (logoBtn) logoBtn.addEventListener('click', () => navigate('home'));
+
+    const navEventos = view.querySelector('#nav-link-eventos');
+    if (navEventos) navEventos.addEventListener('click', () => navigate('home'));
+
+    const navEspacios = view.querySelector('#nav-link-espacios');
+    if (navEspacios) navEspacios.addEventListener('click', () => navigate('spaces-map'));
+
+    const navTickets = view.querySelector('#nav-link-tickets');
+    if (navTickets) navTickets.addEventListener('click', () => navigate('user'));
+
+    const topUser = view.querySelector('#friends-top-user');
+    if (topUser) topUser.addEventListener('click', () => navigate('user'));
+
+    // Búsqueda en Vivo de Amigos
+    const searchInput = view.querySelector('#friends-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        friendsState.searchQuery = e.target.value;
+        const q = friendsState.searchQuery.toLowerCase().trim();
+        const filtered = friendsState.friends.filter(f => {
+          if (!q) return true;
+          return f.name.toLowerCase().includes(q) || (f.statusText && f.statusText.toLowerCase().includes(q));
+        });
+        const container = view.querySelector('#friends-cards-container');
+        if (container) {
+          if (filtered.length === 0) {
+            container.innerHTML = `
+              <div style="padding: 32px; background: #131316; border: 1px dashed #27272b; border-radius: 10px; text-align: center; color: #71717a; font-family: var(--font-mono); font-size: 12px;">
+                NO SE ENCONTRARON AMIGOS CON ESE CRITERIO.
+              </div>
+            `;
+          } else {
+            container.innerHTML = filtered.map(f => `
+              <div class="friend-card" data-friend-id="${f.id}" data-friend-name="${f.name}">
+                <div class="friend-card-left">
+                  <div class="friend-avatar-wrap">
+                    <img class="friend-avatar-img" src="${f.avatar}" alt="${f.name}">
+                    ${f.online ? `<span class="friend-status-dot" title="En línea"></span>` : ''}
+                  </div>
+                  <div class="friend-info">
+                    <div class="friend-name">${f.name}</div>
+                    <div class="friend-event-status ${f.statusType === 'none' ? 'empty' : ''}">
+                      ${f.statusPrefix ? `${f.statusPrefix} ` : ''}<strong>${f.statusText}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="friend-actions">
+                  <button class="btn-friend-view-profile" data-action="view-profile" data-friend-id="${f.id}" data-friend-name="${f.name}">VER PERFIL</button>
+                  <button class="btn-friend-msg" data-action="message" data-name="${f.name}">MENSAJE</button>
+                  ${f.statusType === 'event' ? `
+                    <button class="btn-friend-invite" data-action="invite" data-name="${f.name}">INVITAR EVENTO</button>
+                  ` : `
+                    <button class="btn-friend-propose" data-action="propose" data-name="${f.name}">PROPONER SALIDA</button>
+                  `}
+                </div>
+              </div>
+            `).join('');
+          }
+        }
+      });
+    }
+
+    // Acciones de Amigos (Ver Perfil, Mensaje, Invitar, Proponer)
+    view.addEventListener('click', (e) => {
+      // 1. Ver Perfil Público
+      const viewProfileBtn = e.target.closest('[data-action="view-profile"]');
+      if (viewProfileBtn) {
+        const card = viewProfileBtn.closest('.friend-card');
+        const fId = (viewProfileBtn.dataset.friendId || (card ? card.dataset.friendId : '')).toLowerCase();
+        const fName = (viewProfileBtn.dataset.friendName || (card ? card.dataset.friendName : '')).toLowerCase();
+        const profileKey = (fId.includes('carlos') || fName.includes('carlos')) ? 'carlos' : 
+                           (fId.includes('sofia') || fName.includes('sofia')) ? 'sofia' : 
+                           (fId.includes('roberto') || fName.includes('roberto')) ? 'roberto' : 'mateo';
+        window.openUserProfile(profileKey);
+        return;
+      }
+
+      const msgBtn = e.target.closest('[data-action="message"]');
+      if (msgBtn) {
+        openFriendMessageModal(msgBtn.dataset.name);
+        return;
+      }
+
+      const inviteBtn = e.target.closest('[data-action="invite"]');
+      if (inviteBtn) {
+        openFriendInviteModal(inviteBtn.dataset.name);
+        return;
+      }
+
+      const proposeBtn = e.target.closest('[data-action="propose"]');
+      if (proposeBtn) {
+        openFriendProposeModal(proposeBtn.dataset.name);
+        return;
+      }
+
+      // Click en Avatar / Nombre de Amigo para Ver su Perfil Público
+      const friendLeft = e.target.closest('.friend-card-left');
+      if (friendLeft) {
+        const card = friendLeft.closest('.friend-card');
+        const fId = (card ? (card.dataset.friendId || '') : '').toLowerCase();
+        const fName = (card ? (card.dataset.friendName || '') : '').toLowerCase();
+        const profileKey = (fId.includes('carlos') || fName.includes('carlos')) ? 'carlos' : 
+                           (fId.includes('sofia') || fName.includes('sofia')) ? 'sofia' : 
+                           (fId.includes('roberto') || fName.includes('roberto')) ? 'roberto' : 'mateo';
+        window.openUserProfile(profileKey);
+        return;
+      }
+
+      // Aceptar Solicitud
+      const acceptBtn = e.target.closest('.btn-req-accept');
+      if (acceptBtn) {
+        const reqId = acceptBtn.dataset.reqId;
+        const reqName = acceptBtn.dataset.reqName;
+        const targetReq = friendsState.requests.find(r => r.id === reqId);
+        
+        friendsState.requests = friendsState.requests.filter(r => r.id !== reqId);
+        friendsState.totalConnections += 1;
+        friendsState.friends.unshift({
+          id: 'fr-' + Date.now(),
+          name: reqName,
+          statusType: 'none',
+          statusPrefix: '',
+          statusText: 'CONECTADO RECIENTEMENTE',
+          online: true,
+          avatar: targetReq ? targetReq.avatar : 'images/event_voices.jpg'
+        });
+
+        showToast(`🎉 ¡Ahora estás conectado con ${reqName}!`);
+        renderFriendsView(view);
+        return;
+      }
+
+      // Rechazar Solicitud
+      const rejectBtn = e.target.closest('.btn-req-reject');
+      if (rejectBtn) {
+        const reqId = rejectBtn.dataset.reqId;
+        friendsState.requests = friendsState.requests.filter(r => r.id !== reqId);
+        showToast('Solicitud de amistad descartada.');
+        renderFriendsView(view);
+        return;
+      }
+
+      // Planes para compartir
+      const planCard = e.target.closest('.friend-plan-card');
+      if (planCard) {
+        const evId = planCard.dataset.eventId;
+        const title = planCard.dataset.planTitle;
+        if (evId && apiEvents.some(e => e.id === evId)) {
+          openEventDetailModal(evId);
+        } else {
+          showToast(`🎟️ Plan seleccionado: "${title}". Te has sumado al grupo cultural.`);
+        }
+        return;
+      }
+
+      // Match item click
+      const matchItem = e.target.closest('.friend-match-item');
+      if (matchItem) {
+        const matchName = matchItem.dataset.matchName;
+        showToast(`⚡ Afinidad alta con ${matchName}. Puedes enviarle un mensaje cultural.`);
+        openFriendMessageModal(matchName);
+        return;
+      }
+
+      // Descubrir personas
+      if (e.target.closest('#btn-discover-people')) {
+        openFindMorePeopleModal();
+        return;
+      }
+
+      // Footer
+      if (e.target.closest('#footer-privacidad')) {
+        showToast('🔒 Privacidad KAWSAY: Tu red social es privada y no vende tus hábitos a terceros.');
+        return;
+      }
+      if (e.target.closest('#footer-soporte')) {
+        showToast('✉️ Soporte Cultural: Escríbenos a soporte@kawsayquito.ec');
+        return;
+      }
+    });
+  }
+
+  // ============================================================
   // DISEÑO DEDICADO DE ESTUDIO DE ARTISTA & GENERADOR DE CARTELERA PRO
   // ============================================================
   function renderArtistStudioView(view) {
+    if (currentUser.role !== 'artista') {
+      view.innerHTML = `<div style="padding:40px; text-align:center; color:#ef4444; font-weight:bold;">⛔ Acceso denegado: Se requiere perfil de Artista.</div>`;
+      return;
+    }
+
     const artistEvents = apiEvents;
 
     view.innerHTML = `
@@ -4938,7 +7408,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
           <tbody>
             ${pendingEvents.map(ev => `
               <tr>
-                <td><strong>${ev.title}</strong></td>
+                <td><strong class="admin-event-title" data-id="${ev.id}" style="cursor:pointer; color:var(--accent); text-decoration:underline;">${ev.title}</strong></td>
                 <td>${ev.category}</td>
                 <td>${ev.date}</td>
                 <td>
@@ -4950,6 +7420,12 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
           </tbody>
         </table>
       `;
+
+      listDiv.querySelectorAll('.admin-event-title').forEach(el => {
+        el.addEventListener('click', () => {
+          openEventDetailModal(el.dataset.id);
+        });
+      });
 
       listDiv.querySelectorAll('.btn-action-approve').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -5130,6 +7606,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
   function navigateSpaceDetail(spaceId) {
     openSpaceDetailModal(spaceId);
   }
+  window.navigateSpaceDetail = navigateSpaceDetail;
 
   function renderSpaceDetailPage(view, sp) {
     // Enrich defaults
@@ -5404,6 +7881,23 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
       return;
     }
 
+    if (view === 'user' && currentUser.role === 'invitado') {
+      const spectatorUser = { id: 'usr-espectador-1', name: 'Mateo Velasco', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200' };
+      currentUser = spectatorUser;
+      renderSidebar();
+      renderTopbar();
+    }
+
+    if (view === 'friends') {
+      if (currentUser.role === 'invitado') {
+        const spectatorUser = usersList.find(u => u.role === 'espectador') || { id: 'usr-espectador-1', name: 'Mateo Sandoval', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' };
+        currentUser = spectatorUser;
+        showToast('👤 Modo Espectador Activado: Explorando Red de Amigos (@MATEO_88)');
+        renderSidebar();
+        renderTopbar();
+      }
+    }
+
     currentView = view;
     $$('.view').forEach(v => v.classList.remove('active'));
     $$('.nav-item').forEach(n => n.classList.remove('active'));
@@ -5422,6 +7916,9 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     if (view === 'admin' && viewEl) renderAdminDashboardView(viewEl);
     if (view === 'artist' && viewEl) renderArtistStudioView(viewEl);
     if (view === 'space' && viewEl) renderSpaceStudioView(viewEl);
+    if (view === 'user' && viewEl) renderUserProfileView(viewEl);
+    if (view === 'friends' && viewEl) renderFriendsView(viewEl);
+    if (view === 'spaces-map' && viewEl) renderSpacesMapView(viewEl);
     // Space detail is rendered on demand via navigateSpaceDetail()
 
     const main = document.getElementById('main');

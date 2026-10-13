@@ -37,6 +37,8 @@ function initDb() {
         )
       `);
       db.run(`ALTER TABLE users ADD COLUMN password TEXT`, () => {});
+      db.run(`ALTER TABLE users ADD COLUMN city TEXT`, () => {});
+      db.run(`ALTER TABLE users ADD COLUMN tags TEXT`, () => {});
 
       // 2. Tabla de Espacios Culturales
       db.run(`
@@ -163,8 +165,12 @@ function seedData() {
       initialSpaces.forEach(s => spacesStmt.run(s.id, s.name, s.type, s.image, s.owner_id, s.sector, s.address, s.hours, s.categories, s.description, s.capacity));
       spacesStmt.finalize();
 
-      // Limpiar eventos de prueba duplicados
-      db.run(`DELETE FROM events WHERE id LIKE 'ev-1788%'`);
+      // Limpiar datos de prueba residuales para arranque limpio
+      db.run(`DELETE FROM users WHERE id NOT IN ('usr-espectador-1', 'usr-artista-1', 'usr-espacio-1', 'usr-admin-1')`);
+      db.run(`DELETE FROM spaces WHERE id NOT IN ('sp-001', 'sp-002', 'sp-003', 'sp-004', 'sp-005', 'sp-006')`);
+      db.run(`DELETE FROM events WHERE id LIKE 'ev-17%' OR id LIKE 'ev-test%'`);
+      db.run(`DELETE FROM user_interactions WHERE user_id NOT IN ('usr-espectador-1', 'usr-artista-1', 'usr-espacio-1', 'usr-admin-1')`);
+      db.run(`DELETE FROM applications WHERE user_id NOT IN ('usr-espectador-1', 'usr-artista-1', 'usr-espacio-1', 'usr-admin-1')`);
 
       // Sembrar Eventos
       const eventsStmt = db.prepare(`

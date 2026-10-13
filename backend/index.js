@@ -10,7 +10,13 @@ app.use(cors());
 app.use(express.json());
 
 // Servir archivos estáticos del frontend (index.html, styles.css, app.js, images, etc.)
-app.use(express.static(path.resolve(__dirname, '../frontend')));
+app.use(express.static(path.resolve(__dirname, '../frontend'), {
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
 
 // ==========================================
 // API ENDPOINTS
@@ -137,6 +143,25 @@ app.get('/api/users/:id', (req, res) => {
     }
     res.json(row);
   });
+});
+
+app.put('/api/users/:id', (req, res) => {
+  const { name, avatar, bio, city, tags } = req.body;
+  const tagsStr = Array.isArray(tags) ? JSON.stringify(tags) : tags;
+  db.run(
+    `UPDATE users SET name = COALESCE(?, name), avatar = COALESCE(?, avatar), bio = COALESCE(?, bio), city = COALESCE(?, city), tags = COALESCE(?, tags) WHERE id = ?`,
+    [name, avatar, bio, city, tagsStr, req.params.id],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      db.get(`SELECT id, name, email, role, avatar, bio, city, tags FROM users WHERE id = ?`, [req.params.id], (err2, user) => {
+        if (err2 || !user) return res.json({ message: 'Usuario actualizado', id: req.params.id });
+        if (user.tags && typeof user.tags === 'string') {
+          try { user.tags = JSON.parse(user.tags); } catch(e) {}
+        }
+        res.json({ message: 'Perfil actualizado exitosamente', user });
+      });
+    }
+  );
 });
 
 // 3. Eventos

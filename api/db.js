@@ -317,6 +317,12 @@ function seedData() {
             ('ev-007', 'FESTIVAL DE POESÍA URBANA', 'Festival de Poesía y Micrófono Abierto', 'REVISIÓN', 'Recital libre para poetas emergentes del centro histórico.', 'Teatro', '2026-11-12', '17:00', 'Gratis', 'Espacio Radar', 'Espacio Radar • La Ronda', 'images/event_portraits.jpg', 'pending', 'usr-gestor-1', 0)
             ON CONFLICT DO NOTHING;
           `);
+
+          await pgPool.query(`
+            DELETE FROM users WHERE id NOT IN ('usr-espectador-1', 'usr-artista-1', 'usr-espacio-1', 'usr-admin-1');
+            DELETE FROM spaces WHERE id NOT IN ('sp-001', 'sp-002', 'sp-003', 'sp-004', 'sp-005', 'sp-006');
+            DELETE FROM events WHERE id LIKE 'ev-17%' OR id LIKE 'ev-test%';
+          `).catch(() => {});
         }
       }).then(() => resolve()).catch(() => resolve());
     } else {
