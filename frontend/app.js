@@ -1276,46 +1276,56 @@ const App = (() => {
   }
 
   // ============================================================
-  // DISEÑO DE EXPLORAR ESPACIOS (MAPA)
+  // DISEÑO DE EXPLORAR ESPACIOS (MAPA GOOGLE MAPS)
   // ============================================================
   function renderSpacesMapView(view) {
     view.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border);">
         <h1 style="font-size: 32px; font-weight: 900; text-transform: uppercase;">EXPLORAR ESPACIOS</h1>
-        <button style="background: transparent; border: 1px solid var(--border); color: #fff; padding: 8px 16px; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">
-          Filter CATEGORÍAS
-        </button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--grey1);">MOTOR DE MAPA:</span>
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--accent); font-weight: 800; background: rgba(198, 241, 53, 0.1); padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(198, 241, 53, 0.3);">GOOGLE MAPS HD</span>
+        </div>
       </div>
-      <div style="padding: 16px 24px; display: flex; gap: 12px; overflow-x: auto; border-bottom: 1px solid var(--border);">
-        <button style="background: var(--accent); color: #000; border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 900; cursor: pointer;">TODOS LOS SECTORES</button>
-        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">CENTRO HISTÓRICO</button>
-        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">LA MARISCAL</button>
-        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">FLORESTA</button>
-        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">GUÁPULO</button>
-        <button style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer;">CUMBAYÁ</button>
+      <div style="padding: 16px 24px; display: flex; gap: 12px; overflow-x: auto; border-bottom: 1px solid var(--border);" id="sector-filters-bar">
+        <button class="btn-sector-pill active" data-sector="all" style="background: var(--accent); color: #000; border: none; padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 900; cursor: pointer; transition: all 0.2s;">TODOS LOS SECTORES</button>
+        <button class="btn-sector-pill" data-sector="centro" style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;">CENTRO HISTÓRICO</button>
+        <button class="btn-sector-pill" data-sector="mariscal" style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;">LA MARISCAL</button>
+        <button class="btn-sector-pill" data-sector="floresta" style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;">FLORESTA</button>
+        <button class="btn-sector-pill" data-sector="guapulo" style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;">GUÁPULO</button>
+        <button class="btn-sector-pill" data-sector="cumbaya" style="background: transparent; border: 1px solid var(--border); color: var(--grey1); padding: 8px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;">CUMBAYÁ</button>
       </div>
 
       <div style="display: flex; height: calc(100vh - 160px);">
         <!-- Mapa -->
         <div style="flex: 1; position: relative; border-right: 1px solid var(--border);">
           <div id="spaces-map" style="width: 100%; height: 100%; background: #111;"></div>
-          <div style="position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; font-family: var(--font-mono); font-size: 10px; color: var(--grey1); z-index: 1000;">
-            COORD: 0.2282° S, 78.5125° W
+
+          <!-- Selector de Capas Google Maps -->
+          <div style="position: absolute; top: 16px; right: 16px; display: flex; gap: 6px; z-index: 1000; background: rgba(18, 18, 22, 0.85); backdrop-filter: blur(8px); padding: 6px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+            <button id="btn-map-dark" class="btn-map-layer active" title="Google Maps Modo Oscuro">🌙 Google Oscuro</button>
+            <button id="btn-map-streets" class="btn-map-layer" title="Google Maps Calles">🗺️ Google Calles</button>
+            <button id="btn-map-sat" class="btn-map-layer" title="Google Maps Satélite / Híbrido">🛰️ Google Satélite</button>
+          </div>
+
+          <div id="map-coord-display" style="position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.85); border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; font-family: var(--font-mono); font-size: 10px; color: var(--grey1); z-index: 1000; pointer-events: none;">
+            GOOGLE MAPS • QUITO: -0.2150° S, -78.4950° W
           </div>
         </div>
 
         <!-- Lista de Espacios -->
-        <div style="width: 400px; overflow-y: auto; background: var(--surface); padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+        <div id="spaces-map-list" style="width: 400px; overflow-y: auto; background: var(--surface); padding: 20px; display: flex; flex-direction: column; gap: 16px;">
           ${apiSpaces.map(sp => `
-            <div onclick="navigateSpaceDetail('${sp.id}')" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; gap: 16px; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div data-space-id="${sp.id}" class="space-map-card" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; gap: 16px; cursor: pointer; transition: transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--accent)';" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='var(--border)';">
               <img src="${sp.image}" style="width: 120px; height: 100px; border-radius: 8px; object-fit: cover;" alt="${sp.name}">
               <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                    <span style="color: var(--accent); font-family: var(--font-mono); font-size: 9px; font-weight: 900; letter-spacing: 0.5px;">${sp.type.toUpperCase()}</span>
-                    <span style="color: var(--accent); font-family: var(--font-mono); font-size: 11px; font-weight: 900;">4.8 ★</span>
+                    <span style="color: var(--accent); font-family: var(--font-mono); font-size: 9px; font-weight: 900; letter-spacing: 0.5px;">${(sp.type || 'ESPACIO CULTURAL').toUpperCase()}</span>
+                    <span style="color: var(--accent); font-family: var(--font-mono); font-size: 11px; font-weight: 900;">${sp.rating || '4.8'} ★</span>
                   </div>
-                  <h3 style="font-size: 16px; font-weight: 900; line-height: 1.2; margin-bottom: 8px;">${sp.name}</h3>
+                  <h3 style="font-size: 16px; font-weight: 900; line-height: 1.2; margin-bottom: 4px;">${sp.name}</h3>
+                  <div style="font-size: 11px; color: var(--grey1);">${sp.sector || 'Quito'}</div>
                 </div>
                 <div>
                   <div style="font-family: var(--font-mono); font-size: 8px; color: var(--grey1); margin-bottom: 2px;">PRÓXIMO EVENTO</div>
@@ -1336,7 +1346,7 @@ const App = (() => {
           <span style="color: #fff; display: flex; align-items: center; gap: 6px;"><span style="display:inline-block; width:8px; height:8px; background:var(--accent); border-radius:50%;"></span> ${apiSpaces.length} ACTIVOS AHORA</span>
         </div>
         <div style="display: flex; gap: 16px;">
-          <span style="cursor: pointer;">REGISTRAR MI ESPACIO</span>
+          <span style="cursor: pointer; color: var(--accent); font-weight: 700;" onclick="openCreateSpaceModal()">+ REGISTRAR MI ESPACIO</span>
           <span style="cursor: pointer;">SOPORTE TÉCNICO</span>
         </div>
       </div>
@@ -1345,33 +1355,161 @@ const App = (() => {
     // Initialize Map after rendering HTML
     setTimeout(() => {
       const mapEl = document.getElementById('spaces-map');
-      if (mapEl && !mapEl._leaflet_id && typeof L !== 'undefined') {
-        const map = L.map('spaces-map').setView([-0.2282, -78.5125], 13); // Quito Center
-        
-        // CartoDB Dark Matter tile layer for a dark theme map
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-          subdomains: 'abcd',
+      if (mapEl && typeof L !== 'undefined') {
+        if (mapEl._leaflet_id) {
+          mapEl._leaflet_id = null;
+          mapEl.innerHTML = '';
+        }
+
+        const map = L.map('spaces-map', {
+          zoomControl: true,
+          attributionControl: true
+        }).setView([-0.215, -78.495], 13); // Vista general de Quito
+
+        // Google Maps Layers (Zero watermarks, high availability)
+        const googleDark = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          subdomains: '0123',
+          attribution: '&copy; Google Maps',
+          maxZoom: 20,
+          className: 'google-maps-dark-tiles'
+        });
+
+        const googleStreets = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          subdomains: '0123',
+          attribution: '&copy; Google Maps',
           maxZoom: 20
-        }).addTo(map);
+        });
+
+        const googleSat = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+          subdomains: '0123',
+          attribution: '&copy; Google Maps',
+          maxZoom: 20,
+          className: 'google-maps-sat-tiles'
+        });
+
+        // Activar Google Maps Oscuro por defecto
+        googleDark.addTo(map);
+        let activeTileLayer = googleDark;
+
+        // Controles de Capas
+        const btnDark = document.getElementById('btn-map-dark');
+        const btnStreets = document.getElementById('btn-map-streets');
+        const btnSat = document.getElementById('btn-map-sat');
+
+        const switchLayer = (newLayer, activeBtn) => {
+          if (activeTileLayer === newLayer) return;
+          map.removeLayer(activeTileLayer);
+          newLayer.addTo(map);
+          activeTileLayer = newLayer;
+          [btnDark, btnStreets, btnSat].forEach(b => b && b.classList.remove('active'));
+          if (activeBtn) activeBtn.classList.add('active');
+        };
+
+        if (btnDark) btnDark.addEventListener('click', () => switchLayer(googleDark, btnDark));
+        if (btnStreets) btnStreets.addEventListener('click', () => switchLayer(googleStreets, btnStreets));
+        if (btnSat) btnSat.addEventListener('click', () => switchLayer(googleSat, btnSat));
+
+        // Coordenadas geográficas reales en Quito
+        const spaceCoords = {
+          'sp-001': { lat: -0.2095, lng: -78.4845, sector: 'floresta' }, // NAVE 01 (La Floresta)
+          'sp-002': { lat: -0.2205, lng: -78.5135, sector: 'centro' },   // EL BÚNKER (Centro Histórico)
+          'sp-003': { lat: -0.2028, lng: -78.4912, sector: 'mariscal' }, // ESPACIO RADAR (La Mariscal)
+          'sp-004': { lat: -0.2215, lng: -78.5080, sector: 'centro' },   // TEATRO CENTRAL (Centro Histórico)
+          'sp-005': { lat: -0.2030, lng: -78.4770, sector: 'guapulo' },  // MUSEO URBANO (González Suárez / Guápulo)
+          'sp-006': { lat: -0.2045, lng: -78.4350, sector: 'cumbaya' }   // RADIO KAWSAY / Cumbayá
+        };
+
+        const sectorCenters = {
+          all: { lat: -0.215, lng: -78.495, zoom: 13 },
+          centro: { lat: -0.2215, lng: -78.5100, zoom: 15 },
+          mariscal: { lat: -0.2035, lng: -78.4915, zoom: 15 },
+          floresta: { lat: -0.2095, lng: -78.4845, zoom: 15 },
+          guapulo: { lat: -0.2030, lng: -78.4770, zoom: 15 },
+          cumbaya: { lat: -0.2045, lng: -78.4350, zoom: 14 }
+        };
+
+        const markersMap = {};
 
         // Custom Kawsay Marker Icon
         const kawsayIcon = L.divIcon({
-          html: `<div style="width:24px; height:24px; background:var(--accent); border-radius:50%; border:3px solid #000; box-shadow:0 0 10px var(--accent); display:flex; align-items:center; justify-content:center; color:#000; font-size:12px;">📍</div>`,
+          html: `<div style="width:26px; height:26px; background:var(--accent); border-radius:50%; border:3px solid #000; box-shadow:0 0 12px var(--accent); display:flex; align-items:center; justify-content:center; color:#000; font-size:13px; font-weight:bold; cursor:pointer;">📍</div>`,
           className: '',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+          popupAnchor: [0, -14]
         });
 
-        // Add markers for spaces (mock coordinates based on Quito)
+        // Crear marcadores con coordenadas precisas
         apiSpaces.forEach((sp, idx) => {
-          const lat = -0.21 + (Math.random() * 0.05 - 0.025);
-          const lng = -78.50 + (Math.random() * 0.05 - 0.025);
-          L.marker([lat, lng], { icon: kawsayIcon }).addTo(map)
-            .bindPopup(`<b>${sp.name}</b><br>${sp.type}`);
+          let coords = spaceCoords[sp.id];
+          if (!coords) {
+            coords = { lat: -0.215 + ((idx % 4) * 0.008 - 0.016), lng: -78.495 + ((idx % 3) * 0.008 - 0.012), sector: 'all' };
+          }
+
+          const popupHtml = `
+            <div style="font-family: var(--font-sans); min-width: 190px; padding: 4px;">
+              <div style="font-family: var(--font-mono); font-size: 9px; color: var(--accent); font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">${sp.type || 'ESPACIO CULTURAL'}</div>
+              <div style="font-size: 14px; font-weight: 900; color: #fff; margin-bottom: 4px;">${sp.name}</div>
+              <div style="font-size: 11px; color: #9ca3af; margin-bottom: 10px;">📍 ${sp.address || sp.sector || 'Quito'}</div>
+              <button onclick="window.navigateSpaceDetail('${sp.id}')" style="width: 100%; background: var(--accent); color: #000; border: none; padding: 7px 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; font-weight: 800; cursor: pointer;">
+                VER ESPACIO →
+              </button>
+            </div>
+          `;
+
+          const marker = L.marker([coords.lat, coords.lng], { icon: kawsayIcon }).addTo(map)
+            .bindPopup(popupHtml);
+
+          markersMap[sp.id] = { marker, coords };
+        });
+
+        // Click en tarjeta lateral centra mapa con animación suave y abre popup
+        document.querySelectorAll('.space-map-card').forEach(card => {
+          card.addEventListener('click', (e) => {
+            const id = card.dataset.spaceId;
+            const item = markersMap[id];
+            if (item) {
+              map.flyTo([item.coords.lat, item.coords.lng], 16, { duration: 1.2 });
+              item.marker.openPopup();
+            }
+          });
+        });
+
+        // Filtros de Sector
+        const sectorButtons = document.querySelectorAll('.btn-sector-pill');
+        sectorButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            sectorButtons.forEach(b => {
+              b.classList.remove('active');
+              b.style.background = 'transparent';
+              b.style.color = 'var(--grey1)';
+              b.style.border = '1px solid var(--border)';
+            });
+            btn.classList.add('active');
+            btn.style.background = 'var(--accent)';
+            btn.style.color = '#000';
+            btn.style.border = 'none';
+
+            const sector = btn.dataset.sector;
+            const target = sectorCenters[sector] || sectorCenters.all;
+            map.flyTo([target.lat, target.lng], target.zoom, { duration: 1.2 });
+
+            const coordDisplay = document.getElementById('map-coord-display');
+            if (coordDisplay) {
+              coordDisplay.textContent = `GOOGLE MAPS • QUITO: ${target.lat.toFixed(4)}° S, ${target.lng.toFixed(4)}° W`;
+            }
+          });
+        });
+
+        // Mostrar coordenadas dinámicas en el visor inferior
+        map.on('mousemove', (e) => {
+          const coordDisplay = document.getElementById('map-coord-display');
+          if (coordDisplay) {
+            coordDisplay.textContent = `GOOGLE MAPS • QUITO: ${e.latlng.lat.toFixed(4)}° S, ${e.latlng.lng.toFixed(4)}° W`;
+          }
         });
       }
-    }, 100);
+    }, 120);
   }
 
   // ============================================================

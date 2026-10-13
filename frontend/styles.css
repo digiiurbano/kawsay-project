@@ -5669,3 +5669,52 @@ p, .event-card-desc { font-size: 14px !important; }
   box-shadow: 0 0 10px rgba(198, 241, 53, 0.4);
 }
 
+/* ============================================================
+   GOOGLE MAPS ESTILIZADO KAWSAY
+   ============================================================ */
+.google-maps-dark-tiles {
+  filter: invert(100%) hue-rotate(180deg) brightness(88%) contrast(90%) saturate(0.7);
+}
+
+.google-maps-sat-tiles {
+  filter: brightness(92%) contrast(105%);
+}
+
+.btn-map-layer {
+  background: #18181c;
+  border: 1px solid #2c2c33;
+  color: #a1a1aa;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-map-layer:hover {
+  background: #27272b;
+  color: #fff;
+  border-color: #3f3f46;
+}
+
+.btn-map-layer.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(198, 241, 53, 0.3);
+}
+
+.leaflet-popup-content-wrapper {
+  background: #141418 !important;
+  color: #fff !important;
+  border: 1px solid #27272b !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important;
+}
+
+.leaflet-popup-tip {
+  background: #141418 !important;
+}
+
