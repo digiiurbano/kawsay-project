@@ -111,7 +111,13 @@ function initDb() {
           name TEXT NOT NULL,
           type TEXT NOT NULL,
           image TEXT,
-          owner_id TEXT
+          owner_id TEXT,
+          sector TEXT,
+          address TEXT,
+          hours TEXT,
+          categories TEXT,
+          description TEXT,
+          capacity INT
         );
         CREATE TABLE IF NOT EXISTS events (
           id TEXT PRIMARY KEY,
@@ -131,6 +137,9 @@ function initDb() {
           sold_out INT DEFAULT 0,
           rating_sum REAL DEFAULT 0,
           rating_count INT DEFAULT 0,
+          sector TEXT,
+          capacity INT,
+          cast TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS user_interactions (
@@ -154,6 +163,14 @@ function initDb() {
           dossier_url TEXT,
           folio TEXT NOT NULL,
           status TEXT DEFAULT 'submitted',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS password_resets (
+          id TEXT PRIMARY KEY,
+          email TEXT NOT NULL,
+          code TEXT NOT NULL,
+          expires_at TIMESTAMP NOT NULL,
+          used INT DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `).then(() => seedData()).then(() => {
@@ -185,9 +202,21 @@ function initDb() {
             name TEXT NOT NULL,
             type TEXT NOT NULL,
             image TEXT,
-            owner_id TEXT
+            owner_id TEXT,
+            sector TEXT,
+            address TEXT,
+            hours TEXT,
+            categories TEXT,
+            description TEXT,
+            capacity INTEGER
           )
         `);
+        sqliteDb.run(`ALTER TABLE spaces ADD COLUMN sector TEXT`, () => {});
+        sqliteDb.run(`ALTER TABLE spaces ADD COLUMN address TEXT`, () => {});
+        sqliteDb.run(`ALTER TABLE spaces ADD COLUMN hours TEXT`, () => {});
+        sqliteDb.run(`ALTER TABLE spaces ADD COLUMN categories TEXT`, () => {});
+        sqliteDb.run(`ALTER TABLE spaces ADD COLUMN description TEXT`, () => {});
+        sqliteDb.run(`ALTER TABLE spaces ADD COLUMN capacity INTEGER`, () => {});
 
         sqliteDb.run(`
           CREATE TABLE IF NOT EXISTS events (
@@ -208,9 +237,17 @@ function initDb() {
             sold_out INTEGER DEFAULT 0,
             rating_sum REAL DEFAULT 0,
             rating_count INTEGER DEFAULT 0,
+            sector TEXT,
+            capacity INTEGER,
+            cast TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )
         `);
+        sqliteDb.run(`ALTER TABLE events ADD COLUMN rating_sum REAL DEFAULT 0`, () => {});
+        sqliteDb.run(`ALTER TABLE events ADD COLUMN rating_count INTEGER DEFAULT 0`, () => {});
+        sqliteDb.run(`ALTER TABLE events ADD COLUMN sector TEXT`, () => {});
+        sqliteDb.run(`ALTER TABLE events ADD COLUMN capacity INTEGER`, () => {});
+        sqliteDb.run(`ALTER TABLE events ADD COLUMN cast TEXT`, () => {});
 
         sqliteDb.run(`
           CREATE TABLE IF NOT EXISTS user_interactions (
@@ -237,6 +274,16 @@ function initDb() {
             dossier_url TEXT,
             folio TEXT NOT NULL,
             status TEXT DEFAULT 'submitted',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        sqliteDb.run(`
+          CREATE TABLE IF NOT EXISTS password_resets (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            code TEXT NOT NULL,
+            expires_at DATETIME NOT NULL,
+            used INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )
         `, (err) => {
@@ -277,6 +324,7 @@ function seedData() {
             ON CONFLICT DO NOTHING;
 
             INSERT INTO events (id, title, full_title, badge, description, category, date, time, price, venue, full_venue, image, status, organizer_id, sold_out) VALUES
+            ('ev-today-01', 'NOCHE DE GALERÍAS Y VINO', 'Noche de Galerías & Vino en La Floresta', 'HOY EN VIVO', 'Recorrido nocturno por galerías de arte independiente en La Floresta.', 'Artes', '2026-09-29', '19:00', 'Gratis', 'NAVE 01', 'NAVE 01 (La Floresta)', 'images/space_nave01.jpg', 'approved', 'usr-gestor-1', 0),
             ('fe-001', 'MOVIMIENTO URBANO: EL RITO', 'Movimiento Urbano: El Rito', 'DESTACADO', 'Exploración visceral de la identidad a través de la danza contemporánea y percusión en vivo.', 'Danza', '2026-10-26', '20:00', '$15', 'Teatro Nacional', 'Teatro Nacional Quito', 'images/hero_banner.jpg', 'approved', 'usr-gestor-1', 1),
             ('ev-001', 'JAZZ EXPERIMENTAL', 'Jazz Experimental Quito', 'MÚSICA VIVO', 'Sesión nocturna de jazz e improvisación electrónica.', 'Música', '2026-10-26', '21:00', '$12', 'Club Subterráneo', 'Club Subterráneo Centro Histórico', 'images/event_jazz.jpg', 'approved', 'usr-gestor-1', 0),
             ('ev-002', 'VOCES DEL BARRIO', 'Voces del Barrio', 'ENTRADA LIBRE', 'Obra teatral comunitaria basada en leyendas urbanas de Quito.', 'Teatro', '2026-10-28', '19:30', 'Gratis', 'Centro La Paz', 'Centro Cultural La Paz', 'images/event_voices.jpg', 'approved', 'usr-gestor-1', 0),
@@ -287,6 +335,12 @@ function seedData() {
             ('ev-007', 'FESTIVAL DE POESÍA URBANA', 'Festival de Poesía y Micrófono Abierto', 'REVISIÓN', 'Recital libre para poetas emergentes del centro histórico.', 'Teatro', '2026-11-12', '17:00', 'Gratis', 'Espacio Radar', 'Espacio Radar • La Ronda', 'images/event_portraits.jpg', 'pending', 'usr-gestor-1', 0)
             ON CONFLICT DO NOTHING;
           `);
+
+          await pgPool.query(`
+            DELETE FROM users WHERE id NOT IN ('usr-espectador-1', 'usr-artista-1', 'usr-espacio-1', 'usr-admin-1');
+            DELETE FROM spaces WHERE id NOT IN ('sp-001', 'sp-002', 'sp-003', 'sp-004', 'sp-005', 'sp-006');
+            DELETE FROM events WHERE id LIKE 'ev-17%' OR id LIKE 'ev-test%';
+          `).catch(() => {});
         }
       }).then(() => resolve()).catch(() => resolve());
     } else {

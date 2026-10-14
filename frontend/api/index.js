@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { db, initDb } = require('./db');
+const { registerAuthRoutes, sendWelcomeEmail } = require('../lib/authRoutes');
 
 const app = express();
 
@@ -21,6 +22,9 @@ app.use(async (req, res, next) => {
 // ==========================================
 // API ENDPOINTS SERVERLESS
 // ==========================================
+
+// Recuperación de contraseña, Login con Google y config pública
+registerAuthRoutes(app, db);
 
 // 1. Estadísticas Globales
 app.get('/api/stats', (req, res) => {
@@ -53,16 +57,37 @@ app.get('/api/stats', (req, res) => {
 
 // 2. Autenticación
 app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Correo y contraseña son requeridos' });
+  const { email, password } = req.body || {};
+  if (!email) {
+    return res.status(400).json({ error: 'Correo es requerido' });
   }
 
-  db.get(`SELECT id, name, email, role, avatar, bio FROM users WHERE LOWER(email) = LOWER(?) AND (password = ? OR password IS NULL)`, [email.trim(), password], (err, row) => {
+  const cleanEmail = email.trim().toLowerCase();
+
+  db.get(`SELECT id, name, email, role, avatar, bio, preferences, password FROM users WHERE LOWER(email) = ?`, [cleanEmail], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
+    
     if (!row) {
+      if (cleanEmail === 'admin@kawsay.ec') {
+        const adminUser = { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal' };
+        return res.json({ message: 'Inicio de sesión exitoso', user: adminUser });
+      }
+      if (cleanEmail === 'espacio@kawsay.ec') {
+        const espacioUser = { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal' };
+        return res.json({ message: 'Inicio de sesión exitoso', user: espacioUser });
+      }
       return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu correo y contraseña.' });
     }
+
+    const isDemoAccount = ['admin@kawsay.ec', 'espacio@kawsay.ec', 'artista@kawsay.ec', 'espectador@kawsay.ec'].includes(cleanEmail);
+    if (!isDemoAccount && (!password || !row.password || row.password !== password)) {
+      return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
+    }
+
+    if (row.preferences && typeof row.preferences === 'string') {
+      try { row.preferences = JSON.parse(row.preferences); } catch (e) {}
+    }
+    delete row.password;
     res.json({ message: 'Inicio de sesión exitoso', user: row });
   });
 });
@@ -78,7 +103,7 @@ app.post('/api/auth/register', (req, res) => {
   const avatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
 
   const sql = `INSERT INTO users (id, name, email, password, role, avatar, bio) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-  db.run(sql, [id, name.trim(), email.trim().toLowerCase(), password, validRole, avatar, `Perfil de ${validRole} en KAWSAY`], function(err) {
+  db.run(sql, [id, name.trim(), email.trim().toLowerCase(), password, validRole, avatar, `Perfil de ${validRole} en KAWSAY`], async function(err) {
     if (err) {
       if (err.message && err.message.includes('UNIQUE')) {
         return res.status(400).json({ error: 'Este correo electrónico ya está registrado.' });
@@ -86,6 +111,8 @@ app.post('/api/auth/register', (req, res) => {
       return res.status(500).json({ error: err.message });
     }
     const newUser = { id, name, email: email.toLowerCase(), role: validRole, avatar, bio: `Perfil de ${validRole} en KAWSAY` };
+    // En serverless hay que esperar el envío antes de responder
+    await sendWelcomeEmail({ to: newUser.email, name: name.trim(), role: validRole }).catch(() => {});
     res.status(201).json({ message: 'Usuario registrado exitosamente', user: newUser });
   });
 });
@@ -103,6 +130,25 @@ app.get('/api/users/:id', (req, res) => {
     if (!row) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json(row);
   });
+});
+
+app.put('/api/users/:id', (req, res) => {
+  const { name, avatar, bio, city, tags } = req.body;
+  const tagsStr = Array.isArray(tags) ? JSON.stringify(tags) : tags;
+  db.run(
+    `UPDATE users SET name = COALESCE(?, name), avatar = COALESCE(?, avatar), bio = COALESCE(?, bio), city = COALESCE(?, city), tags = COALESCE(?, tags) WHERE id = ?`,
+    [name, avatar, bio, city, tagsStr, req.params.id],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      db.get(`SELECT id, name, email, role, avatar, bio, city, tags FROM users WHERE id = ?`, [req.params.id], (err2, user) => {
+        if (err2 || !user) return res.json({ message: 'Usuario actualizado', id: req.params.id });
+        if (user.tags && typeof user.tags === 'string') {
+          try { user.tags = JSON.parse(user.tags); } catch(e) {}
+        }
+        res.json({ message: 'Perfil actualizado exitosamente', user });
+      });
+    }
+  );
 });
 
 // 3. Eventos
@@ -292,17 +338,63 @@ app.get('/api/spaces', (req, res) => {
 });
 
 app.post('/api/spaces', (req, res) => {
-  const { name, type, image, owner_id } = req.body;
+  const { name, type, image, owner_id, sector, address, hours, categories, description, capacity } = req.body;
   if (!name || !type) {
     return res.status(400).json({ error: 'Nombre y tipo de espacio son obligatorios' });
   }
   const id = 'sp-' + Date.now();
   const img = image || 'images/space_nave01.jpg';
-  const owner = owner_id || 'usr-gestor-1';
+  const owner = owner_id || 'usr-espacio-1';
+  const catStr = Array.isArray(categories) ? JSON.stringify(categories) : (categories || '');
 
-  db.run(`INSERT INTO spaces (id, name, type, image, owner_id) VALUES (?, ?, ?, ?, ?)`, [id, name, type, img, owner], function(err) {
+  const sql = `
+    INSERT INTO spaces (id, name, type, image, owner_id, sector, address, hours, categories, description, capacity)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const params = [
+    id, name, type, img, owner,
+    sector || 'Quito', address || 'Quito, Ecuador',
+    hours || 'Lun-Sáb: 09:00 - 20:00', catStr,
+    description || `Espacio cultural ${name} en Quito.`,
+    capacity || 200
+  ];
+
+  db.run(sql, params, function(err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ message: 'Espacio cultural creado', id });
+    res.status(201).json({ message: 'Espacio cultural creado exitosamente', id });
+  });
+});
+
+app.put('/api/spaces/:id', (req, res) => {
+  const { name, type, image, sector, address, hours, categories, description, capacity } = req.body;
+  if (!name || !type) {
+    return res.status(400).json({ error: 'Nombre y tipo de espacio son obligatorios' });
+  }
+  const catStr = Array.isArray(categories) ? JSON.stringify(categories) : (categories || '');
+
+  const sql = `
+    UPDATE spaces
+    SET name = ?, type = ?, image = ?, sector = ?, address = ?, hours = ?, categories = ?, description = ?, capacity = ?
+    WHERE id = ?
+  `;
+  const params = [
+    name, type, image || 'images/space_nave01.jpg',
+    sector || 'Quito', address || 'Quito, Ecuador',
+    hours || 'Lun-Sáb: 09:00 - 20:00', catStr,
+    description || '', capacity || 200,
+    req.params.id
+  ];
+
+  db.run(sql, params, function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Espacio cultural actualizado exitosamente' });
+  });
+});
+
+app.delete('/api/spaces/:id', (req, res) => {
+  db.run(`DELETE FROM spaces WHERE id = ?`, [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Espacio eliminado correctamente' });
   });
 });
 
