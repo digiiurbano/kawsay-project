@@ -1,4 +1,5 @@
 const { db, initDb } = require('../db');
+const { sendWelcomeEmail } = require('../../lib/mailer');
 
 module.exports = async (req, res) => {
   try { await initDb(); } catch (err) { return res.status(500).json({ error: "DB Error" }); }
@@ -20,7 +21,7 @@ module.exports = async (req, res) => {
     const prefStr = preferences ? (typeof preferences === 'string' ? preferences : JSON.stringify(preferences)) : null;
 
     const sql = `INSERT INTO users (id, name, email, password, role, avatar, bio, preferences) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-    return db.run(sql, [id, name.trim(), email.trim().toLowerCase(), password, validRole, avatar, `Perfil de ${validRole} en KAWSAY`, prefStr], function(err) {
+    return db.run(sql, [id, name.trim(), email.trim().toLowerCase(), password, validRole, avatar, `Perfil de ${validRole} en KAWSAY`, prefStr], async function(err) {
       if (err) {
         if (err.message && err.message.includes('UNIQUE')) {
           return res.status(400).json({ error: 'Este correo electrónico ya está registrado.' });
@@ -28,6 +29,7 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: err.message });
       }
       const newUser = { id, name, email: email.toLowerCase(), role: validRole, avatar, bio: `Perfil de ${validRole} en KAWSAY`, preferences: preferences || null };
+      await sendWelcomeEmail({ to: newUser.email, name: name.trim(), role: validRole }).catch(() => {});
       res.status(201).json({ message: 'Usuario registrado exitosamente', user: newUser });
     });
   }
