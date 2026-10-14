@@ -139,7 +139,7 @@ function initDb() {
           rating_count INT DEFAULT 0,
           sector TEXT,
           capacity INT,
-          cast TEXT,
+          "cast" TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS user_interactions (
