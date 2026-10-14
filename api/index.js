@@ -19,6 +19,14 @@ app.use(async (req, res, next) => {
   }
 });
 
+// Normalizar rutas para Vercel rewrites (soporta tanto /api/... como /...)
+app.use((req, res, next) => {
+  if (!req.url.startsWith('/api')) {
+    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  }
+  next();
+});
+
 // ==========================================
 // API ENDPOINTS SERVERLESS
 // ==========================================
