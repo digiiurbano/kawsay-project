@@ -19,12 +19,32 @@ app.use(async (req, res, next) => {
   }
 });
 
-// Normalizar rutas para Vercel rewrites (soporta tanto /api/... como /...)
+// Reconstruir y normalizar rutas en Vercel Serverless
 app.use((req, res, next) => {
+  // 1. Si Vercel pasó el subpath en req.query._path (rewrite /api/(.*) -> /api/index.js?_path=$1)
+  if (req.query && req.query._path) {
+    const subpath = req.query._path;
+    delete req.query._path;
+    const queryString = new URLSearchParams(req.query).toString();
+    req.url = '/api/' + subpath + (queryString ? '?' + queryString : '');
+  } else {
+    // 2. Si Vercel envió encabezados de rewrite
+    const matched = req.headers['x-matched-path'] || req.headers['x-vercel-matched-path'];
+    if (matched && matched.startsWith('/api') && (req.url === '/api/index.js' || req.url === '/api' || req.url === '/')) {
+      req.url = matched;
+    }
+  }
+
+  // 3. Asegurar prefijo /api
   if (!req.url.startsWith('/api')) {
     req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
   }
   next();
+});
+
+// Endpoint base para verificar salud de la API
+app.get(['/api', '/api/'], (req, res) => {
+  res.json({ status: 'ok', message: 'KAWSAY API en funcionamiento' });
 });
 
 // ==========================================
@@ -406,10 +426,12 @@ app.delete('/api/spaces/:id', (req, res) => {
   });
 });
 
-app.get('/api/interactions/:userId', (req, res) => {
-  db.all(`SELECT event_id, is_favorite, has_rsvp FROM user_interactions WHERE user_id = ?`, [req.params.userId], (err, rows) => {
+app.get(['/api/interactions', '/api/interactions/:userId'], (req, res) => {
+  const userId = req.params.userId || req.query.userId;
+  if (!userId) return res.json([]);
+  db.all(`SELECT event_id, is_favorite, has_rsvp FROM user_interactions WHERE user_id = ?`, [userId], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+    res.json(rows || []);
   });
 });
 
