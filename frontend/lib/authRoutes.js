@@ -71,7 +71,7 @@ async function verifyGoogleToken({ access_token, credential }) {
 // --- Registro de rutas ---------------------------------------
 function registerAuthRoutes(app, db) {
   // Configuración pública para el frontend
-  app.get('/api/config/public', (req, res) => {
+  app.get(['/api/config/public', '/config/public'], (req, res) => {
     res.json({
       googleClientId: GOOGLE_CLIENT_ID() || null,
       emailEnabled: !!getTransporter()
@@ -79,7 +79,7 @@ function registerAuthRoutes(app, db) {
   });
 
   // 1. Solicitar código de recuperación
-  app.post('/api/auth/forgot-password', async (req, res) => {
+  app.post(['/api/auth/forgot-password', '/auth/forgot-password'], async (req, res) => {
     const email = String((req.body || {}).email || '').trim().toLowerCase();
     if (!email) return res.status(400).json({ error: 'El correo es obligatorio.' });
 
@@ -110,7 +110,7 @@ function registerAuthRoutes(app, db) {
   });
 
   // 2. Validar código y establecer nueva contraseña
-  app.post('/api/auth/reset-password', async (req, res) => {
+  app.post(['/api/auth/reset-password', '/auth/reset-password'], async (req, res) => {
     const body = req.body || {};
     const email = String(body.email || '').trim().toLowerCase();
     const code = String(body.code || '').trim();
@@ -138,7 +138,7 @@ function registerAuthRoutes(app, db) {
   });
 
   // 3. Login / Registro con Google
-  app.post('/api/auth/google', async (req, res) => {
+  app.post(['/api/auth/google', '/auth/google'], async (req, res) => {
     let profile;
     try {
       profile = await verifyGoogleToken(req.body || {});
