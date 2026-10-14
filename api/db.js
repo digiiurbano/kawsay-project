@@ -165,6 +165,14 @@ function initDb() {
           status TEXT DEFAULT 'submitted',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS password_resets (
+          id TEXT PRIMARY KEY,
+          email TEXT NOT NULL,
+          code TEXT NOT NULL,
+          expires_at TIMESTAMP NOT NULL,
+          used INT DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
       `).then(() => seedData()).then(() => {
         dbInitialized = true;
         resolve();
@@ -266,6 +274,16 @@ function initDb() {
             dossier_url TEXT,
             folio TEXT NOT NULL,
             status TEXT DEFAULT 'submitted',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        sqliteDb.run(`
+          CREATE TABLE IF NOT EXISTS password_resets (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            code TEXT NOT NULL,
+            expires_at DATETIME NOT NULL,
+            used INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )
         `, (err) => {

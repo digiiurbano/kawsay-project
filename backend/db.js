@@ -128,6 +128,18 @@ function initDb() {
           status TEXT DEFAULT 'submitted',
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
+      `);
+
+      // 6. Tabla de Códigos de Recuperación de Contraseña
+      db.run(`
+        CREATE TABLE IF NOT EXISTS password_resets (
+          id TEXT PRIMARY KEY,
+          email TEXT NOT NULL,
+          code TEXT NOT NULL,
+          expires_at DATETIME NOT NULL,
+          used INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
       `, (err) => {
         if (err) {
           console.error("Error al crear tablas:", err);

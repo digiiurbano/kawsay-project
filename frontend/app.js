@@ -5433,12 +5433,20 @@ const App = (() => {
 
           <!-- Formulario 1: Iniciar Sesión -->
           <form id="form-auth-login" style="display:flex; flex-direction:column; gap:16px;">
+            <button type="button" class="social-auth-btn social-btn-google btn-google-auth" id="btn-login-google" style="width:100%;">
+              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+              Continuar con Google
+            </button>
+            <div class="social-divider"><span>o con tu correo</span></div>
             <div>
               <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CORREO ELECTRÓNICO</label>
               <input type="email" id="login-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
             <div>
-              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CONTRASEÑA</label>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <label style="font-size:12px; font-weight:800; color:#ffffff; letter-spacing:0.5px;">CONTRASEÑA</label>
+                <button type="button" id="btn-forgot-password" style="background:none; border:none; color:var(--accent); font-size:11px; font-weight:700; cursor:pointer; padding:0;">¿Olvidaste tu contraseña?</button>
+              </div>
               <input type="password" id="login-password" required placeholder="••••••••" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
             </div>
             <button type="submit" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:8px; letter-spacing:0.5px; text-transform:uppercase;">
@@ -5446,11 +5454,39 @@ const App = (() => {
             </button>
           </form>
 
+          <!-- Formulario 3: Recuperar Contraseña (2 pasos) -->
+          <form id="form-auth-forgot" style="display:none; flex-direction:column; gap:16px;">
+            <div style="font-size:13px; color:#cbd5e1; line-height:1.5;" id="forgot-help-text">
+              Ingresa el correo de tu cuenta y te enviaremos un <strong style="color:var(--accent);">código de 6 dígitos</strong> para crear una nueva contraseña.
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CORREO ELECTRÓNICO</label>
+              <input type="email" id="forgot-email" required placeholder="tuemail@ejemplo.com" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
+            </div>
+            <div id="forgot-step-2" style="display:none; flex-direction:column; gap:16px;">
+              <div>
+                <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">CÓDIGO DE VERIFICACIÓN</label>
+                <input type="text" id="forgot-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:var(--accent); border-radius:6px; font-size:22px; font-weight:900; letter-spacing:10px; text-align:center; font-family:var(--font-mono); outline:none;">
+              </div>
+              <div>
+                <label style="display:block; font-size:12px; font-weight:800; margin-bottom:8px; color:#ffffff; letter-spacing:0.5px;">NUEVA CONTRASEÑA</label>
+                <input type="password" id="forgot-new-password" minlength="6" placeholder="Mínimo 6 caracteres" style="width:100%; padding:12px 14px; background:#1e293b; border:1px solid #334155; color:#ffffff; border-radius:6px; font-size:14px; font-weight:500; outline:none;">
+              </div>
+            </div>
+            <button type="submit" id="btn-forgot-submit" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; letter-spacing:0.5px; text-transform:uppercase;">
+              ENVIARME EL CÓDIGO
+            </button>
+            <div style="display:flex; justify-content:space-between;">
+              <button type="button" id="btn-forgot-back" style="background:none; border:none; color:#94a3b8; font-size:12px; font-weight:700; cursor:pointer; padding:0;">← Volver a iniciar sesión</button>
+              <button type="button" id="btn-forgot-resend" style="display:none; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; cursor:pointer; padding:0;">Reenviar código</button>
+            </div>
+          </form>
+
           <!-- Formulario 2: Crear Cuenta (Registro Rápido & Sin Fricción) -->
           <form id="form-auth-register" style="display:none; flex-direction:column; gap:14px;">
             <!-- Opción 1 Clic: Social Auth -->
             <div class="social-auth-grid">
-              <button type="button" class="social-auth-btn social-btn-google" id="btn-social-google">
+              <button type="button" class="social-auth-btn social-btn-google btn-google-auth" id="btn-social-google">
                 <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                 Continuar con Google
               </button>
@@ -6093,6 +6129,7 @@ const App = (() => {
         tabReg.style.background = 'rgba(255,255,255,0.08)'; tabReg.style.color = '#ffffff'; tabReg.style.fontWeight = '700'; tabReg.style.border = '1px solid rgba(255,255,255,0.2)';
         formLogin.style.display = 'flex';
         formReg.style.display = 'none';
+        if ($('#form-auth-forgot')) $('#form-auth-forgot').style.display = 'none';
         authAlert.style.display = 'none';
       });
 
@@ -6101,6 +6138,7 @@ const App = (() => {
         tabLogin.style.background = 'rgba(255,255,255,0.08)'; tabLogin.style.color = '#ffffff'; tabLogin.style.fontWeight = '700'; tabLogin.style.border = '1px solid rgba(255,255,255,0.2)';
         formReg.style.display = 'flex';
         formLogin.style.display = 'none';
+        if ($('#form-auth-forgot')) $('#form-auth-forgot').style.display = 'none';
         authAlert.style.display = 'none';
       });
     }
@@ -6200,36 +6238,209 @@ const App = (() => {
       });
     }
 
-    // Botones de Registro Rápido con 1 Clic (Google / Apple ID)
-    const btnGoogle = $('#btn-social-google');
-    if (btnGoogle) {
-      btnGoogle.addEventListener('click', () => {
-        closeAuthModal();
-        const randId = Math.floor(1000 + Math.random() * 9000);
-        tempRegData = {
-          name: 'Usuario Google Cultural',
-          email: `usuario.google.${randId}@gmail.com`,
-          password: 'GoogleOAuth2026!' + randId,
-          role: 'espectador'
-        };
-        showToast('⚡ Conectado con Google ID. Selecciona tus preferencias culturales.');
-        openOnboardingModal();
+    // ============================================================
+    //  LOGIN CON GOOGLE (Google Identity Services + verificación en servidor)
+    // ============================================================
+    async function completeAuthLogin(user, welcomeMsg) {
+      currentUser = user;
+      localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
+      await loadUserInteractions();
+      showToast(welcomeMsg || `¡Bienvenido/a, ${currentUser.name}!`);
+      closeAuthModal();
+      renderSidebar();
+      renderTopbar();
+      if (currentUser.role === 'admin' || currentUser.role === 'gestor') navigate('admin');
+      else if (currentUser.role === 'artista') navigate('artist');
+      else if (currentUser.role === 'espacio') navigate('space');
+      else navigate('home');
+    }
+
+    let googleTokenClient = null;
+    let googleConfigured = null; // null = cargando, true/false = estado final
+
+    function loadGoogleScript() {
+      return new Promise((resolve, reject) => {
+        if (window.google && window.google.accounts && window.google.accounts.oauth2) return resolve();
+        const s = document.createElement('script');
+        s.src = 'https://accounts.google.com/gsi/client';
+        s.async = true; s.defer = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('No se pudo cargar Google.'));
+        document.head.appendChild(s);
       });
     }
+
+    async function handleGoogleTokenResponse(resp) {
+      if (!resp || resp.error || !resp.access_token) {
+        showAuthAlert('Inicio de sesión con Google cancelado.');
+        return;
+      }
+      try {
+        showAuthAlert('Verificando tu cuenta de Google...', false);
+        const res = await fetch(`${API_BASE}/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: resp.access_token })
+        });
+        const data = await res.json();
+        if (!res.ok) { showAuthAlert(data.error || 'No se pudo iniciar sesión con Google.'); return; }
+        await completeAuthLogin(data.user, data.isNew
+          ? `¡Cuenta creada con Google! Bienvenido/a ${data.user.name}`
+          : `¡Hola de nuevo, ${data.user.name}!`);
+        // Usuarios nuevos: pedir sus intereses culturales
+        if (data.isNew) setTimeout(() => openOnboardingModal(), 600);
+      } catch (err) {
+        showAuthAlert('Error de conexión con el servidor. Intenta de nuevo.');
+      }
+    }
+
+    // Pre-carga para que el popup de Google se abra dentro del clic (evita bloqueo de popups)
+    fetch(`${API_BASE}/config/public`)
+      .then(r => r.json())
+      .then(async cfg => {
+        if (!cfg || !cfg.googleClientId) { googleConfigured = false; return; }
+        await loadGoogleScript();
+        googleTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: cfg.googleClientId,
+          scope: 'openid email profile',
+          callback: handleGoogleTokenResponse,
+          error_callback: (err) => {
+            if (err && err.type === 'popup_closed') showAuthAlert('Cerraste la ventana de Google antes de terminar.');
+            else if (err && err.type === 'popup_failed_to_open') showAuthAlert('Tu navegador bloqueó la ventana de Google. Habilita los popups para este sitio.');
+          }
+        });
+        googleConfigured = true;
+      })
+      .catch(() => { googleConfigured = false; });
+
+    $$('.btn-google-auth').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (googleTokenClient) {
+          googleTokenClient.requestAccessToken({ prompt: 'select_account' });
+        } else if (googleConfigured === null) {
+          showAuthAlert('Conectando con Google... inténtalo de nuevo en un segundo.', false);
+        } else {
+          showAuthAlert('El inicio de sesión con Google aún no está disponible. Usa tu correo y contraseña.');
+        }
+      });
+    });
 
     const btnApple = $('#btn-social-apple');
     if (btnApple) {
       btnApple.addEventListener('click', () => {
-        closeAuthModal();
-        const randId = Math.floor(1000 + Math.random() * 9000);
-        tempRegData = {
-          name: 'Usuario Apple ID',
-          email: `usuario.apple.${randId}@icloud.com`,
-          password: 'AppleOAuth2026!' + randId,
-          role: 'espectador'
-        };
-        showToast('⚡ Conectado con Apple ID. Selecciona tus preferencias culturales.');
-        openOnboardingModal();
+        showAuthAlert('Inicio con Apple ID estará disponible próximamente. Usa Google o tu correo.', false);
+      });
+    }
+
+    // ============================================================
+    //  RECUPERACIÓN DE CONTRASEÑA (código de 6 dígitos por correo)
+    // ============================================================
+    const formForgot = $('#form-auth-forgot');
+    const forgotStep2 = $('#forgot-step-2');
+    const btnForgotSubmit = $('#btn-forgot-submit');
+    const btnForgotResend = $('#btn-forgot-resend');
+    let forgotStage = 1;
+
+    function resetForgotForm() {
+      forgotStage = 1;
+      if (forgotStep2) forgotStep2.style.display = 'none';
+      if (btnForgotResend) btnForgotResend.style.display = 'none';
+      if (btnForgotSubmit) btnForgotSubmit.textContent = 'ENVIARME EL CÓDIGO';
+      if ($('#forgot-email')) $('#forgot-email').readOnly = false;
+      if ($('#forgot-code')) $('#forgot-code').value = '';
+      if ($('#forgot-new-password')) $('#forgot-new-password').value = '';
+    }
+
+    async function requestResetCode() {
+      const email = $('#forgot-email').value.trim();
+      if (!email) { showAuthAlert('Ingresa tu correo electrónico.'); return false; }
+      btnForgotSubmit.disabled = true;
+      try {
+        const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (!res.ok) { showAuthAlert(data.error || 'No se pudo enviar el código.'); return false; }
+        let msg = `📬 ${data.message}`;
+        if (data.devCode) msg += ` (Modo desarrollo — código: ${data.devCode})`;
+        showAuthAlert(msg, false);
+        return true;
+      } catch (err) {
+        showAuthAlert('Error de conexión con el servidor.');
+        return false;
+      } finally {
+        btnForgotSubmit.disabled = false;
+      }
+    }
+
+    const btnForgotOpen = $('#btn-forgot-password');
+    if (btnForgotOpen && formForgot) {
+      btnForgotOpen.addEventListener('click', () => {
+        resetForgotForm();
+        $('#forgot-email').value = $('#login-email').value.trim();
+        formLogin.style.display = 'none';
+        formReg.style.display = 'none';
+        formForgot.style.display = 'flex';
+        authAlert.style.display = 'none';
+        $('#forgot-email').focus();
+      });
+    }
+
+    if ($('#btn-forgot-back')) {
+      $('#btn-forgot-back').addEventListener('click', () => {
+        formForgot.style.display = 'none';
+        formLogin.style.display = 'flex';
+        authAlert.style.display = 'none';
+      });
+    }
+
+    if (btnForgotResend) btnForgotResend.addEventListener('click', () => requestResetCode());
+
+    if (formForgot) {
+      formForgot.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (forgotStage === 1) {
+          const ok = await requestResetCode();
+          if (ok) {
+            forgotStage = 2;
+            forgotStep2.style.display = 'flex';
+            btnForgotResend.style.display = 'inline';
+            btnForgotSubmit.textContent = 'CAMBIAR CONTRASEÑA';
+            $('#forgot-email').readOnly = true;
+            $('#forgot-code').focus();
+          }
+          return;
+        }
+
+        const email = $('#forgot-email').value.trim();
+        const code = $('#forgot-code').value.trim();
+        const password = $('#forgot-new-password').value;
+        if (!/^\d{6}$/.test(code)) { showAuthAlert('El código debe tener 6 dígitos.'); return; }
+        if (password.length < 6) { showAuthAlert('La nueva contraseña debe tener al menos 6 caracteres.'); return; }
+
+        btnForgotSubmit.disabled = true;
+        try {
+          const res = await fetch(`${API_BASE}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code, password })
+          });
+          const data = await res.json();
+          if (!res.ok) { showAuthAlert(data.error || 'No se pudo cambiar la contraseña.'); return; }
+          resetForgotForm();
+          formForgot.style.display = 'none';
+          formLogin.style.display = 'flex';
+          $('#login-email').value = email;
+          $('#login-password').value = '';
+          $('#login-password').focus();
+          showAuthAlert(`✅ ${data.message}`, false);
+        } catch (err) {
+          showAuthAlert('Error de conexión con el servidor.');
+        } finally {
+          btnForgotSubmit.disabled = false;
+        }
       });
     }
 
@@ -6298,7 +6509,7 @@ const App = (() => {
 
           // Notificación automática de activación por correo sin bloquear al usuario
           setTimeout(() => {
-            showToast(`📬 Hemos enviado un enlace de activación a ${currentUser.email}. ¡Tu cuenta ya está lista para explorar y comprar!`);
+            showToast(`📬 Te enviamos un correo de bienvenida a ${currentUser.email}.`);
           }, 1000);
 
           tempRegData = null;
@@ -6315,9 +6526,6 @@ const App = (() => {
           };
           localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
           showToast(`¡Bienvenido/a ${currentUser.name}! Tus preferencias han sido configuradas.`);
-          setTimeout(() => {
-            showToast(`📬 Enlace de activación enviado a ${currentUser.email}.`);
-          }, 1000);
           tempRegData = null;
         }
       } else if (currentUser && currentUser.role !== 'invitado') {
@@ -7053,6 +7261,8 @@ const App = (() => {
     const formReg = $('#form-auth-register');
     const authAlert = $('#auth-alert-msg');
     if (authAlert) authAlert.style.display = 'none';
+    const formForgot = $('#form-auth-forgot');
+    if (formForgot) formForgot.style.display = 'none';
 
     if (defaultTab === 'register' && tabReg && formReg) {
       tabReg.style.background = 'var(--accent)'; tabReg.style.color = '#000000'; tabReg.style.fontWeight = '900'; tabReg.style.border = 'none';

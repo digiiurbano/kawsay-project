@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { db, initDb } = require('./db');
+const { registerAuthRoutes, sendWelcomeEmail } = require('../lib/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3005;
@@ -21,6 +22,9 @@ app.use(express.static(path.resolve(__dirname, '../frontend'), {
 // ==========================================
 // API ENDPOINTS
 // ==========================================
+
+// Recuperación de contraseña, Login con Google y config pública
+registerAuthRoutes(app, db);
 
 // 1. Estadísticas Globales (para Dashboard Admin / Gestor)
 app.get('/api/stats', (req, res) => {
@@ -76,8 +80,8 @@ app.post('/api/auth/login', (req, res) => {
     }
 
     const isDemoAccount = ['admin@kawsay.ec', 'espacio@kawsay.ec', 'artista@kawsay.ec', 'espectador@kawsay.ec'].includes(cleanEmail);
-    if (!isDemoAccount && row.password && password && row.password !== password) {
-      return res.status(401).json({ error: 'Contraseña incorrecta.' });
+    if (!isDemoAccount && (!password || !row.password || row.password !== password)) {
+      return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
     }
 
     if (row.preferences && typeof row.preferences === 'string') {
@@ -108,6 +112,7 @@ app.post('/api/auth/register', (req, res) => {
       return res.status(500).json({ error: err.message });
     }
     const newUser = { id, name, email: email.toLowerCase(), role: validRole, avatar, bio: `Perfil de ${validRole} en KAWSAY`, preferences: preferences || null };
+    sendWelcomeEmail({ to: newUser.email, name: name.trim(), role: validRole }).catch(() => {});
     res.status(201).json({ message: 'Usuario registrado exitosamente', user: newUser });
   });
 });
