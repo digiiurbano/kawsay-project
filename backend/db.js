@@ -37,6 +37,7 @@ function initDb() {
         )
       `);
       db.run(`ALTER TABLE users ADD COLUMN password TEXT`, () => {});
+      db.run(`ALTER TABLE users ADD COLUMN preferences TEXT`, () => {});
       db.run(`ALTER TABLE users ADD COLUMN city TEXT`, () => {});
       db.run(`ALTER TABLE users ADD COLUMN tags TEXT`, () => {});
 

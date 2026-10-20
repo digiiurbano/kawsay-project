@@ -4,7 +4,7 @@ const { db, initDb } = require('../db');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../../lib/mailer');
 
 const RESET_CODE_TTL_MIN = 15;
-const GOOGLE_CLIENT_ID = () => process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID = () => (process.env.GOOGLE_CLIENT_ID || '').trim().replace(/^["']|["']$/g, '');
 
 function dbGet(sql, params = []) {
   return new Promise((resolve, reject) => db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row))));

@@ -1,3 +1,7 @@
+if (typeof process.loadEnvFile === 'function') {
+  try { process.loadEnvFile(); } catch (e) {}
+}
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

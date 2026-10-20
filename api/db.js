@@ -1,4 +1,3 @@
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const { Pool } = require('pg');
@@ -16,20 +15,24 @@ if (dbUrl) {
   console.log("⚡ Conectado a la base de datos en la nube (Supabase / PostgreSQL)");
 }
 
-const targetDbDir = isVercel ? '/tmp' : path.join(__dirname, '../backend');
-const dbPath = process.env.DB_PATH || path.join(targetDbDir, 'kawsay.db');
-const sourceDbPath = path.join(__dirname, '../backend/kawsay.db');
-
-if (isVercel && !fs.existsSync(dbPath) && fs.existsSync(sourceDbPath)) {
+let sqliteDb = null;
+if (!pgPool) {
   try {
-    fs.copyFileSync(sourceDbPath, dbPath);
-    console.log("✅ Base de datos sembrada copiada a /tmp/kawsay.db");
+    const sqlite3 = require('sqlite3').verbose();
+    const targetDbDir = isVercel ? '/tmp' : path.join(__dirname, '../backend');
+    const dbPath = process.env.DB_PATH || path.join(targetDbDir, 'kawsay.db');
+    const sourceDbPath = path.join(__dirname, '../backend/kawsay.db');
+
+    if (isVercel && !fs.existsSync(dbPath) && fs.existsSync(sourceDbPath)) {
+      try {
+        fs.copyFileSync(sourceDbPath, dbPath);
+      } catch (err) {}
+    }
+    sqliteDb = new sqlite3.Database(dbPath);
   } catch (err) {
-    console.warn("⚠️ No se pudo copiar la DB inicial a /tmp:", err.message);
+    console.warn("SQLite local no disponible:", err.message);
   }
 }
-
-const sqliteDb = new sqlite3.Database(dbPath);
 
 let dbInitialized = false;
 let initPromise = null;
@@ -104,8 +107,15 @@ function initDb() {
           role TEXT,
           avatar TEXT,
           bio TEXT,
+          preferences TEXT,
+          city TEXT,
+          tags TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS preferences TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS city TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS tags TEXT;
+
         CREATE TABLE IF NOT EXISTS spaces (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -119,6 +129,12 @@ function initDb() {
           description TEXT,
           capacity INT
         );
+        ALTER TABLE spaces ADD COLUMN IF NOT EXISTS sector TEXT;
+        ALTER TABLE spaces ADD COLUMN IF NOT EXISTS address TEXT;
+        ALTER TABLE spaces ADD COLUMN IF NOT EXISTS hours TEXT;
+        ALTER TABLE spaces ADD COLUMN IF NOT EXISTS categories TEXT;
+        ALTER TABLE spaces ADD COLUMN IF NOT EXISTS description TEXT;
+        ALTER TABLE spaces ADD COLUMN IF NOT EXISTS capacity INT;
         CREATE TABLE IF NOT EXISTS events (
           id TEXT PRIMARY KEY,
           title TEXT NOT NULL,

@@ -6,8 +6,9 @@ module.exports = (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const googleClientId = (process.env.GOOGLE_CLIENT_ID || '').trim().replace(/^["']|["']$/g, '');
   res.json({
-    googleClientId: process.env.GOOGLE_CLIENT_ID || null,
+    googleClientId: googleClientId || null,
     emailEnabled: !!(process.env.RESEND_API_KEY || getTransporter())
   });
 };
