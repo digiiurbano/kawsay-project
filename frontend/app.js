@@ -37,10 +37,10 @@ const App = (() => {
 
   let usersList = [
     guestUser,
-    { id: 'usr-espectador-1', name: 'Mateo Sandoval', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' },
-    { id: 'usr-artista-1', name: 'Mateo & La Banda', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150' },
-    { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
-    { id: 'usr-admin-1', name: 'Admin Kawsay', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150' }
+    { id: 'usr-espectador-1', name: 'Mateo Sandoval', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Amante del arte y espectador en Quito.', city: 'Quito' },
+    { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral independiente.', city: 'Quito' },
+    { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal del centro de Quito.', city: 'Quito' },
+    { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal de la plataforma cultural.', city: 'Quito' }
   ];
 
   // ---- Friends & Social Layer State (Espectador) ----
@@ -1029,37 +1029,64 @@ const App = (() => {
         </div>
       </section>
 
-      <!-- SECCIÓN: GESTIÓN DE USUARIOS Y ROLES (SQLITE) -->
+      <!-- SECCIÓN: GESTIÓN DE USUARIOS Y ROLES (DIRECTORIO & CREDENCIALES) -->
       <section class="section">
-        <div class="section-header">
-          <h2 class="section-title" style="font-size:22px; font-weight:900;">DIRECTORIO DE USUARIOS & ROLES REGISTRADOS EN QUITO</h2>
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:16px;">
+          <div>
+            <h2 class="section-title" style="font-size:22px; font-weight:900; margin:0;">DIRECTORIO DE USUARIOS & ROLES REGISTRADOS EN QUITO</h2>
+            <p style="color:var(--grey1); font-size:13px; margin:4px 0 0 0;">Gestión integral de perfiles de artistas, recintos, gestores, administradores y control de contraseñas de acceso.</p>
+          </div>
+          <button id="btn-admin-add-user" style="background:var(--accent); color:#000; font-weight:900; font-size:13px; padding:10px 18px; border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 0 15px rgba(204,255,0,0.25); transition:all 0.2s ease;">
+            ➕ AGREGAR NUEVO PERFIL
+          </button>
         </div>
-        <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px;">
-          <table class="admin-table">
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; overflow-x:auto;">
+          <table class="admin-table" style="width:100%; border-collapse:collapse;">
             <thead>
               <tr>
                 <th>USUARIO</th>
                 <th>EMAIL</th>
                 <th>ROL EN PLATAFORMA</th>
                 <th>DESCRIPCIÓN / PERFIL</th>
+                <th>CIUDAD</th>
                 <th>ESTADO</th>
+                <th style="text-align:right;">ACCIONES DE SEGURIDAD</th>
               </tr>
             </thead>
             <tbody>
               ${usersList.filter(u => u.role !== 'invitado').map(u => `
-                <tr>
-                  <td style="display:flex; align-items:center; gap:10px;">
-                    <img src="${u.avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--accent);">
-                    <strong>${u.name}</strong>
+                <tr data-user-id="${u.id}">
+                  <td style="display:flex; align-items:center; gap:10px; min-width:180px;">
+                    <img src="${u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:1px solid var(--accent);">
+                    <div>
+                      <strong style="display:block; color:#fff;">${u.name || 'Sin nombre'}</strong>
+                      <span style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">${u.id}</span>
+                    </div>
                   </td>
-                  <td style="font-family:var(--font-mono); color:var(--grey1);">${u.email}</td>
+                  <td style="font-family:var(--font-mono); color:var(--grey1);">${u.email || '—'}</td>
                   <td>
-                    <span style="font-family:var(--font-mono); font-weight:900; font-size:11px; padding:4px 10px; border-radius:12px; background:${u.role === 'admin' ? '#ef4444' : u.role === 'artista' ? 'var(--accent)' : u.role === 'espacio' ? 'var(--gold)' : 'var(--surface3)'}; color:${u.role === 'artista' ? '#000' : '#fff'};">
-                      ${u.role.toUpperCase()}
+                    <span style="font-family:var(--font-mono); font-weight:900; font-size:11px; padding:4px 10px; border-radius:12px; background:${u.role === 'admin' ? '#ef4444' : u.role === 'artista' ? 'var(--accent)' : u.role === 'espacio' ? 'var(--gold)' : u.role === 'gestor' ? '#a855f7' : 'var(--surface3)'}; color:${u.role === 'artista' ? '#000' : '#fff'};">
+                      ${(u.role || 'espectador').toUpperCase()}
                     </span>
                   </td>
-                  <td style="font-size:12px; color:var(--grey1);">${u.bio}</td>
-                  <td><span style="color:var(--accent); font-weight:800;">ACTIVO ✅</span></td>
+                  <td style="font-size:12px; color:var(--grey1); max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${u.bio || u.description || 'Perfil registrado en plataforma'}</td>
+                  <td style="font-size:12px; color:#cbd5e1;">${u.city || 'Quito'}</td>
+                  <td><span style="color:var(--accent); font-weight:800; font-size:12px;">ACTIVO ✅</span></td>
+                  <td style="text-align:right; white-space:nowrap;">
+                    <div style="display:inline-flex; align-items:center; gap:6px; justify-content:flex-end;">
+                      <button class="btn-user-action-pass" data-user-id="${u.id}" title="Cambiar Contraseña" style="background:#1e293b; color:#fbbf24; border:1px solid #d97706; padding:6px 10px; border-radius:6px; font-size:11px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                        🔑 Contraseña
+                      </button>
+                      <button class="btn-user-action-edit" data-user-id="${u.id}" title="Editar Perfil" style="background:#1e293b; color:#38bdf8; border:1px solid #0284c7; padding:6px 10px; border-radius:6px; font-size:11px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                        ✏️ Editar
+                      </button>
+                      ${u.id !== 'usr-admin-1' ? `
+                      <button class="btn-user-action-delete" data-user-id="${u.id}" title="Eliminar Perfil" style="background:#450a0a; color:#f87171; border:1px solid #991b1b; padding:6px 8px; border-radius:6px; font-size:11px; font-weight:800; cursor:pointer;">
+                        🗑️
+                      </button>
+                      ` : ''}
+                    </div>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -1127,6 +1154,35 @@ const App = (() => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         await setEventStatus(btn.dataset.id, 'rejected');
+      });
+    });
+
+    // Gestión de Usuarios y Contraseñas
+    const btnAddUser = view.querySelector('#btn-admin-add-user');
+    if (btnAddUser) {
+      btnAddUser.addEventListener('click', () => {
+        openAdminCreateUserModal();
+      });
+    }
+
+    view.querySelectorAll('.btn-user-action-pass').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openAdminChangePasswordModal(btn.dataset.userId);
+      });
+    });
+
+    view.querySelectorAll('.btn-user-action-edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openAdminEditUserModal(btn.dataset.userId);
+      });
+    });
+
+    view.querySelectorAll('.btn-user-action-delete').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await deleteUserAction(btn.dataset.userId);
       });
     });
   }
@@ -6102,6 +6158,204 @@ const App = (() => {
           </form>
         </div>
       </div>
+
+      <!-- Modal Admin: Crear Nuevo Perfil y Asignar Contraseña -->
+      <div class="modal-overlay" id="modal-admin-create-user">
+        <div class="modal-box" style="max-width: 620px; width: 92vw; background:#0f172a; border:1px solid #334155;">
+          <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px; margin-bottom:16px;">
+            <div>
+              <div class="modal-title" style="font-size:18px; font-weight:900; color:var(--accent); display:flex; align-items:center; gap:8px;">
+                ➕ AGREGAR NUEVO PERFIL Y ASIGNAR CONTRASEÑA
+              </div>
+              <div style="font-size:12px; color:var(--grey1); margin-top:4px;">
+                Registra un usuario en la plataforma KAWSAY asignando rol y credenciales de acceso seguras.
+              </div>
+            </div>
+            <button class="modal-close" id="modal-admin-create-user-close" style="color:#94a3b8;">×</button>
+          </div>
+
+          <form id="form-admin-create-user" style="display:flex; flex-direction:column; gap:14px;">
+            <div id="admin-create-user-alert" style="display:none; padding:10px 14px; border-radius:6px; font-size:12px;"></div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">NOMBRE COMPLETO *</label>
+                <input type="text" id="admin-new-user-name" required placeholder="Ej. Camila Morales" style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">CORREO ELECTRÓNICO *</label>
+                <input type="email" id="admin-new-user-email" required placeholder="camila@kawsay.ec" style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">ROL EN PLATAFORMA *</label>
+                <select id="admin-new-user-role" required style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+                  <option value="espectador">Espectador Cultural</option>
+                  <option value="artista">Artista / Agrupación</option>
+                  <option value="espacio">Espacio Cultural / Recinto</option>
+                  <option value="gestor">Gestor Cultural / Productor</option>
+                  <option value="admin">Administrador del Sistema</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">CIUDAD</label>
+                <input type="text" id="admin-new-user-city" value="Quito" style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+              </div>
+            </div>
+
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <label style="font-size:11px; font-weight:800; color:#fff;">CONTRASEÑA INICIAL *</label>
+                <button type="button" id="btn-admin-gen-password" style="background:#334155; color:var(--accent); border:1px solid rgba(204,255,0,0.3); padding:4px 10px; border-radius:4px; font-size:11px; font-weight:700; cursor:pointer;">
+                  🎲 Generar contraseña segura
+                </button>
+              </div>
+              <div style="position:relative; display:flex; align-items:center;">
+                <input type="password" id="admin-new-user-pass" required minlength="6" placeholder="Mínimo 6 caracteres" style="width:100%; padding:11px 40px 11px 11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px; font-family:var(--font-mono);">
+                <button type="button" id="btn-toggle-new-pass" style="position:absolute; right:10px; background:none; border:none; color:#94a3b8; cursor:pointer; font-size:15px;">👁️</button>
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">DESCRIPCIÓN / BIOGRAFÍA DEL PERFIL</label>
+              <textarea id="admin-new-user-bio" rows="2" placeholder="Reseña breve de la actividad artística o perfil..." style="width:100%; padding:10px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;"></textarea>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">URL DE AVATAR / FOTO (OPCIONAL)</label>
+              <input type="url" id="admin-new-user-avatar" placeholder="https://images.unsplash.com/photo-..." style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+              <button type="button" id="btn-admin-cancel-create-user" style="padding:11px 18px; font-size:13px; font-weight:800; background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:6px; cursor:pointer;">
+                CANCELAR
+              </button>
+              <button type="submit" id="btn-admin-submit-create-user" style="padding:11px 22px; font-size:13px; font-weight:900; background:var(--accent); color:#000; border:none; border-radius:6px; cursor:pointer;">
+                💾 CREAR Y ACTIVAR PERFIL
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal Admin: Cambiar Contraseña de Usuario -->
+      <div class="modal-overlay" id="modal-admin-change-password">
+        <div class="modal-box" style="max-width: 520px; width: 92vw; background:#0f172a; border:1px solid #334155;">
+          <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px; margin-bottom:16px;">
+            <div>
+              <div class="modal-title" style="font-size:18px; font-weight:900; color:#fbbf24; display:flex; align-items:center; gap:8px;">
+                🔑 GESTIÓN Y CAMBIO DE CONTRASEÑA
+              </div>
+              <div style="font-size:12px; color:var(--grey1); margin-top:4px;">
+                Asigna una nueva credencial de acceso para este usuario registrado.
+              </div>
+            </div>
+            <button class="modal-close" id="modal-admin-change-pass-close" style="color:#94a3b8;">×</button>
+          </div>
+
+          <div id="admin-pass-user-card" style="display:flex; align-items:center; gap:14px; background:#1e293b; border:1px solid #334155; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
+            <!-- Rellenado dinámicamente -->
+          </div>
+
+          <form id="form-admin-change-password" style="display:flex; flex-direction:column; gap:14px;">
+            <input type="hidden" id="admin-pass-target-id" value="">
+            <div id="admin-change-pass-alert" style="display:none; padding:10px 14px; border-radius:6px; font-size:12px;"></div>
+
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <label style="font-size:11px; font-weight:800; color:#fff;">NUEVA CONTRASEÑA *</label>
+                <button type="button" id="btn-admin-gen-pass-reset" style="background:#334155; color:var(--accent); border:1px solid rgba(204,255,0,0.3); padding:4px 10px; border-radius:4px; font-size:11px; font-weight:700; cursor:pointer;">
+                  🎲 Generar sugerencia
+                </button>
+              </div>
+              <div style="position:relative; display:flex; align-items:center;">
+                <input type="password" id="admin-change-new-pass" required minlength="6" placeholder="Mínimo 6 caracteres" style="width:100%; padding:11px 40px 11px 11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px; font-family:var(--font-mono);">
+                <button type="button" id="btn-toggle-change-pass" style="position:absolute; right:10px; background:none; border:none; color:#94a3b8; cursor:pointer; font-size:15px;">👁️</button>
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">CONFIRMAR NUEVA CONTRASEÑA *</label>
+              <input type="password" id="admin-change-confirm-pass" required minlength="6" placeholder="Repite la nueva contraseña" style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px; font-family:var(--font-mono);">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+              <button type="button" id="btn-admin-cancel-change-pass" style="padding:11px 18px; font-size:13px; font-weight:800; background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:6px; cursor:pointer;">
+                CANCELAR
+              </button>
+              <button type="submit" id="btn-admin-submit-change-pass" style="padding:11px 22px; font-size:13px; font-weight:900; background:#fbbf24; color:#000; border:none; border-radius:6px; cursor:pointer;">
+                💾 ACTUALIZAR CONTRASEÑA
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal Admin: Editar Perfil de Usuario -->
+      <div class="modal-overlay" id="modal-admin-edit-user">
+        <div class="modal-box" style="max-width: 580px; width: 92vw; background:#0f172a; border:1px solid #334155;">
+          <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px; margin-bottom:16px;">
+            <div>
+              <div class="modal-title" style="font-size:18px; font-weight:900; color:#38bdf8; display:flex; align-items:center; gap:8px;">
+                ✏️ MODIFICAR DATOS DEL PERFIL
+              </div>
+              <div style="font-size:12px; color:var(--grey1); margin-top:4px;">
+                Edita los datos públicos, rol o biografía del usuario seleccionado.
+              </div>
+            </div>
+            <button class="modal-close" id="modal-admin-edit-user-close" style="color:#94a3b8;">×</button>
+          </div>
+
+          <form id="form-admin-edit-user" style="display:flex; flex-direction:column; gap:14px;">
+            <input type="hidden" id="admin-edit-target-id" value="">
+            <div id="admin-edit-user-alert" style="display:none; padding:10px 14px; border-radius:6px; font-size:12px;"></div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">NOMBRE COMPLETO *</label>
+                <input type="text" id="admin-edit-user-name" required style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">ROL EN PLATAFORMA *</label>
+                <select id="admin-edit-user-role" required style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+                  <option value="espectador">Espectador Cultural</option>
+                  <option value="artista">Artista / Agrupación</option>
+                  <option value="espacio">Espacio Cultural / Recinto</option>
+                  <option value="gestor">Gestor Cultural / Productor</option>
+                  <option value="admin">Administrador del Sistema</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">CIUDAD</label>
+                <input type="text" id="admin-edit-user-city" style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">URL DE AVATAR</label>
+                <input type="url" id="admin-edit-user-avatar" style="width:100%; padding:11px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;">
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:11px; font-weight:800; color:#fff; margin-bottom:5px;">DESCRIPCIÓN / BIOGRAFÍA</label>
+              <textarea id="admin-edit-user-bio" rows="3" style="width:100%; padding:10px; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:6px; outline:none; font-size:13px;"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+              <button type="button" id="btn-admin-cancel-edit-user" style="padding:11px 18px; font-size:13px; font-weight:800; background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:6px; cursor:pointer;">
+                CANCELAR
+              </button>
+              <button type="submit" id="btn-admin-submit-edit-user" style="padding:11px 22px; font-size:13px; font-weight:900; background:#38bdf8; color:#000; border:none; border-radius:6px; cursor:pointer;">
+                💾 GUARDAR CAMBIOS
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     `;
 
     bindBillboardPreviewEvents();
@@ -6618,6 +6872,39 @@ const App = (() => {
       addToCart('Entrada General Quito Cultural', 15);
       closeTicketsModal();
     });
+
+    // Modales de Administración de Usuarios y Contraseñas
+    $('#modal-admin-create-user-close')?.addEventListener('click', closeAdminCreateUserModal);
+    $('#btn-admin-cancel-create-user')?.addEventListener('click', closeAdminCreateUserModal);
+    $('#form-admin-create-user')?.addEventListener('submit', handleAdminCreateUserSubmit);
+    $('#btn-admin-gen-password')?.addEventListener('click', () => {
+      const pass = generateSecurePassword();
+      const input = $('#admin-new-user-pass');
+      if (input) { input.value = pass; input.type = 'text'; }
+    });
+    $('#btn-toggle-new-pass')?.addEventListener('click', () => {
+      const input = $('#admin-new-user-pass');
+      if (input) input.type = input.type === 'password' ? 'text' : 'password';
+    });
+
+    $('#modal-admin-change-pass-close')?.addEventListener('click', closeAdminChangePasswordModal);
+    $('#btn-admin-cancel-change-pass')?.addEventListener('click', closeAdminChangePasswordModal);
+    $('#form-admin-change-password')?.addEventListener('submit', handleAdminChangePasswordSubmit);
+    $('#btn-admin-gen-pass-reset')?.addEventListener('click', () => {
+      const pass = generateSecurePassword();
+      const in1 = $('#admin-change-new-pass');
+      const in2 = $('#admin-change-confirm-pass');
+      if (in1) { in1.value = pass; in1.type = 'text'; }
+      if (in2) { in2.value = pass; in2.type = 'text'; }
+    });
+    $('#btn-toggle-change-pass')?.addEventListener('click', () => {
+      const in1 = $('#admin-change-new-pass');
+      if (in1) in1.type = in1.type === 'password' ? 'text' : 'password';
+    });
+
+    $('#modal-admin-edit-user-close')?.addEventListener('click', closeAdminEditUserModal);
+    $('#btn-admin-cancel-edit-user')?.addEventListener('click', closeAdminEditUserModal);
+    $('#form-admin-edit-user')?.addEventListener('submit', handleAdminEditUserSubmit);
   }
 
   function bindBillboardPreviewEvents() {
@@ -7821,6 +8108,283 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
   }
 
   function closeAdminModal() { hideModal('#modal-admin'); }
+
+  // ============================================================
+  // GESTIÓN DE PERFILES DE USUARIO Y CONTRASEÑAS (ADMIN)
+  // ============================================================
+  function generateSecurePassword() {
+    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
+    let pass = 'Kawsay';
+    for (let i = 0; i < 5; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass + '!';
+  }
+
+  function openAdminCreateUserModal() {
+    const form = $('#form-admin-create-user');
+    if (form) form.reset();
+    const cityInput = $('#admin-new-user-city');
+    if (cityInput) cityInput.value = 'Quito';
+    const alertBox = $('#admin-create-user-alert');
+    if (alertBox) alertBox.style.display = 'none';
+    const passInput = $('#admin-new-user-pass');
+    if (passInput) {
+      passInput.value = generateSecurePassword();
+      passInput.type = 'text';
+    }
+    showModal('#modal-admin-create-user');
+  }
+
+  function closeAdminCreateUserModal() {
+    hideModal('#modal-admin-create-user');
+  }
+
+  function openAdminChangePasswordModal(userId) {
+    const user = usersList.find(u => String(u.id) === String(userId));
+    if (!user) {
+      showToast('❌ Usuario no encontrado.');
+      return;
+    }
+    const form = $('#form-admin-change-password');
+    if (form) form.reset();
+    const targetIdInput = $('#admin-pass-target-id');
+    if (targetIdInput) targetIdInput.value = user.id;
+
+    const userCard = $('#admin-pass-user-card');
+    if (userCard) {
+      userCard.innerHTML = `
+        <img src="${user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid #fbbf24;">
+        <div style="flex:1;">
+          <div style="font-size:14px; font-weight:800; color:#fff;">${user.name}</div>
+          <div style="font-size:12px; color:var(--grey1); font-family:var(--font-mono);">${user.email || 'Sin correo registrado'}</div>
+        </div>
+        <span style="font-size:11px; font-weight:900; padding:4px 8px; border-radius:10px; background:#fbbf24; color:#000; text-transform:uppercase;">
+          ${user.role}
+        </span>
+      `;
+    }
+
+    const alertBox = $('#admin-change-pass-alert');
+    if (alertBox) alertBox.style.display = 'none';
+
+    const newPassInput = $('#admin-change-new-pass');
+    const confirmPassInput = $('#admin-change-confirm-pass');
+    const genPass = generateSecurePassword();
+    if (newPassInput) {
+      newPassInput.value = genPass;
+      newPassInput.type = 'text';
+    }
+    if (confirmPassInput) {
+      confirmPassInput.value = genPass;
+      confirmPassInput.type = 'text';
+    }
+
+    showModal('#modal-admin-change-password');
+  }
+
+  function closeAdminChangePasswordModal() {
+    hideModal('#modal-admin-change-password');
+  }
+
+  function openAdminEditUserModal(userId) {
+    const user = usersList.find(u => String(u.id) === String(userId));
+    if (!user) {
+      showToast('❌ Usuario no encontrado.');
+      return;
+    }
+    const form = $('#form-admin-edit-user');
+    if (form) form.reset();
+
+    const targetId = $('#admin-edit-target-id');
+    const nameInput = $('#admin-edit-user-name');
+    const roleSelect = $('#admin-edit-user-role');
+    const cityInput = $('#admin-edit-user-city');
+    const avatarInput = $('#admin-edit-user-avatar');
+    const bioTextarea = $('#admin-edit-user-bio');
+    const alertBox = $('#admin-edit-user-alert');
+
+    if (alertBox) alertBox.style.display = 'none';
+    if (targetId) targetId.value = user.id;
+    if (nameInput) nameInput.value = user.name || '';
+    if (roleSelect) roleSelect.value = user.role || 'espectador';
+    if (cityInput) cityInput.value = user.city || 'Quito';
+    if (avatarInput) avatarInput.value = user.avatar || '';
+    if (bioTextarea) bioTextarea.value = user.bio || user.description || '';
+
+    showModal('#modal-admin-edit-user');
+  }
+
+  function closeAdminEditUserModal() {
+    hideModal('#modal-admin-edit-user');
+  }
+
+  async function handleAdminCreateUserSubmit(e) {
+    e.preventDefault();
+    const alertBox = $('#admin-create-user-alert');
+    const btnSubmit = $('#btn-admin-submit-create-user');
+    if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = '⏳ Creando perfil...'; }
+
+    try {
+      const name = $('#admin-new-user-name')?.value?.trim();
+      const email = $('#admin-new-user-email')?.value?.trim()?.toLowerCase();
+      const role = $('#admin-new-user-role')?.value;
+      const password = $('#admin-new-user-pass')?.value;
+      const city = $('#admin-new-user-city')?.value?.trim() || 'Quito';
+      const bio = $('#admin-new-user-bio')?.value?.trim();
+      const avatar = $('#admin-new-user-avatar')?.value?.trim();
+
+      const res = await fetch(`${API_BASE}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, role, password, city, bio, avatar })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al crear usuario');
+      }
+
+      showToast(`✅ Perfil de ${name} (${role}) creado exitosamente.`);
+      closeAdminCreateUserModal();
+      await loadInitialData();
+      if (currentView === 'admin') {
+        const viewEl = document.getElementById('view-admin');
+        if (viewEl) renderAdminDashboardView(viewEl);
+      }
+    } catch (err) {
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(239,68,68,0.2)';
+        alertBox.style.border = '1px solid #ef4444';
+        alertBox.style.color = '#fca5a5';
+        alertBox.textContent = `⚠️ ${err.message}`;
+      } else {
+        showToast(`⚠️ ${err.message}`);
+      }
+    } finally {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '💾 CREAR Y ACTIVAR PERFIL'; }
+    }
+  }
+
+  async function handleAdminChangePasswordSubmit(e) {
+    e.preventDefault();
+    const alertBox = $('#admin-change-pass-alert');
+    const btnSubmit = $('#btn-admin-submit-change-pass');
+    const userId = $('#admin-pass-target-id')?.value;
+    const newPass = $('#admin-change-new-pass')?.value;
+    const confirmPass = $('#admin-change-confirm-pass')?.value;
+
+    if (newPass !== confirmPass) {
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(239,68,68,0.2)';
+        alertBox.style.border = '1px solid #ef4444';
+        alertBox.style.color = '#fca5a5';
+        alertBox.textContent = '⚠️ Las contraseñas no coinciden.';
+      }
+      return;
+    }
+
+    if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = '⏳ Actualizando...'; }
+
+    try {
+      const res = await fetch(`${API_BASE}/users/${userId}/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPass })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al actualizar contraseña');
+
+      showToast('🔑 Contraseña actualizada exitosamente.');
+      closeAdminChangePasswordModal();
+    } catch (err) {
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(239,68,68,0.2)';
+        alertBox.style.border = '1px solid #ef4444';
+        alertBox.style.color = '#fca5a5';
+        alertBox.textContent = `⚠️ ${err.message}`;
+      } else {
+        showToast(`⚠️ ${err.message}`);
+      }
+    } finally {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '💾 ACTUALIZAR CONTRASEÑA'; }
+    }
+  }
+
+  async function handleAdminEditUserSubmit(e) {
+    e.preventDefault();
+    const alertBox = $('#admin-edit-user-alert');
+    const btnSubmit = $('#btn-admin-submit-edit-user');
+    const userId = $('#admin-edit-target-id')?.value;
+    const name = $('#admin-edit-user-name')?.value?.trim();
+    const role = $('#admin-edit-user-role')?.value;
+    const city = $('#admin-edit-user-city')?.value?.trim();
+    const bio = $('#admin-edit-user-bio')?.value?.trim();
+    const avatar = $('#admin-edit-user-avatar')?.value?.trim();
+
+    if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = '⏳ Guardando...'; }
+
+    try {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, role, city, bio, avatar })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al modificar usuario');
+
+      showToast(`✏️ Perfil de ${name} actualizado correctamente.`);
+      closeAdminEditUserModal();
+      await loadInitialData();
+      if (currentView === 'admin') {
+        const viewEl = document.getElementById('view-admin');
+        if (viewEl) renderAdminDashboardView(viewEl);
+      }
+    } catch (err) {
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(239,68,68,0.2)';
+        alertBox.style.border = '1px solid #ef4444';
+        alertBox.style.color = '#fca5a5';
+        alertBox.textContent = `⚠️ ${err.message}`;
+      } else {
+        showToast(`⚠️ ${err.message}`);
+      }
+    } finally {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '💾 GUARDAR CAMBIOS'; }
+    }
+  }
+
+  async function deleteUserAction(userId) {
+    const user = usersList.find(u => String(u.id) === String(userId));
+    const userName = user ? user.name : 'este usuario';
+    if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el perfil de "${userName}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo eliminar el usuario');
+
+      showToast(`🗑️ Usuario "${userName}" eliminado.`);
+      await loadInitialData();
+      if (currentView === 'admin') {
+        const viewEl = document.getElementById('view-admin');
+        if (viewEl) renderAdminDashboardView(viewEl);
+      }
+    } catch (err) {
+      showToast(`⚠️ ${err.message}`);
+    }
+  }
+
   let currentCreateEventStep = 1;
 
   function setCreateEventStep(stepNum) {

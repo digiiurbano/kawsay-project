@@ -143,8 +143,35 @@ app.get('/api/users', (req, res) => {
   });
 });
 
+app.post('/api/users', (req, res) => {
+  const { name, email, password, role, bio, avatar, city } = req.body || {};
+  if (!name || !email) {
+    return res.status(400).json({ error: 'Nombre y correo son obligatorios' });
+  }
+
+  const cleanEmail = String(email).trim().toLowerCase();
+  const validRole = ['espectador', 'artista', 'espacio', 'admin', 'gestor'].includes(role) ? role : 'espectador';
+  const id = 'usr-' + Date.now();
+  const userPass = password && String(password).trim().length >= 6 ? String(password).trim() : 'kawsay2026';
+  const userAvatar = avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+  const userBio = bio || `Perfil de ${validRole} en KAWSAY`;
+  const userCity = city || 'Quito';
+
+  const sql = `INSERT INTO users (id, name, email, password, role, avatar, bio, city) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  db.run(sql, [id, name.trim(), cleanEmail, userPass, validRole, userAvatar, userBio, userCity], function(err) {
+    if (err) {
+      if (err.message && err.message.includes('UNIQUE')) {
+        return res.status(400).json({ error: 'Este correo electrónico ya está registrado.' });
+      }
+      return res.status(500).json({ error: err.message });
+    }
+    const newUser = { id, name: name.trim(), email: cleanEmail, role: validRole, avatar: userAvatar, bio: userBio, city: userCity };
+    res.status(201).json({ message: 'Usuario y contraseña creados exitosamente', user: newUser });
+  });
+});
+
 app.get('/api/users/:id', (req, res) => {
-  db.get(`SELECT id, name, email, role, avatar, bio, preferences FROM users WHERE id = ?`, [req.params.id], (err, row) => {
+  db.get(`SELECT id, name, email, role, avatar, bio, city, preferences FROM users WHERE id = ?`, [req.params.id], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!row) return res.status(404).json({ error: 'Usuario no encontrado' });
     if (row.preferences && typeof row.preferences === 'string') {
@@ -154,12 +181,36 @@ app.get('/api/users/:id', (req, res) => {
   });
 });
 
+app.put('/api/users/:id/password', (req, res) => {
+  const { password } = req.body || {};
+  if (!password || String(password).length < 6) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+  }
+  db.run(`UPDATE users SET password = ? WHERE id = ?`, [String(password), req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ message: 'Contraseña actualizada exitosamente' });
+  });
+});
+
+app.delete('/api/users/:id', (req, res) => {
+  const userId = req.params.id;
+  if (userId === 'usr-admin-1') {
+    return res.status(403).json({ error: 'No se puede eliminar la cuenta principal de Administrador' });
+  }
+  db.run(`DELETE FROM users WHERE id = ?`, [userId], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ message: 'Usuario eliminado exitosamente' });
+  });
+});
+
 app.put('/api/users/:id', (req, res) => {
-  const { name, avatar, bio, city, tags } = req.body;
+  const { name, role, avatar, bio, city, tags, password } = req.body;
   const tagsStr = Array.isArray(tags) ? JSON.stringify(tags) : tags;
   db.run(
-    `UPDATE users SET name = COALESCE(?, name), avatar = COALESCE(?, avatar), bio = COALESCE(?, bio), city = COALESCE(?, city), tags = COALESCE(?, tags) WHERE id = ?`,
-    [name, avatar, bio, city, tagsStr, req.params.id],
+    `UPDATE users SET name = COALESCE(?, name), role = COALESCE(?, role), avatar = COALESCE(?, avatar), bio = COALESCE(?, bio), city = COALESCE(?, city), tags = COALESCE(?, tags), password = COALESCE(?, password) WHERE id = ?`,
+    [name, role, avatar, bio, city, tagsStr, password || null, req.params.id],
     function(err) {
       if (err) return res.status(500).json({ error: err.message });
       db.get(`SELECT id, name, email, role, avatar, bio, city, tags FROM users WHERE id = ?`, [req.params.id], (err2, user) => {
