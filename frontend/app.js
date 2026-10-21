@@ -249,6 +249,7 @@ const App = (() => {
     apiSpaces = KAWSAY_DATA.spaces;
 
     // 2. Renderizar interfaz e instalar delegación global de eventos de inmediato (0ms de latencia)
+    initSidebarState();
     renderSidebar();
     renderTopbar();
     renderHomeView();
@@ -381,8 +382,56 @@ const App = (() => {
   }
 
   // ============================================================
-  // SIDEBAR
+  // SIDEBAR & COLLAPSE / EXPAND TOGGLE
   // ============================================================
+  function toggleSidebar(forceState = null) {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      if (forceState === true) {
+        document.body.classList.add('sidebar-open-mobile');
+      } else if (forceState === false) {
+        document.body.classList.remove('sidebar-open-mobile');
+      } else {
+        document.body.classList.toggle('sidebar-open-mobile');
+      }
+    } else {
+      if (forceState === true) {
+        document.body.classList.remove('sidebar-collapsed');
+        localStorage.setItem('kawsay_sidebar_collapsed', 'false');
+      } else if (forceState === false) {
+        document.body.classList.add('sidebar-collapsed');
+        localStorage.setItem('kawsay_sidebar_collapsed', 'true');
+      } else {
+        const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('kawsay_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+      }
+    }
+  }
+
+  function initSidebarState() {
+    const isMobile = window.innerWidth <= 768;
+    if (!isMobile) {
+      const savedCollapsed = localStorage.getItem('kawsay_sidebar_collapsed');
+      if (savedCollapsed === 'true') {
+        document.body.classList.add('sidebar-collapsed');
+      } else {
+        document.body.classList.remove('sidebar-collapsed');
+      }
+    }
+
+    const floatingBtn = document.getElementById('btn-floating-sidebar-toggle');
+    if (floatingBtn && !floatingBtn._bound) {
+      floatingBtn._bound = true;
+      floatingBtn.addEventListener('click', () => toggleSidebar(true));
+    }
+
+    const backdrop = document.getElementById('sidebar-mobile-backdrop');
+    if (backdrop && !backdrop._bound) {
+      backdrop._bound = true;
+      backdrop.addEventListener('click', () => toggleSidebar(false));
+    }
+  }
+
   function renderSidebar() {
     const sidebar = document.getElementById('sidebar');
 
@@ -393,8 +442,15 @@ const App = (() => {
     else if (currentUser.role === 'admin') actionBtnText = '+ NUEVO EVENTO ADMIN';
 
     sidebar.innerHTML = `
-      <div class="sidebar-logo" id="sidebar-logo" style="font-size:24px; font-weight:900; display:flex; align-items:center; gap:8px;">
-        KAWSAY <span style="color:var(--accent); font-size:12px; font-weight:700;">QUITO</span>
+      <div class="sidebar-logo-container" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.06);">
+        <div class="sidebar-logo" id="sidebar-logo" style="font-size:24px; font-weight:900; display:flex; align-items:center; gap:8px; cursor:pointer; margin:0; padding:0;">
+          KAWSAY <span style="color:var(--accent); font-size:12px; font-weight:700;">QUITO</span>
+        </div>
+        <button id="btn-sidebar-collapse" class="btn-sidebar-collapse" title="Ocultar menú lateral" aria-label="Ocultar menú lateral">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
       </div>
 
 
@@ -509,16 +565,30 @@ const App = (() => {
       ` : ''}
     `;
 
-    sidebar.addEventListener('click', (e) => {
-      const item = e.target.closest('[data-view]');
-      if (item) {
-        if (item.dataset.view === 'user') {
-          activeProfileKey = 'mateo';
-          activeProfileTab = 'eventos';
+    if (!sidebar._boundEvents) {
+      sidebar._boundEvents = true;
+      sidebar.addEventListener('click', (e) => {
+        const item = e.target.closest('[data-view]');
+        if (item) {
+          if (item.dataset.view === 'user') {
+            activeProfileKey = 'mateo';
+            activeProfileTab = 'eventos';
+          }
+          if (window.innerWidth <= 768) {
+            document.body.classList.remove('sidebar-open-mobile');
+          }
+          navigate(item.dataset.view);
         }
-        navigate(item.dataset.view);
-      }
-    });
+      });
+    }
+
+    const collapseBtn = $('#btn-sidebar-collapse');
+    if (collapseBtn) {
+      collapseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSidebar(false);
+      });
+    }
 
     const createBtn = $('#create-event-btn');
     if (createBtn) {
@@ -528,7 +598,15 @@ const App = (() => {
       });
     }
 
-    $('#sidebar-logo').addEventListener('click', () => navigate('home'));
+    const sidebarLogo = $('#sidebar-logo');
+    if (sidebarLogo) {
+      sidebarLogo.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          document.body.classList.remove('sidebar-open-mobile');
+        }
+        navigate('home');
+      });
+    }
     
     const libSavedBtn = $('#lib-saved');
     if (libSavedBtn) {
@@ -563,6 +641,15 @@ const App = (() => {
     const totalCartItems = cartItems.reduce((acc, item) => acc + item.qty, 0);
 
     topbar.innerHTML = `
+      <!-- Botón de Despliegue/Ocultamiento de Menú Lateral -->
+      <button class="btn-topbar-sidebar-toggle" id="btn-topbar-sidebar-toggle" title="Mostrar / Ocultar Menú Lateral" aria-label="Alternar menú lateral">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+
       <!-- Barra de Búsqueda Destacada -->
       <div class="search-wrap-lg">
         <span class="search-icon-lg">${ICONS.search}</span>
@@ -669,6 +756,13 @@ const App = (() => {
 
     const adminModBtn = $('#btn-admin-mod');
     if (adminModBtn) adminModBtn.addEventListener('click', openAdminModal);
+
+    const toggleSidebarBtn = $('#btn-topbar-sidebar-toggle');
+    if (toggleSidebarBtn) {
+      toggleSidebarBtn.addEventListener('click', () => {
+        toggleSidebar();
+      });
+    }
 
     const searchInput = $('#search-input');
     if (searchInput) {
