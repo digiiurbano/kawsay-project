@@ -21,12 +21,13 @@ app.use(async (req, res, next) => {
 
 // Reconstruir y normalizar rutas en Vercel Serverless
 app.use((req, res, next) => {
-  // 1. Si Vercel pasó el subpath en req.query._path (rewrite /api/(.*) -> /api/index.js?_path=$1)
+  // 1. Si Vercel pasó el subpath en req.query._path (rewrite /api/:path* -> /api/index.js?_path=:path*)
   if (req.query && req.query._path) {
-    const subpath = req.query._path;
+    const raw = req.query._path;
+    const subpath = Array.isArray(raw) ? raw.join('/') : String(raw);
     delete req.query._path;
     const queryString = new URLSearchParams(req.query).toString();
-    req.url = '/api/' + subpath + (queryString ? '?' + queryString : '');
+    req.url = '/api/' + subpath.replace(/^\/+/, '') + (queryString ? '?' + queryString : '');
   } else {
     // 2. Si Vercel envió encabezados de rewrite
     const matched = req.headers['x-matched-path'] || req.headers['x-vercel-matched-path'];
