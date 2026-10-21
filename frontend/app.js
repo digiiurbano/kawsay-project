@@ -2523,13 +2523,21 @@ const App = (() => {
                 ${profile.bio ? `
                   <p style="font-size: 13px; color: #a1a1aa; line-height: 1.5; margin-bottom: 12px; max-width: 580px;">${profile.bio}</p>
                 ` : ''}
-                <div class="public-profile-tags">
+                <div class="public-profile-tags" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
                   ${profile.tags.map(tag => `<span class="public-profile-tag-pill" data-tag="${tag}">${tag}</span>`).join('')}
+                  ${isSelf ? `
+                    <button class="public-profile-tag-pill" id="btn-quick-edit-prefs" style="background: rgba(204, 255, 0, 0.08); border: 1px dashed rgba(204, 255, 0, 0.5); color: var(--accent); cursor: pointer; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;" title="Modificar intereses y zonas de Quito">
+                      ⚙️ Modificar Opciones
+                    </button>
+                  ` : ''}
                 </div>
                 ${isSelf ? `
-                  <div style="margin-top: 14px;">
+                  <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
                     <button class="btn-edit-profile-action" id="btn-open-edit-profile">
                       ✏️ EDITAR PERFIL & FOTO
+                    </button>
+                    <button class="btn-edit-profile-action" id="btn-open-pref-options" style="background: #141c28; color: var(--accent); border: 1px solid rgba(204, 255, 0, 0.35); display: inline-flex; align-items: center; gap: 8px;">
+                      ⚙️ MODIFICAR PREFERENCIAS CULTURALES
                     </button>
                   </div>
                 ` : ''}
@@ -2743,6 +2751,21 @@ const App = (() => {
 
           <!-- PESTAÑA 5: RECOMENDACIONES -->
           <div class="profile-tab-content ${activeProfileTab === 'recomendaciones' ? 'active' : ''}" id="tab-content-recomendaciones">
+            <div style="background: linear-gradient(135deg, #131b28, #0b1018); border: 1px solid #1f2a3a; border-radius: 12px; padding: 18px 22px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+              <div>
+                <div style="font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;">
+                  🎯 ALGORITMO CULTURAL PERSONALIZADO
+                </div>
+                <div style="font-size: 14px; font-weight: 800; color: #ffffff; margin-top: 3px;">
+                  Eventos sugeridos según tus disciplinas y zonas favoritas en Quito
+                </div>
+              </div>
+              ${isSelf ? `
+                <button id="btn-recom-edit-prefs" style="background: var(--accent); color: #000000; font-family: var(--font-mono); font-size: 12px; font-weight: 900; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 0 15px rgba(204,255,0,0.25);">
+                  ⚙️ MODIFICAR OPCIONES
+                </button>
+              ` : ''}
+            </div>
             <h2 class="profile-section-title">SELECCIÓN PERSONALIZADA PARA TI</h2>
             <div class="profile-recom-grid">
               ${(profile.recommendations || []).map(rec => `
@@ -2905,6 +2928,20 @@ const App = (() => {
         e.stopPropagation();
         openEditProfileModal(profile);
       });
+    }
+
+    // Botones para Modificar Opciones y Preferencias Culturales
+    const btnOpenPrefOptions = view.querySelector('#btn-open-pref-options');
+    if (btnOpenPrefOptions) {
+      btnOpenPrefOptions.addEventListener('click', () => openOnboardingModal(true));
+    }
+    const btnQuickEditPrefs = view.querySelector('#btn-quick-edit-prefs');
+    if (btnQuickEditPrefs) {
+      btnQuickEditPrefs.addEventListener('click', () => openOnboardingModal(true));
+    }
+    const btnRecomEditPrefs = view.querySelector('#btn-recom-edit-prefs');
+    if (btnRecomEditPrefs) {
+      btnRecomEditPrefs.addEventListener('click', () => openOnboardingModal(true));
     }
 
     // 4. Métricas / Contadores Interactivos
@@ -5597,62 +5634,201 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- Modal Onboarding Paso 2: Personalización de Intereses Culturales -->
+      <!-- Modal Onboarding: Personalización de Experiencia Cultural (Diseño Pantalla 1) -->
       <div class="modal-overlay" id="modal-onboarding-preferences">
-        <div class="cart-modal-box" style="max-width:520px; background:#0f172a; border:1px solid #334155; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;">
-          <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px;">
-            <div>
-              <span style="font-size:11px; font-family:var(--font-mono); color:var(--accent); font-weight:800; letter-spacing:0.5px;">PASO 2 DE 2 · ALGORITMO DE DESCUBRIMIENTO</span>
-              <div class="modal-title" style="font-size:18px; font-weight:900; color:#ffffff; margin-top:2px;">
-                🎨 Personaliza tu Experiencia Cultural
-              </div>
-            </div>
-            <button class="modal-close" id="modal-onboarding-close" style="color:#94a3b8;">×</button>
+        <div class="pref-modal-box">
+          <button class="pref-modal-close" id="modal-onboarding-close" title="Cerrar modal">×</button>
+
+          <div class="pref-modal-header">
+            <h1 class="pref-main-title">
+              PERSONALIZA TU
+              <span class="highlight">EXPERIENCIA CULTURAL</span>
+            </h1>
+            <p class="pref-main-subtitle">
+              Selecciona tus disciplinas artísticas favoritas y las zonas de Quito que más frecuentas para sugerirte la cartelera perfecta.
+            </p>
           </div>
 
-          <div style="margin: 16px 0 20px;">
-            <p style="font-size:13px; color:#cbd5e1; margin:0 0 16px; line-height:1.4;">
-              Selecciona tus disciplinas artísticas favoritas y las zonas de Quito que más frecuentas para sugerirte la cartelera perfecta:
-            </p>
-
-            <!-- 1. Disciplinas e Intereses -->
-            <label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; font-family:var(--font-mono); text-transform:uppercase; margin-bottom:6px;">
-              1. ¿Qué eventos te interesan explorar? (Selecciona tus preferidos)
-            </label>
-            <div class="onboarding-tags-grid" id="onboarding-categories-tags">
-              <button type="button" class="onboarding-tag-pill active" data-cat="Teatro">🎭 Teatro & Escena</button>
-              <button type="button" class="onboarding-tag-pill active" data-cat="Música Andina">🎶 Música Andina & Fusión</button>
-              <button type="button" class="onboarding-tag-pill" data-cat="Conciertos">🎸 Rock & Conciertos</button>
-              <button type="button" class="onboarding-tag-pill" data-cat="Cine">🎬 Cine Independiente</button>
-              <button type="button" class="onboarding-tag-pill" data-cat="Danza">💃 Danza & Artes Vivas</button>
-              <button type="button" class="onboarding-tag-pill" data-cat="Fotografía">📸 Fotografía & Galerías</button>
-              <button type="button" class="onboarding-tag-pill" data-cat="Arte Urbano">🎨 Arte Urbano & Murales</button>
-              <button type="button" class="onboarding-tag-pill" data-cat="Talleres">🛠️ Talleres Creativos</button>
-              <button type="button" class="onboarding-tag-pill" data-cat="Festivales">🎪 Festivales & Ferias</button>
-              <button type="button" class="onboarding-tag-pill" data-cat="Literatura">📚 Literatura & Poesía</button>
+          <!-- PASO 1 -->
+          <div class="pref-step-row">
+            <div class="pref-step-title-wrap">
+              <span class="pref-step-badge">01</span>
+              <h2 class="pref-step-heading">¿QUÉ EVENTOS TE INTERESAN EXPLORAR?</h2>
             </div>
+            <span class="pref-step-hint">SELECCIONA TUS PREFERIDOS</span>
+          </div>
 
-            <!-- 2. Zonas y Barrios en Quito -->
-            <label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; font-family:var(--font-mono); text-transform:uppercase; margin-top:18px; margin-bottom:6px;">
-              2. ¿En qué zonas o barrios de Quito prefieres asistir?
-            </label>
-            <div class="onboarding-tags-grid" id="onboarding-zones-tags">
-              <button type="button" class="onboarding-tag-pill active" data-zone="Centro Histórico">📍 Centro Histórico</button>
-              <button type="button" class="onboarding-tag-pill active" data-zone="La Floresta">🌿 La Floresta</button>
-              <button type="button" class="onboarding-tag-pill" data-zone="Cumbayá">⛰️ Cumbayá & Tumbaco</button>
-              <button type="button" class="onboarding-tag-pill" data-zone="La Mariscal">🏙️ La Mariscal</button>
-              <button type="button" class="onboarding-tag-pill" data-zone="Guápulo">🌄 Guápulo</button>
-              <button type="button" class="onboarding-tag-pill" data-zone="La Carolina">🌳 Parque La Carolina</button>
-              <button type="button" class="onboarding-tag-pill" data-zone="La Ronda">🏛️ San Marcos / La Ronda</button>
+          <div class="pref-cards-grid" id="onboarding-categories-tags">
+            <button type="button" class="pref-card active" data-cat="Teatro">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🎭</span>
+                <span class="pref-card-label">TEATRO & ESCENA</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card active" data-cat="Música Andina">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🎶</span>
+                <span class="pref-card-label">MÚSICA ANDINA & FUSIÓN</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-cat="Conciertos">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🎸</span>
+                <span class="pref-card-label">ROCK & CONCIERTOS</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-cat="Cine">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🎬</span>
+                <span class="pref-card-label">CINE INDEPENDIENTE</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-cat="Danza">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">💃</span>
+                <span class="pref-card-label">DANZA & ARTES VIVAS</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-cat="Fotografía">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">📸</span>
+                <span class="pref-card-label">FOTOGRAFÍA & GALERÍAS</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-cat="Arte Urbano">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🎨</span>
+                <span class="pref-card-label">ARTE URBANO & MURALES</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-cat="Talleres">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🛠️</span>
+                <span class="pref-card-label">TALLERES CREATIVOS</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-cat="Festivales">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🎪</span>
+                <span class="pref-card-label">FESTIVALES & FERIAS</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-cat="Literatura">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">📚</span>
+                <span class="pref-card-label">LITERATURA & POESÍA</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+          </div>
+
+          <!-- PASO 2 -->
+          <div class="pref-step-row" style="margin-top: 36px;">
+            <div class="pref-step-title-wrap">
+              <span class="pref-step-badge">02</span>
+              <h2 class="pref-step-heading">¿EN QUÉ ZONAS O BARRIOS DE QUITO PREFIERES ASISTIR?</h2>
             </div>
+            <span class="pref-step-hint">ZONAS FRECUENTES</span>
+          </div>
+
+          <div class="pref-cards-grid" id="onboarding-zones-tags">
+            <button type="button" class="pref-card active" data-zone="Centro Histórico">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">📍</span>
+                <span class="pref-card-label">CENTRO HISTÓRICO</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card active" data-zone="La Floresta">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🌿</span>
+                <span class="pref-card-label">LA FLORESTA</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-zone="Cumbayá">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">⛰️</span>
+                <span class="pref-card-label">CUMBAYÁ & TUMBACO</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-zone="La Mariscal">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🏙️</span>
+                <span class="pref-card-label">LA MARISCAL</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-zone="Guápulo">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🌄</span>
+                <span class="pref-card-label">GUÁPULO</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-zone="La Carolina">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🌳</span>
+                <span class="pref-card-label">PARQUE LA CAROLINA</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-zone="La Ronda">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🏛️</span>
+                <span class="pref-card-label">SAN MARCOS / LA RONDA</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-zone="Bellavista">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🎨</span>
+                <span class="pref-card-label">BELLAVISTA & GONZÁLEZ S.</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
+
+            <button type="button" class="pref-card" data-zone="Sur">
+              <div class="pref-card-left">
+                <span class="pref-card-icon">🎭</span>
+                <span class="pref-card-label">VILLA FLORA & SUR</span>
+              </div>
+              <span class="pref-card-check">✓</span>
+            </button>
           </div>
 
           <!-- Botones de Acción -->
-          <div style="display:flex; flex-direction:column; gap:10px; margin-top:20px; border-top:1px solid #1e293b; padding-top:16px;">
-            <button type="button" id="btn-save-onboarding-preferences" class="btn-submit" style="background:var(--accent); color:#000000; font-weight:900; padding:14px; border:none; border-radius:6px; cursor:pointer; font-size:13px; letter-spacing:0.5px;">
+          <div class="pref-modal-actions">
+            <button type="button" id="btn-save-onboarding-preferences" class="pref-submit-btn">
               ✨ GUARDAR PREFERENCIAS Y COMENZAR A EXPLORAR
             </button>
-            <button type="button" id="btn-skip-onboarding-preferences" style="background:transparent; border:none; color:#94a3b8; font-size:12px; font-weight:700; cursor:pointer; padding:6px; text-decoration:underline;">
+            <button type="button" id="btn-skip-onboarding-preferences" class="pref-skip-btn">
               Omitir por ahora y ver toda la cartelera
             </button>
           </div>
@@ -6730,11 +6906,11 @@ const App = (() => {
       });
     }
 
-    // Modal Onboarding (Paso 2: Preferencias e Intereses Culturales)
+    // Modal Onboarding (Preferencias e Intereses Culturales - Pantalla 1)
     const btnCloseOnboarding = $('#modal-onboarding-close');
     if (btnCloseOnboarding) btnCloseOnboarding.addEventListener('click', closeOnboardingModal);
 
-    $$('.onboarding-tag-pill').forEach(pill => {
+    $$('.pref-card, .onboarding-tag-pill').forEach(pill => {
       pill.addEventListener('click', () => {
         pill.classList.toggle('active');
       });
@@ -6761,14 +6937,12 @@ const App = (() => {
 
           showToast(`¡Cuenta creada exitosamente! Bienvenido/a ${currentUser.name}`);
 
-          // Notificación automática de activación por correo sin bloquear al usuario
           setTimeout(() => {
             showToast(`📬 Te enviamos un correo de bienvenida a ${currentUser.email}.`);
           }, 1000);
 
           tempRegData = null;
         } catch (err) {
-          // Fallback resiliente offline
           currentUser = {
             id: 'usr-' + Date.now(),
             name: tempRegData.name,
@@ -6784,6 +6958,12 @@ const App = (() => {
         }
       } else if (currentUser && currentUser.role !== 'invitado') {
         currentUser.preferences = preferences;
+        if (preferences.categories && preferences.categories.length) {
+          currentUser.tags = [...preferences.categories, ...(preferences.zones || [])];
+          if (userProfilesData && userProfilesData['mateo']) {
+            userProfilesData['mateo'].tags = [...preferences.categories, ...(preferences.zones || [])];
+          }
+        }
         localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
         try {
           await fetch(`${API_BASE}/users/${currentUser.id}/preferences`, {
@@ -6796,10 +6976,17 @@ const App = (() => {
       }
 
       closeAuthModal();
-      renderSidebar();
-      renderTopbar();
-      renderHomeView();
-      navigate('home');
+
+      // Si se invocó desde Mi Perfil, refrescar la vista de perfil
+      if (currentView === 'user') {
+        const viewEl = document.getElementById('view-user');
+        if (viewEl) renderUserProfileView(viewEl);
+      } else {
+        renderSidebar();
+        renderTopbar();
+        renderHomeView();
+        navigate('home');
+      }
 
       // Si el usuario intentó una acción antes del registro, ejecutarla de inmediato
       if (pendingAuthAction) {
@@ -6822,8 +7009,8 @@ const App = (() => {
     const btnSaveOnboarding = $('#btn-save-onboarding-preferences');
     if (btnSaveOnboarding) {
       btnSaveOnboarding.addEventListener('click', () => {
-        const categories = Array.from($$('#onboarding-categories-tags .onboarding-tag-pill.active')).map(p => p.dataset.cat);
-        const zones = Array.from($$('#onboarding-zones-tags .onboarding-tag-pill.active')).map(p => p.dataset.zone);
+        const categories = Array.from($$('#onboarding-categories-tags .pref-card.active, #onboarding-categories-tags .onboarding-tag-pill.active')).map(p => p.dataset.cat);
+        const zones = Array.from($$('#onboarding-zones-tags .pref-card.active, #onboarding-zones-tags .onboarding-tag-pill.active')).map(p => p.dataset.zone);
         finishRegistrationWithPreferences({ categories, zones });
       });
     }
@@ -6831,10 +7018,14 @@ const App = (() => {
     const btnSkipOnboarding = $('#btn-skip-onboarding-preferences');
     if (btnSkipOnboarding) {
       btnSkipOnboarding.addEventListener('click', () => {
-        finishRegistrationWithPreferences({
-          categories: ['Teatro', 'Música Andina'],
-          zones: ['Centro Histórico']
-        });
+        if (isEditingPreferencesMode) {
+          closeOnboardingModal();
+        } else {
+          finishRegistrationWithPreferences({
+            categories: ['Teatro', 'Música Andina'],
+            zones: ['Centro Histórico']
+          });
+        }
       });
     }
 
@@ -7572,19 +7763,41 @@ const App = (() => {
 
   function closeAuthModal() { hideModal('#modal-auth'); }
 
+  let isEditingPreferencesMode = false;
+
   function openOnboardingModal(isEditingOnly = false) {
+    isEditingPreferencesMode = Boolean(isEditingOnly);
     const modal = $('#modal-onboarding-preferences');
     if (!modal) return;
-    
-    const activeCats = (currentUser && currentUser.preferences && currentUser.preferences.categories) || ['Teatro', 'Música Andina'];
-    const activeZones = (currentUser && currentUser.preferences && currentUser.preferences.zones) || ['Centro Histórico', 'La Floresta'];
 
-    $$('#onboarding-categories-tags .onboarding-tag-pill').forEach(btn => {
+    const btnSubmit = $('#btn-save-onboarding-preferences');
+    const skipBtn = $('#btn-skip-onboarding-preferences');
+
+    if (isEditingOnly) {
+      if (btnSubmit) btnSubmit.textContent = '✨ GUARDAR Y APLICAR PREFERENCIAS';
+      if (skipBtn) skipBtn.textContent = 'Cancelar y volver al perfil';
+    } else {
+      if (btnSubmit) btnSubmit.textContent = '✨ GUARDAR PREFERENCIAS Y COMENZAR A EXPLORAR';
+      if (skipBtn) skipBtn.textContent = 'Omitir por ahora y ver toda la cartelera';
+    }
+
+    let activeCats = (currentUser && currentUser.preferences && currentUser.preferences.categories) || [];
+    let activeZones = (currentUser && currentUser.preferences && currentUser.preferences.zones) || [];
+
+    // Fallback con tags de Mateo si aún no tiene preferences guardadas
+    if (activeCats.length === 0 && userProfilesData && userProfilesData['mateo'] && userProfilesData['mateo'].tags) {
+      const pTags = userProfilesData['mateo'].tags;
+      activeCats = pTags.filter(t => ['Teatro', 'Música Andina', 'Conciertos', 'Cine', 'Danza', 'Fotografía', 'Arte Urbano', 'Talleres', 'Festivales', 'Literatura'].includes(t));
+    }
+    if (activeCats.length === 0) activeCats = ['Teatro', 'Música Andina'];
+    if (activeZones.length === 0) activeZones = ['Centro Histórico', 'La Floresta'];
+
+    $$('#onboarding-categories-tags .pref-card, #onboarding-categories-tags .onboarding-tag-pill').forEach(btn => {
       if (activeCats.includes(btn.dataset.cat)) btn.classList.add('active');
       else btn.classList.remove('active');
     });
 
-    $$('#onboarding-zones-tags .onboarding-tag-pill').forEach(btn => {
+    $$('#onboarding-zones-tags .pref-card, #onboarding-zones-tags .onboarding-tag-pill').forEach(btn => {
       if (activeZones.includes(btn.dataset.zone)) btn.classList.add('active');
       else btn.classList.remove('active');
     });

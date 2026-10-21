@@ -3149,6 +3149,289 @@ p, .event-card-desc { font-size: 14px !important; }
   font-weight: 800;
 }
 
+/* ============================================================
+   PANTALLA 1: PERSONALIZA TU EXPERIENCIA CULTURAL (MODAL MODERNO)
+   ============================================================ */
+.pref-modal-box {
+  max-width: 980px;
+  width: 95vw;
+  max-height: 92vh;
+  background: #090c12;
+  border: 1px solid #1f2737;
+  border-radius: 18px;
+  padding: 44px 48px;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.9), 0 0 40px rgba(204, 255, 0, 0.05);
+  animation: modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleUp {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.pref-modal-close {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  background: #141b26;
+  border: 1px solid #283548;
+  color: #94a3b8;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+.pref-modal-close:hover {
+  background: #1e293b;
+  color: #ffffff;
+  border-color: var(--accent);
+  transform: rotate(90deg);
+}
+
+.pref-modal-header {
+  margin-bottom: 28px;
+  padding-right: 40px;
+}
+
+.pref-main-title {
+  font-family: var(--font-display, var(--font-heading, 'Inter', sans-serif));
+  font-size: clamp(32px, 4.5vw, 48px);
+  font-weight: 900;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  margin: 0 0 16px 0;
+  color: #ffffff;
+}
+.pref-main-title .highlight {
+  color: var(--accent);
+  display: block;
+  text-shadow: 0 0 25px rgba(204, 255, 0, 0.3);
+}
+
+.pref-main-subtitle {
+  font-size: 15px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 680px;
+}
+
+.pref-step-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 10px;
+}
+
+.pref-step-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pref-step-badge {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 900;
+  background: #121824;
+  color: var(--accent);
+  border: 1px solid #273447;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.pref-step-heading {
+  font-family: var(--font-display, var(--font-heading, sans-serif));
+  font-size: clamp(16px, 2.2vw, 20px);
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.pref-step-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.pref-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 900px) {
+  .pref-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pref-modal-box {
+    padding: 32px 24px;
+  }
+}
+@media (max-width: 580px) {
+  .pref-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pref-card {
+  background: #0f141d;
+  border: 1px solid #1c2433;
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  text-align: left;
+  width: 100%;
+}
+.pref-card:hover {
+  background: #151c28;
+  border-color: #2e3b52;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.pref-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.pref-card-icon {
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.pref-card-label {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  transition: color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pref-card-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid #2b374a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  color: transparent;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+/* Estado Activo (Pantalla 1 - Neon Green) */
+.pref-card.active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #000000 !important;
+  box-shadow: 0 0 24px rgba(204, 255, 0, 0.35);
+  transform: translateY(-1px);
+}
+.pref-card.active .pref-card-label {
+  color: #000000 !important;
+  font-weight: 900;
+}
+.pref-card.active .pref-card-icon {
+  filter: brightness(0);
+}
+.pref-card.active .pref-card-check {
+  border-color: #000000;
+  color: #000000;
+  background: transparent;
+  font-weight: 900;
+}
+
+.pref-modal-actions {
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid #1c2433;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.pref-submit-btn {
+  width: 100%;
+  padding: 18px 24px;
+  background: var(--accent);
+  color: #000000;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 25px rgba(204, 255, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.pref-submit-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 35px rgba(204, 255, 0, 0.45);
+  transform: translateY(-1px);
+}
+
+.pref-skip-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 8px;
+  transition: color 0.2s;
+}
+.pref-skip-btn:hover {
+  color: #ffffff;
+}
+
 /* Banner de Recomendaciones Personalizadas en Home */
 .personalized-recom-banner {
   background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
