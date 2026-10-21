@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node backend/index.js",
     "dev": "node backend/index.js",
+    "build": "echo 'Building Kawsay...'",
     "test": "node backend/test_api.js"
   },
   "dependencies": {
