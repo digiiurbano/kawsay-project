@@ -7073,3 +7073,29 @@ p, .event-card-desc { font-size: 14px !important; }
   }
 }
 
+/* ========================================================
+   AVATARES DE USUARIO CON INICIALES (NOMBRE Y APELLIDO)
+   ======================================================== */
+.user-initials-avatar {
+  background: #11151c !important;
+  color: var(--accent, #b4f732) !important;
+  border: 1px solid var(--accent, #b4f732);
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: 'Space Mono', var(--font-mono), monospace !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 0 10px rgba(180, 247, 50, 0.22);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  line-height: 1;
+}
+
+.user-initials-avatar:hover {
+  box-shadow: 0 0 16px rgba(180, 247, 50, 0.45);
+  transform: scale(1.06);
+}
+

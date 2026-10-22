@@ -35,13 +35,51 @@ const App = (() => {
 
   const guestUser = { id: 'usr-guest', name: 'Visitante (Sin Iniciar Sesión)', role: 'invitado', avatar: '' };
 
+  // Helper para obtener únicamente la letra inicial del nombre y apellido (ej. "Admin Kawsay" -> "AK")
+  function getUserInitials(name) {
+    if (!name || typeof name !== 'string') return 'KW';
+    const clean = name.trim().replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, ' ').replace(/\s+/g, ' ');
+    const parts = clean.split(' ').filter(Boolean);
+    if (parts.length === 0) return 'KW';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    const first = parts[0][0];
+    const last = parts.length > 2 ? parts[parts.length - 1][0] : parts[1][0];
+    return (first + last).toUpperCase();
+  }
+
+  // Helper para renderizar avatar: muestra únicamente las iniciales de nombre y apellido por default
+  function renderUserAvatar(user, options = {}) {
+    const size = options.size || 34;
+    const border = options.border || '1px solid var(--accent, #b4f732)';
+    const fontSize = options.fontSize || Math.max(10, Math.round(size * 0.38)) + 'px';
+    const extraClass = options.className || '';
+    const name = (user && user.name) ? user.name : 'Usuario';
+    const avatarUrl = (user && user.avatar) ? String(user.avatar).trim() : '';
+
+    // Si tiene foto personalizada explícitamente subida por el usuario (y NO es foto de stock genérica)
+    const isStockUnsplash = avatarUrl.includes('images.unsplash.com');
+    if (avatarUrl && !isStockUnsplash) {
+      return `
+        <img src="${avatarUrl}" alt="${name}" class="${extraClass}" style="width:${size}px; height:${size}px; min-width:${size}px; border-radius:50%; object-fit:cover; border:${border}; display:inline-block; vertical-align:middle;">
+      `;
+    }
+
+    // Avatar circular táctico con la letra inicial del nombre y apellido
+    const initials = getUserInitials(name);
+    return `
+      <div class="user-initials-avatar ${extraClass}" style="width:${size}px; height:${size}px; min-width:${size}px; border-radius:50%; background:#11151c; border:${border}; color:var(--accent, #b4f732); display:inline-flex; align-items:center; justify-content:center; font-family:var(--font-mono, monospace); font-weight:800; font-size:${fontSize}; letter-spacing:0.5px; text-transform:uppercase; user-select:none; vertical-align:middle; flex-shrink:0;">
+        ${initials}
+      </div>
+    `;
+  }
+
   let usersList = [
     guestUser,
-    { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY.', city: 'Quito' },
-    { id: 'usr-espectador-1', name: 'Mateo Sandoval', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Amante del arte y espectador en Quito.', city: 'Quito' },
-    { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral independiente.', city: 'Quito' },
-    { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal del centro de Quito.', city: 'Quito' },
-    { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal de la plataforma cultural.', city: 'Quito' }
+    { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: '', bio: 'Explorador beta de KAWSAY.', city: 'Quito' },
+    { id: 'usr-espectador-1', name: 'Mateo Sandoval', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: '', bio: 'Amante del arte y espectador en Quito.', city: 'Quito' },
+    { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: '', bio: 'Colectivo musical y teatral independiente.', city: 'Quito' },
+    { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: '', bio: 'Recinto cultural principal del centro de Quito.', city: 'Quito' },
+    { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: '', bio: 'Administrador principal de la plataforma cultural.', city: 'Quito' }
   ];
 
   // ---- Friends & Social Layer State (Espectador) ----
@@ -384,19 +422,19 @@ const App = (() => {
             const cleanId = rawIdentifier.toLowerCase();
             if (cleanId === 'user_name_00' || cleanId === 'explorador@kawsay.ec' || cleanId === 'explorador') {
               if (rawPassword === 'asoma2026' || rawPassword === '123456') {
-                user = { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY', city: 'Quito' };
+                user = { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: '', bio: 'Explorador beta de KAWSAY', city: 'Quito' };
               }
             } else if (cleanId === 'admin@kawsay.ec' || cleanId === 'admin' || cleanId === 'user_admin_01') {
               if (rawPassword === 'admin123') {
-                user = { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal', city: 'Quito' };
+                user = { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: '', bio: 'Administrador principal', city: 'Quito' };
               }
             } else if (cleanId === 'artista@kawsay.ec' || cleanId === 'artista') {
               if (rawPassword === 'artista123') {
-                user = { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral', city: 'Quito' };
+                user = { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: '', bio: 'Colectivo musical y teatral', city: 'Quito' };
               }
             } else if (cleanId === 'espacio@kawsay.ec' || cleanId === 'espacio') {
               if (rawPassword === 'espacio123') {
-                user = { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal', city: 'Quito' };
+                user = { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: '', bio: 'Recinto cultural principal', city: 'Quito' };
               }
             } else {
               const matchedLocal = usersList.find(u => 
@@ -1020,7 +1058,7 @@ const App = (() => {
           </div>
         ` : `
           <div id="topbar-user-badge" style="display:flex; align-items:center; gap:10px; background:var(--surface2); padding:4px 10px 4px 6px; border-radius:20px; border:1px solid var(--border); cursor:pointer;" title="Abrir mi Panel / Dashboard">
-            <img src="${currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">
+            ${renderUserAvatar(currentUser, { size: 32, border: '2px solid var(--primary)' })}
             <div style="display:flex; flex-direction:column;">
               <span style="font-size:12px; font-weight:800; color:#fff; max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${currentUser.name}</span>
               <span style="font-size:9px; font-weight:900; color:var(--primary); text-transform:uppercase;">${currentUser.role}</span>
@@ -1487,7 +1525,7 @@ const App = (() => {
               ${usersList.filter(u => u.role !== 'invitado').map(u => `
                 <tr data-user-id="${u.id}">
                   <td style="display:flex; align-items:center; gap:10px; min-width:180px;">
-                    <img src="${u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:1px solid var(--accent);">
+                    ${renderUserAvatar(u, { size: 34, border: '1px solid var(--accent)' })}
                     <div>
                       <strong style="display:block; color:#fff;">${u.name || 'Sin nombre'}</strong>
                       <span style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">${u.id}</span>
@@ -2937,7 +2975,9 @@ const App = (() => {
           <div class="public-profile-header">
             <div class="public-profile-user-info">
               <div class="public-profile-avatar-container" id="profile-avatar-container" ${isSelf ? 'style="cursor: pointer;" title="Clic para subir o cambiar foto de perfil"' : ''}>
-                <img class="public-profile-avatar-img" src="${profile.avatar}" alt="${profile.name}">
+                ${(profile.avatar && !profile.avatar.includes('images.unsplash.com')) ? `
+                  <img class="public-profile-avatar-img" src="${profile.avatar}" alt="${profile.name}">
+                ` : renderUserAvatar(profile, { size: 76, fontSize: '26px', border: '2px solid var(--accent)' })}
                 ${isSelf ? `
                   <div class="public-profile-avatar-badge" id="btn-edit-avatar" title="Subir / cambiar foto">
                     📷
@@ -7378,7 +7418,7 @@ const App = (() => {
             name: tempRegData.name,
             email: tempRegData.email,
             role: tempRegData.role || 'espectador',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            avatar: '',
             bio: 'Perfil de espectador en KAWSAY',
             preferences
           };
@@ -7764,7 +7804,7 @@ const App = (() => {
               ${usersList.map(u => `
                 <tr>
                   <td style="display:flex; align-items:center; gap:8px;">
-                    <img src="${u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:26px; height:26px; border-radius:50%; object-fit:cover;">
+                    ${renderUserAvatar(u, { size: 26, border: '1px solid var(--accent)' })}
                     <strong>${u.name}</strong>
                   </td>
                   <td style="font-family:var(--font-mono); color:var(--grey1); font-size:12px;">${u.email || 'sesion.anonima@kawsay.ec'}</td>
@@ -8797,7 +8837,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     const userCard = $('#admin-pass-user-card');
     if (userCard) {
       userCard.innerHTML = `
-        <img src="${user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid #fbbf24;">
+        ${renderUserAvatar(user, { size: 44, border: '2px solid #fbbf24' })}
         <div style="flex:1;">
           <div style="font-size:14px; font-weight:800; color:#fff;">${user.name}</div>
           <div style="font-size:12px; color:var(--grey1); font-family:var(--font-mono);">${user.email || 'Sin correo registrado'}</div>

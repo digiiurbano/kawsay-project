@@ -73,20 +73,20 @@ app.post('/api/auth/login', (req, res) => {
 
   const cleanInput = rawInput.trim().toLowerCase();
 
-  // Cuentas de Acceso Anticipado y Roles KAWSAY
+  // Cuentas de Acceso Anticipado y Roles KAWSAY (sin fotos de stock por defecto)
   const demoUsers = {
-    'user_name_00': { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY', pass: 'asoma2026' },
-    'explorador@kawsay.ec': { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY', pass: 'asoma2026' },
-    'explorador': { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY', pass: 'asoma2026' },
-    'admin@kawsay.ec': { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal', pass: 'admin123' },
-    'admin': { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal', pass: 'admin123' },
-    'user_admin_01': { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal', pass: 'admin123' },
-    'artista@kawsay.ec': { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral', pass: 'artista123' },
-    'artista': { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral', pass: 'artista123' },
-    'espacio@kawsay.ec': { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal', pass: 'espacio123' },
-    'espacio': { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal', pass: 'espacio123' },
-    'espectador@kawsay.ec': { id: 'usr-espectador-1', name: 'María Fernanda', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', bio: 'Amante del arte y espectadora en Quito', pass: 'espectador123' },
-    'mateo_88': { id: 'usr-espectador-1', name: 'Mateo Sandoval', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Amante del arte y espectador en Quito', pass: 'espectador123' }
+    'user_name_00': { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: '', bio: 'Explorador beta de KAWSAY', pass: 'asoma2026' },
+    'explorador@kawsay.ec': { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: '', bio: 'Explorador beta de KAWSAY', pass: 'asoma2026' },
+    'explorador': { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: '', bio: 'Explorador beta de KAWSAY', pass: 'asoma2026' },
+    'admin@kawsay.ec': { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: '', bio: 'Administrador principal', pass: 'admin123' },
+    'admin': { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: '', bio: 'Administrador principal', pass: 'admin123' },
+    'user_admin_01': { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: '', bio: 'Administrador principal', pass: 'admin123' },
+    'artista@kawsay.ec': { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: '', bio: 'Colectivo musical y teatral', pass: 'artista123' },
+    'artista': { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: '', bio: 'Colectivo musical y teatral', pass: 'artista123' },
+    'espacio@kawsay.ec': { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: '', bio: 'Recinto cultural principal', pass: 'espacio123' },
+    'espacio': { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: '', bio: 'Recinto cultural principal', pass: 'espacio123' },
+    'espectador@kawsay.ec': { id: 'usr-espectador-1', name: 'María Fernanda', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: '', bio: 'Amante del arte y espectadora en Quito', pass: 'espectador123' },
+    'mateo_88': { id: 'usr-espectador-1', name: 'Mateo Sandoval', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: '', bio: 'Amante del arte y espectador en Quito', pass: 'espectador123' }
   };
 
   if (demoUsers[cleanInput]) {
