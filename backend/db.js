@@ -141,6 +141,19 @@ function initDb() {
           used INTEGER DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
+      `);
+
+      // 7. Tabla de Solicitudes de Acceso Anticipado (Creativos / Exploradores)
+      db.run(`
+        CREATE TABLE IF NOT EXISTS early_access_requests (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          email TEXT NOT NULL,
+          role_type TEXT,
+          portfolio_url TEXT,
+          note TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
       `, (err) => {
         if (err) {
           console.error("Error al crear tablas:", err);
@@ -163,6 +176,7 @@ function seedData() {
       usersStmt.run('usr-artista-1', 'Mateo & La Banda', 'artista@kawsay.ec', 'artista123', 'artista', 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', 'Colectivo musical y teatral independiente.');
       usersStmt.run('usr-espacio-1', 'Teatro Nacional Quito', 'espacio@kawsay.ec', 'espacio123', 'espacio', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', 'Recinto cultural principal del centro de Quito.');
       usersStmt.run('usr-admin-1', 'Admin Kawsay', 'admin@kawsay.ec', 'admin123', 'admin', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', 'Administrador principal de la plataforma cultural.');
+      usersStmt.run('usr-explorador-1', 'Explorador Kawsay', 'explorador@kawsay.ec', 'asoma2026', 'espectador', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', 'Explorador beta de la plataforma cultural Kawsay.');
       usersStmt.finalize();
 
       // Sembrar Espacios

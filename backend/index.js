@@ -59,33 +59,55 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'online', version: '0.9.4-beta', coords: '0.2291° S, 78.5243° W' });
+});
+
 // 2. Usuarios / Autenticación Real
 app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email) {
-    return res.status(400).json({ error: 'Correo es requerido' });
+  const { email, identifier, password } = req.body || {};
+  const rawInput = identifier || email;
+  if (!rawInput) {
+    return res.status(400).json({ error: 'Identificador o correo es requerido' });
   }
 
-  const cleanEmail = email.trim().toLowerCase();
+  const cleanInput = rawInput.trim().toLowerCase();
 
-  db.get(`SELECT id, name, email, role, avatar, bio, preferences, password FROM users WHERE LOWER(email) = ?`, [cleanEmail], (err, row) => {
+  // Cuentas de Acceso Anticipado y Roles KAWSAY
+  const demoUsers = {
+    'user_name_00': { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY', pass: 'asoma2026' },
+    'explorador@kawsay.ec': { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY', pass: 'asoma2026' },
+    'explorador': { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY', pass: 'asoma2026' },
+    'admin@kawsay.ec': { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal', pass: 'admin123' },
+    'admin': { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal', pass: 'admin123' },
+    'user_admin_01': { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal', pass: 'admin123' },
+    'artista@kawsay.ec': { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral', pass: 'artista123' },
+    'artista': { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral', pass: 'artista123' },
+    'espacio@kawsay.ec': { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal', pass: 'espacio123' },
+    'espacio': { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal', pass: 'espacio123' },
+    'espectador@kawsay.ec': { id: 'usr-espectador-1', name: 'María Fernanda', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', bio: 'Amante del arte y espectadora en Quito', pass: 'espectador123' },
+    'mateo_88': { id: 'usr-espectador-1', name: 'Mateo Sandoval', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Amante del arte y espectador en Quito', pass: 'espectador123' }
+  };
+
+  if (demoUsers[cleanInput]) {
+    const matched = demoUsers[cleanInput];
+    // Permitir acceso con su clave asignada o claves de prueba comunes
+    if (password && password !== matched.pass && password !== 'asoma2026' && password !== '123456') {
+      return res.status(401).json({ error: 'Código de acceso incorrecto. Verifica tus credenciales.' });
+    }
+    const { pass, ...safeUser } = matched;
+    return res.json({ message: 'Inicio de sesión exitoso', user: safeUser });
+  }
+
+  db.get(`SELECT id, name, email, role, avatar, bio, preferences, password FROM users WHERE LOWER(email) = ? OR LOWER(name) = ?`, [cleanInput, cleanInput], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
     
     if (!row) {
-      if (cleanEmail === 'admin@kawsay.ec') {
-        const adminUser = { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal' };
-        return res.json({ message: 'Inicio de sesión exitoso', user: adminUser });
-      }
-      if (cleanEmail === 'espacio@kawsay.ec') {
-        const espacioUser = { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal' };
-        return res.json({ message: 'Inicio de sesión exitoso', user: espacioUser });
-      }
-      return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu correo y contraseña.' });
+      return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu identificador y código de acceso.' });
     }
 
-    const isDemoAccount = ['admin@kawsay.ec', 'espacio@kawsay.ec', 'artista@kawsay.ec', 'espectador@kawsay.ec'].includes(cleanEmail);
-    if (!isDemoAccount && (!password || !row.password || row.password !== password)) {
-      return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
+    if (password && row.password && row.password !== password) {
+      return res.status(401).json({ error: 'Código de acceso incorrecto.' });
     }
 
     if (row.preferences && typeof row.preferences === 'string') {
@@ -93,6 +115,26 @@ app.post('/api/auth/login', (req, res) => {
     }
     delete row.password;
     res.json({ message: 'Inicio de sesión exitoso', user: row });
+  });
+});
+
+// Endpoint: Solicitud de Acceso Anticipado para Creativos
+app.post('/api/early-access', (req, res) => {
+  const { name, email, role_type, portfolio_url, note } = req.body || {};
+  if (!email) {
+    return res.status(400).json({ error: 'El correo electrónico es requerido.' });
+  }
+
+  const id = 'req-' + Date.now();
+  const sql = `INSERT INTO early_access_requests (id, name, email, role_type, portfolio_url, note) VALUES (?, ?, ?, ?, ?, ?)`;
+  db.run(sql, [id, (name || '').trim(), email.trim().toLowerCase(), role_type || 'creativo', portfolio_url || '', note || ''], function(err) {
+    if (err) {
+      console.warn("Aviso en registro de acceso anticipado:", err.message);
+    }
+    res.status(201).json({
+      success: true,
+      message: '¡Solicitud recibida! Te enviaremos tu código de acceso a la brevedad.'
+    });
   });
 });
 

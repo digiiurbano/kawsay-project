@@ -37,10 +37,11 @@ const App = (() => {
 
   let usersList = [
     guestUser,
+    { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY.', city: 'Quito' },
     { id: 'usr-espectador-1', name: 'Mateo Sandoval', email: 'espectador@kawsay.ec', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Amante del arte y espectador en Quito.', city: 'Quito' },
-    { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral independiente.', city: 'Quito' },
-    { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal del centro de Quito.', city: 'Quito' },
-    { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal de la plataforma cultural.', city: 'Quito' }
+    { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral independiente.', city: 'Quito' },
+    { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal del centro de Quito.', city: 'Quito' },
+    { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal de la plataforma cultural.', city: 'Quito' }
   ];
 
   // ---- Friends & Social Layer State (Espectador) ----
@@ -236,6 +237,318 @@ const App = (() => {
     }
   }
 
+  // ---- MODO EN CONSTRUCCIÓN / PORTAL DE ACCESO ANTICIPADO ----
+  let isConstructionActive = localStorage.getItem('kawsay_construction_active') !== 'false';
+
+  function initConstructionGate() {
+    const constructionGate = document.getElementById('view-construction');
+    const appShell = document.getElementById('app');
+    if (!constructionGate) return;
+
+    // 1. Comprobar si se debe mostrar el portal en construcción
+    const urlParams = new URLSearchParams(window.location.search);
+    const bypassParam = urlParams.get('bypass') === '1' || urlParams.get('preview') === 'app';
+    const isGuest = !currentUser || currentUser.role === 'invitado';
+
+    if (isGuest && isConstructionActive && !bypassParam) {
+      constructionGate.style.display = 'flex';
+      constructionGate.classList.remove('unlocked');
+      if (appShell) appShell.style.display = 'none';
+    } else {
+      constructionGate.style.display = 'none';
+      if (appShell) appShell.style.display = 'flex';
+    }
+
+    // 2. Formulario de Early Access con Beneficio (Para visitantes y comunidad)
+    const formEarly = document.getElementById('form-early-access');
+    const earlyAlert = document.getElementById('early-access-alert');
+
+    function showEarlyAlert(msg, isSuccess) {
+      if (!earlyAlert) return;
+      earlyAlert.textContent = msg;
+      earlyAlert.className = 'construction-alert' + (isSuccess ? ' success' : '');
+      earlyAlert.style.display = 'block';
+    }
+
+    if (formEarly) {
+      formEarly.onsubmit = async (e) => {
+        e.preventDefault();
+        const emailInput = document.getElementById('early-email');
+        const roleSelected = document.querySelector('input[name="early_role"]:checked')?.value || 'espectador';
+        const submitBtn = document.getElementById('btn-submit-early');
+
+        const email = (emailInput ? emailInput.value : '').trim();
+        if (!email) {
+          showEarlyAlert('// ERROR: Por favor ingresa tu correo electrónico.', false);
+          return;
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = `<span>ASEGURANDO BENEFICIO...</span>`;
+        }
+
+        try {
+          await fetch(`${API_BASE}/early-access`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, role_type: roleSelected, note: 'Early Access con beneficios para miembros pioneros' })
+          }).catch(() => {});
+
+          showEarlyAlert('✓ ¡REGISTRO CONFIRMADO! Aseguraste tus beneficios de Explorador Fundador. Te notificaremos al correo cuando KAWSAY esté lista.', true);
+          if (emailInput) emailInput.value = '';
+
+          setTimeout(() => {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = `<span>OBTENER ACCESO CON BENEFICIO</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
+            }
+          }, 2500);
+
+        } catch (err) {
+          showEarlyAlert('// Error al registrar tu solicitud. Por favor intenta de nuevo.', false);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span>OBTENER ACCESO CON BENEFICIO</span>`;
+          }
+        }
+      };
+    }
+
+    // 3. Modal de Inicio de Sesión para Equipo / Administradores
+    const modalTeam = document.getElementById('modal-team-login');
+    const btnOpenTeam = document.getElementById('btn-open-team-login');
+    const btnCloseTeam = document.getElementById('btn-close-team-modal');
+    const formTeam = document.getElementById('form-team-login');
+    const teamAlert = document.getElementById('team-login-alert');
+
+    if (btnOpenTeam && modalTeam) {
+      btnOpenTeam.onclick = () => {
+        modalTeam.style.display = 'flex';
+      };
+    }
+    if (btnCloseTeam && modalTeam) {
+      btnCloseTeam.onclick = () => {
+        modalTeam.style.display = 'none';
+      };
+    }
+    if (modalTeam) {
+      modalTeam.onclick = (e) => {
+        if (e.target === modalTeam) modalTeam.style.display = 'none';
+      };
+    }
+
+    function showTeamAlert(msg, isSuccess) {
+      if (!teamAlert) return;
+      teamAlert.textContent = msg;
+      teamAlert.className = 'construction-alert' + (isSuccess ? ' success' : '');
+      teamAlert.style.display = 'block';
+    }
+
+    if (formTeam) {
+      formTeam.onsubmit = async (e) => {
+        e.preventDefault();
+        const idInput = document.getElementById('team-identifier');
+        const passInput = document.getElementById('team-passcode');
+        const submitBtn = document.getElementById('btn-submit-team-login');
+
+        const rawIdentifier = (idInput ? idInput.value : '').trim();
+        const rawPassword = (passInput ? passInput.value : '').trim();
+
+        if (!rawIdentifier || !rawPassword) {
+          showTeamAlert('// ERROR: Ingresa tus credenciales.', false);
+          return;
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = `<span>VERIFICANDO...</span>`;
+        }
+
+        try {
+          let user = null;
+
+          try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ identifier: rawIdentifier, email: rawIdentifier, password: rawPassword })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              user = data.user;
+            }
+          } catch (netErr) {}
+
+          if (!user) {
+            const cleanId = rawIdentifier.toLowerCase();
+            if (cleanId === 'user_name_00' || cleanId === 'explorador@kawsay.ec' || cleanId === 'explorador') {
+              if (rawPassword === 'asoma2026' || rawPassword === '123456') {
+                user = { id: 'usr-explorador-1', name: 'Explorador Kawsay', email: 'explorador@kawsay.ec', username: 'USER_NAME_00', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', bio: 'Explorador beta de KAWSAY', city: 'Quito' };
+              }
+            } else if (cleanId === 'admin@kawsay.ec' || cleanId === 'admin' || cleanId === 'user_admin_01') {
+              if (rawPassword === 'admin123') {
+                user = { id: 'usr-admin-1', name: 'Admin Kawsay', email: 'admin@kawsay.ec', username: 'USER_ADMIN_01', role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Administrador principal', city: 'Quito' };
+              }
+            } else if (cleanId === 'artista@kawsay.ec' || cleanId === 'artista') {
+              if (rawPassword === 'artista123') {
+                user = { id: 'usr-artista-1', name: 'Mateo & La Banda', email: 'artista@kawsay.ec', username: 'ARTISTA_QUITO', role: 'artista', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150', bio: 'Colectivo musical y teatral', city: 'Quito' };
+              }
+            } else if (cleanId === 'espacio@kawsay.ec' || cleanId === 'espacio') {
+              if (rawPassword === 'espacio123') {
+                user = { id: 'usr-espacio-1', name: 'Teatro Nacional Quito', email: 'espacio@kawsay.ec', username: 'ESPACIO_TEATRO', role: 'espacio', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Recinto cultural principal', city: 'Quito' };
+              }
+            } else {
+              const matchedLocal = usersList.find(u => 
+                (u.email && u.email.toLowerCase() === cleanId) || 
+                (u.username && u.username.toLowerCase() === cleanId)
+              );
+              if (matchedLocal) user = matchedLocal;
+            }
+          }
+
+          if (!user) {
+            showTeamAlert('// ERROR: Código o identificador inválidos.', false);
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = `<span>ENTRAR A LA PLATAFORMA</span>`;
+            }
+            return;
+          }
+
+          currentUser = user;
+          localStorage.setItem('kawsay_user', JSON.stringify(currentUser));
+          showTeamAlert('// AUTORIZADO. INGRESANDO...', true);
+
+          setTimeout(() => {
+            if (modalTeam) modalTeam.style.display = 'none';
+            constructionGate.classList.add('unlocked');
+            setTimeout(() => {
+              constructionGate.style.display = 'none';
+              if (appShell) appShell.style.display = 'flex';
+              renderSidebar();
+              renderTopbar();
+              if (currentUser.role === 'admin' || currentUser.role === 'gestor') navigate('admin');
+              else if (currentUser.role === 'artista') navigate('artist');
+              else if (currentUser.role === 'espacio') navigate('space');
+              else navigate('home');
+              showToast(`¡Bienvenido/a al ecosistema KAWSAY, ${currentUser.name}!`);
+            }, 350);
+          }, 500);
+
+        } catch (err) {
+          showTeamAlert('// ERROR: No se pudo verificar credenciales.', false);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span>ENTRAR A LA PLATAFORMA</span>`;
+          }
+        }
+      };
+    }
+
+    // 6. Modal de Solicitud de Acceso para Creadores
+    const modalCreator = document.getElementById('modal-creator-request');
+    const btnOpenCreator = document.getElementById('btn-open-creator-modal');
+    const btnCloseCreator = document.getElementById('btn-close-creator-modal');
+    const formCreator = document.getElementById('form-creator-request');
+    const creatorAlert = document.getElementById('creator-modal-alert');
+
+    if (btnOpenCreator && modalCreator) {
+      btnOpenCreator.onclick = () => {
+        modalCreator.style.display = 'flex';
+      };
+    }
+    if (btnCloseCreator && modalCreator) {
+      btnCloseCreator.onclick = () => {
+        modalCreator.style.display = 'none';
+      };
+    }
+    if (modalCreator) {
+      modalCreator.onclick = (e) => {
+        if (e.target === modalCreator) modalCreator.style.display = 'none';
+      };
+    }
+
+    if (formCreator) {
+      formCreator.onsubmit = async (e) => {
+        e.preventDefault();
+        const name = (document.getElementById('creator-name')?.value || '').trim();
+        const email = (document.getElementById('creator-email')?.value || '').trim();
+        const discipline = document.getElementById('creator-discipline')?.value || 'Musica';
+        const portfolio = (document.getElementById('creator-portfolio')?.value || '').trim();
+
+        if (creatorAlert) creatorAlert.style.display = 'none';
+
+        try {
+          await fetch(`${API_BASE}/early-access`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, role_type: discipline, portfolio_url: portfolio })
+          }).catch(() => {});
+
+          if (creatorAlert) {
+            creatorAlert.textContent = '¡SOLICITUD ENVIADA! Te enviaremos tu código de explorador a tu correo.';
+            creatorAlert.className = 'construction-alert success';
+            creatorAlert.style.display = 'block';
+          }
+          setTimeout(() => {
+            if (modalCreator) modalCreator.style.display = 'none';
+            formCreator.reset();
+            if (creatorAlert) creatorAlert.style.display = 'none';
+          }, 2400);
+        } catch (err) {
+          if (creatorAlert) {
+            creatorAlert.textContent = 'Error al enviar solicitud.';
+            creatorAlert.className = 'construction-alert';
+            creatorAlert.style.display = 'block';
+          }
+        }
+      };
+    }
+
+    // 7. Animación táctica de las barras HUD del ecosistema
+    function animateHudBars() {
+      const hudItems = document.querySelectorAll('.construction-hud-progress .hud-item');
+      if (!hudItems.length) return;
+
+      hudItems.forEach((item, index) => {
+        const targetVal = parseInt(item.getAttribute('data-target') || '0', 10);
+        const fillEl = item.querySelector('.hud-bar-fill');
+        const counterEl = item.querySelector('.hud-counter');
+        if (!fillEl || !counterEl) return;
+
+        // Iniciar en 0 para la animación fluida de entrada
+        fillEl.style.width = '0%';
+        counterEl.textContent = '0';
+
+        setTimeout(() => {
+          fillEl.style.width = targetVal + '%';
+
+          const duration = 1200;
+          const startTime = performance.now();
+
+          function stepCounter(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // Curva easeOutCubic
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = Math.round(eased * targetVal);
+            counterEl.textContent = current;
+
+            if (progress < 1) {
+              requestAnimationFrame(stepCounter);
+            } else {
+              counterEl.textContent = targetVal;
+            }
+          }
+          requestAnimationFrame(stepCounter);
+        }, 180 + index * 160);
+      });
+    }
+
+    animateHudBars();
+  }
+
   async function init() {
     const savedUser = localStorage.getItem('kawsay_user');
     if (savedUser) {
@@ -243,6 +556,9 @@ const App = (() => {
     } else {
       currentUser = guestUser;
     }
+
+    // 0. Inicializar portal de Acceso Anticipado / Modo En Construcción
+    initConstructionGate();
 
     // 1. Inicializar inmediatamente apiEvents y apiSpaces con datos locales KAWSAY
     apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: e.status || 'approved' })), ...convocatoriasList];
@@ -677,6 +993,13 @@ const App = (() => {
           ${totalCartItems > 0 ? `<span class="cart-badge">${totalCartItems}</span>` : ''}
         </button>
 
+        <!-- Modo Construcción Indicator / Preview -->
+        ${currentUser.role !== 'invitado' ? `
+          <button class="topbar-construction-badge" id="btn-preview-construction" title="Ver cómo se ve la pantalla de acceso anticipado en construcción">
+            🚧 MODO CONSTRUCCIÓN
+          </button>
+        ` : ''}
+
         <!-- Admin Moderation Button -->
         ${currentUser.role === 'admin' ? `
           <button class="btn-admin-mod" id="btn-admin-mod">
@@ -712,6 +1035,19 @@ const App = (() => {
 
     $('#btn-cart').addEventListener('click', openCartModal);
 
+    const btnPreview = $('#btn-preview-construction');
+    if (btnPreview) {
+      btnPreview.addEventListener('click', () => {
+        const constructionGate = document.getElementById('view-construction');
+        const appShell = document.getElementById('app');
+        if (constructionGate) {
+          constructionGate.classList.remove('unlocked');
+          constructionGate.style.display = 'flex';
+          if (appShell) appShell.style.display = 'none';
+        }
+      });
+    }
+
     const loginBtn = $('#btn-topbar-login');
     if (loginBtn) loginBtn.addEventListener('click', () => openAuthModal('login'));
 
@@ -744,7 +1080,7 @@ const App = (() => {
         showToast('Sesión cerrada correctamente');
         renderSidebar();
         renderTopbar();
-        navigate('home');
+        initConstructionGate();
       });
     }
 

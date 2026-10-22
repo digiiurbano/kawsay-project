@@ -10,15 +10,334 @@
   <meta property="og:description" content="Centraliza y descubre la oferta cultural de Quito. Eventos, espacios, artistas y más.">
   <meta property="og:type" content="website">
   <title>KAWSAY — Descubre lo que está pasando en Quito</title>
-  <link rel="stylesheet" href="styles.css?v=20261013_auth_email_v1">
+  <link rel="stylesheet" href="styles.css?v=20261022_construction_v1">
   <!-- Preconnect to Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
 <body>
 
   <!-- ========================================================
-       APP SHELL
+       PORTAL EN CONSTRUCCIÓN / ASOMA PRONTO (ACCESO ANTICIPADO)
+       ======================================================== -->
+  <section id="view-construction" class="construction-gate" aria-label="Portal de Acceso Anticipado KAWSAY">
+    <!-- Fondo Matrix / Dot Grid y Viñeta -->
+    <div class="construction-bg-grid" aria-hidden="true"></div>
+    <div class="construction-ambient-glow" aria-hidden="true"></div>
+
+    <!-- Barra Superior / Status & Coordenadas -->
+    <header class="construction-topbar">
+      <div class="construction-status-left">
+        <span class="tech-label">STATUS:</span>
+        <span class="tech-val">'DEPLOYING_FRONTEND'</span>
+        <span class="tech-sep"></span>
+        <span class="tech-label">COORD:</span>
+        <span class="tech-val">0.2291° S, 78.5243° W</span>
+      </div>
+    </header>
+
+    <!-- Contenido Central Dividido en 2 Columnas -->
+    <main class="construction-main">
+      <!-- Columna Izquierda: Logo Kawsay, ASOMA PRONTO, Progreso HUD -->
+      <div class="construction-hero-col">
+        <div class="construction-brand">
+          <div class="kawsay-logo-badge">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+              <line x1="12" y1="2" x2="12" y2="22"></line>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+              <line x1="19.07" y1="4.93" x2="4.93" y2="19.07"></line>
+              <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
+            </svg>
+          </div>
+          <span class="kawsay-logo-text">KAWSAY</span>
+        </div>
+
+        <h1 class="construction-headline">
+          <span>ASOMA</span>
+          <span>PRONTO</span>
+        </h1>
+
+        <!-- HUD: Barras de Avance del Ecosistema -->
+        <div class="construction-hud-progress" id="construction-hud">
+          <div class="hud-item hud-cartelera" data-target="78">
+            <div class="hud-labels">
+              <span class="hud-name">
+                <span class="hud-pulse-dot"></span>
+                CARTELERA
+              </span>
+              <span class="hud-pct"><span class="hud-counter">78</span>%</span>
+            </div>
+            <div class="hud-bar-track">
+              <div class="hud-bar-fill" style="width: 78%;">
+                <span class="hud-laser-ping"></span>
+                <span class="hud-bar-tip"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hud-item hud-espacios" data-target="64">
+            <div class="hud-labels">
+              <span class="hud-name">
+                <span class="hud-pulse-dot"></span>
+                ESPACIOS
+              </span>
+              <span class="hud-pct"><span class="hud-counter">64</span>%</span>
+            </div>
+            <div class="hud-bar-track">
+              <div class="hud-bar-fill" style="width: 64%;">
+                <span class="hud-laser-ping"></span>
+                <span class="hud-bar-tip"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hud-item hud-comunidad" data-target="41">
+            <div class="hud-labels">
+              <span class="hud-name">
+                <span class="hud-pulse-dot"></span>
+                COMUNIDAD
+              </span>
+              <span class="hud-pct"><span class="hud-counter">41</span>%</span>
+            </div>
+            <div class="hud-bar-track">
+              <div class="hud-bar-fill" style="width: 41%;">
+                <span class="hud-laser-ping"></span>
+                <span class="hud-bar-tip"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna Derecha: Tarjeta Cyberpunk de Acceso Anticipado con Beneficio -->
+      <div class="construction-card-col">
+        <div class="access-card">
+          <!-- Brackets tácticos esquineros -->
+          <div class="corner-bracket top-left" aria-hidden="true"></div>
+          <div class="corner-bracket bottom-right" aria-hidden="true"></div>
+
+          <div class="access-card-header">
+            <span class="early-access-tag">// BENEFICIOS DE LANZAMIENTO</span>
+            <h2 class="access-title">ACCESO ANTICIPADO</h2>
+            <p class="access-subtitle">SÉ DE LOS PRIMEROS EN ASOMAR. RECIBE AVISO INMEDIATO CUANDO LA PLATAFORMA ESTÉ LISTA Y ASEGURA BENEFICIOS EXCLUSIVOS.</p>
+          </div>
+
+          <!-- Cuadro de Beneficios Exclusivos -->
+          <div class="early-benefits-box">
+            <div class="early-benefits-title">
+              <span class="benefits-gift">🎁</span>
+              <span>BENEFICIOS PARA PIONEROS:</span>
+            </div>
+            <ul class="early-benefits-list">
+              <li>
+                <span class="benefit-star">✦</span>
+                <span><strong>Aviso prioritario</strong> el día de apertura oficial de KAWSAY.</span>
+              </li>
+              <li>
+                <span class="benefit-star">✦</span>
+                <span><strong>Pases 2x1 y cortesías</strong> en eventos culturales de Quito.</span>
+              </li>
+              <li>
+                <span class="benefit-star">✦</span>
+                <span><strong>Insignia de Explorador Fundador</strong> en tu perfil.</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Mensaje / Alerta de Validación o Confirmación -->
+          <div id="early-access-alert" class="construction-alert" style="display: none;"></div>
+
+          <!-- Formulario de Early Access con Beneficio -->
+          <form id="form-early-access" class="access-form" autocomplete="off">
+            <div class="access-input-group">
+              <label for="early-email" class="access-label">TU CORREO ELECTRÓNICO</label>
+              <input type="email" id="early-email" class="access-input" placeholder="tu@correo.com" required autofocus>
+            </div>
+
+            <div class="access-input-group">
+              <label class="access-label">¿CÓMO QUIERES ASOMAR?</label>
+              <div class="early-role-pills">
+                <label class="early-role-pill" title="Espectador / Asistente">
+                  <input type="radio" name="early_role" value="espectador" checked>
+                  <span>🎭 Espectador</span>
+                </label>
+                <label class="early-role-pill" title="Artista / Creador">
+                  <input type="radio" name="early_role" value="artista">
+                  <span>🎨 Artista</span>
+                </label>
+                <label class="early-role-pill" title="Gestor de Espacio Cultural">
+                  <input type="radio" name="early_role" value="espacio">
+                  <span>🏛️ Espacio</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Botón Neón Verde Lima -->
+            <button type="submit" id="btn-submit-early" class="btn-neon-access">
+              <span>OBTENER ACCESO CON BENEFICIO</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </button>
+          </form>
+
+          <!-- Pie de tarjeta: Login para Administradores / Equipo + Redes Sociales -->
+          <div class="access-card-footer">
+            <button type="button" id="btn-open-team-login" class="link-team-login">
+              ¿Tienes credenciales de explorador o administrador? <u>Ingresar aquí</u>
+            </button>
+
+            <div class="construction-socials">
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" title="Instagram" class="social-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+              </a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" title="X / Twitter" class="social-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4l11.733 16h4.267l-11.733-16z"></path>
+                  <path d="M4 20l6.768-6.768m2.464-2.464L20 4"></path>
+                </svg>
+              </a>
+              <a href="https://discord.com" target="_blank" rel="noopener noreferrer" title="Discord" class="social-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6h0a14.5 14.5 0 0 0-4-1.5 11 11 0 0 0-4 1.5A15.3 15.3 0 0 0 6 18c2 1.5 4 1.5 4 1.5a11 11 0 0 0 1-2 7 7 0 0 1-2-1c.2-.2.4-.3.5-.5 3 1.5 6 1.5 9 0 .2.2.4.3.5.5a7 7 0 0 1-2 1 11 11 0 0 0 1 2s2 0 4-1.5A15.3 15.3 0 0 0 18 6z"></path>
+                  <circle cx="9" cy="12" r="1"></circle>
+                  <circle cx="15" cy="12" r="1"></circle>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal Cyberpunk: Ingreso de Equipo / Exploradores con Credenciales -->
+    <div id="modal-team-login" class="creator-modal-backdrop" style="display: none;">
+      <div class="creator-modal-box">
+        <div class="corner-bracket top-left"></div>
+        <div class="corner-bracket bottom-right"></div>
+        <button type="button" id="btn-close-team-modal" class="btn-close-modal" aria-label="Cerrar modal">&times;</button>
+        
+        <div class="creator-modal-header">
+          <span class="creator-modal-tag">// ACCESO PRIVADO DEL ECOSISTEMA</span>
+          <h3 class="creator-modal-title">INICIAR SESIÓN</h3>
+          <p class="creator-modal-sub">Ingresa tus credenciales de explorador o administrador para acceder.</p>
+        </div>
+
+        <div id="team-login-alert" class="construction-alert" style="display: none;"></div>
+
+        <form id="form-team-login" class="creator-form" autocomplete="off">
+          <div class="access-input-group">
+            <label for="team-identifier" class="access-label">IDENTIFICADOR / EMAIL</label>
+            <input type="text" id="team-identifier" class="access-input" placeholder="USER_NAME_00 o tu correo" required>
+          </div>
+
+          <div class="access-input-group">
+            <label for="team-passcode" class="access-label">CÓDIGO DE ACCESO</label>
+            <input type="password" id="team-passcode" class="access-input" placeholder="••••••••" required>
+          </div>
+
+          <button type="submit" id="btn-submit-team-login" class="btn-neon-access" style="margin-top: 10px;">
+            <span>ENTRAR A LA PLATAFORMA</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Barra Inferior: Marquee Ticker Infinito & Copyright -->
+    <footer class="construction-footer">
+      <div class="marquee-track">
+        <div class="marquee-content">
+          <span>ESTAMOS CONSTRUYENDO ALGO PARA QUE ASOMES</span>
+          <span class="marquee-dot">•</span>
+          <span>EN CONSTRUCCIÓN</span>
+          <span class="marquee-dot">•</span>
+          <span>ASOMA PRONTO</span>
+          <span class="marquee-dot">•</span>
+          <span>ECOSISTEMA CULTURAL QUITO</span>
+          <span class="marquee-dot">•</span>
+          <span>ESTAMOS CONSTRUYENDO ALGO PARA QUE ASOMES</span>
+          <span class="marquee-dot">•</span>
+          <span>EN CONSTRUCCIÓN</span>
+          <span class="marquee-dot">•</span>
+          <span>ASOMA PRONTO</span>
+          <span class="marquee-dot">•</span>
+          <span>ECOSISTEMA CULTURAL QUITO</span>
+          <span class="marquee-dot">•</span>
+        </div>
+      </div>
+      <div class="construction-footer-meta">
+        <span>KAWSAY SYSTEM CORE © 2026</span>
+        <span>QUITO, ECUADOR</span>
+      </div>
+    </footer>
+  </section>
+
+  <!-- Modal Cyberpunk: Solicitar Acceso Creativos -->
+  <div id="modal-creator-request" class="creator-modal-backdrop" style="display: none;">
+    <div class="creator-modal-box">
+      <div class="corner-bracket top-left"></div>
+      <div class="corner-bracket bottom-right"></div>
+      <button type="button" id="btn-close-creator-modal" class="btn-close-modal" aria-label="Cerrar modal">&times;</button>
+      
+      <div class="creator-modal-header">
+        <span class="creator-modal-tag">// CONVOCATORIA CERRADA BETA</span>
+        <h3 class="creator-modal-title">SOLICITAR ACCESO DE CREADOR</h3>
+        <p class="creator-modal-sub">Déjanos tus datos para enviarte una invitación exclusiva y código de explorador.</p>
+      </div>
+
+      <div id="creator-modal-alert" class="construction-alert" style="display: none;"></div>
+
+      <form id="form-creator-request" class="creator-form">
+        <div class="access-input-group">
+          <label for="creator-name" class="access-label">NOMBRE O COLECTIVO ARTÍSTICO</label>
+          <input type="text" id="creator-name" class="access-input" placeholder="Ej. Colectivo Lumbre / Mateo" required>
+        </div>
+
+        <div class="access-input-group">
+          <label for="creator-email" class="access-label">CORREO ELECTRÓNICO</label>
+          <input type="email" id="creator-email" class="access-input" placeholder="tu@correo.com" required>
+        </div>
+
+        <div class="access-input-group">
+          <label for="creator-discipline" class="access-label">DISCIPLINA PRINCIPAL</label>
+          <select id="creator-discipline" class="access-input access-select">
+            <option value="Musica">Música & Sonido</option>
+            <option value="Artes Escenicas">Teatro & Artes Escénicas</option>
+            <option value="Danza">Danza & Movimiento</option>
+            <option value="Artes Visuales">Artes Visuales & Muralismo</option>
+            <option value="Espacio Cultural">Gestor de Espacio Cultural</option>
+            <option value="Espectador Curioso">Espectador / Explorador Cultural</option>
+          </select>
+        </div>
+
+        <div class="access-input-group">
+          <label for="creator-portfolio" class="access-label">ENLACE A PORTAFOLIO O REDES (OPCIONAL)</label>
+          <input type="text" id="creator-portfolio" class="access-input" placeholder="https://instagram.com/tu_arte">
+        </div>
+
+        <button type="submit" id="btn-submit-creator" class="btn-neon-access" style="margin-top: 10px;">
+          <span>ENVIAR SOLICITUD</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       APP SHELL (PLATAFORMA COMPLETA KAWSAY)
        ======================================================== -->
   <div id="app">
 
