@@ -171,7 +171,7 @@ app.post('/api/auth/register', (req, res) => {
 
   const validRole = ['espectador', 'artista', 'espacio', 'admin', 'gestor'].includes(role) ? role : 'espectador';
   const id = 'usr-' + Date.now();
-  const avatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+  const avatar = '';
 
   const sql = `INSERT INTO users (id, name, email, password, role, avatar, bio) VALUES (?, ?, ?, ?, ?, ?, ?)`;
   db.run(sql, [id, name.trim(), email.trim().toLowerCase(), password, validRole, avatar, `Perfil de ${validRole} en KAWSAY`], async function(err) {
@@ -205,7 +205,7 @@ app.post('/api/users', (req, res) => {
   const validRole = ['espectador', 'artista', 'espacio', 'admin', 'gestor'].includes(role) ? role : 'espectador';
   const id = 'usr-' + Date.now();
   const userPass = password && String(password).trim().length >= 6 ? String(password).trim() : 'kawsay2026';
-  const userAvatar = avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+  const userAvatar = avatar || '';
   const userBio = bio || `Perfil de ${validRole} en KAWSAY`;
   const userCity = city || 'Quito';
 

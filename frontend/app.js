@@ -590,7 +590,13 @@ const App = (() => {
   async function init() {
     const savedUser = localStorage.getItem('kawsay_user');
     if (savedUser) {
-      try { currentUser = JSON.parse(savedUser); } catch(e) { currentUser = guestUser; }
+      try {
+        currentUser = JSON.parse(savedUser);
+        if (currentUser && currentUser.avatar && currentUser.avatar.includes('images.unsplash.com')) {
+          currentUser.avatar = '';
+          try { localStorage.setItem('kawsay_user', JSON.stringify(currentUser)); } catch(e) {}
+        }
+      } catch(e) { currentUser = guestUser; }
     } else {
       currentUser = guestUser;
     }
@@ -617,7 +623,7 @@ const App = (() => {
     const profileParam = urlParams.get('profile');
 
     if (profileParam) {
-      activeProfileKey = userProfilesData[profileParam] ? profileParam : 'mateo';
+      activeProfileKey = userProfilesData[profileParam] ? profileParam : 'self';
       navigate('user');
     } else if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'gestor')) {
       navigate('admin');
@@ -925,7 +931,7 @@ const App = (() => {
         const item = e.target.closest('[data-view]');
         if (item) {
           if (item.dataset.view === 'user') {
-            activeProfileKey = 'mateo';
+            activeProfileKey = 'self';
             activeProfileTab = 'eventos';
           }
           if (window.innerWidth <= 768) {
@@ -1100,7 +1106,7 @@ const App = (() => {
         else if (currentUser.role === 'artista') navigate('artist');
         else if (currentUser.role === 'espacio') navigate('space');
         else if (currentUser.role === 'espectador' || currentUser.role === 'usuario') {
-          activeProfileKey = 'mateo';
+          activeProfileKey = 'self';
           activeProfileTab = 'eventos';
           navigate('user');
         }
@@ -2039,15 +2045,24 @@ const App = (() => {
   // ============================================================
   // DISEÑO DEDICADO DE PERFIL DE ESPECTADOR / PERFIL PÚBLICO
   // ============================================================
-  let activeProfileKey = 'mateo';
+  let activeProfileKey = 'self';
   let activeProfileTab = 'eventos';
 
   function getProfileFriends(currentKey) {
+    if (currentKey === 'self' || (currentUser && (currentKey === currentUser.id || currentKey === 'self'))) {
+      if (currentUser && currentUser.id) {
+        try {
+          const custom = JSON.parse(localStorage.getItem('kawsay_profile_friends_' + currentUser.id) || '[]');
+          if (Array.isArray(custom) && custom.length) return custom;
+        } catch(e) {}
+      }
+      return [];
+    }
     const allFriendsCatalog = [
-      { key: 'mateo', id: 'fr-mateo', name: 'Mateo Velasco', statusText: 'Asistiendo a Quito Jazz Festival', online: true, avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200' },
+      { key: 'mateo', id: 'fr-mateo', name: 'Mateo Velasco', statusText: 'Asistiendo a Quito Jazz Festival', online: true, avatar: '' },
       { key: 'carlos', id: 'fr-carlos', name: 'Carlos Molina', statusText: 'Asistiendo a Oscura Radio (24 OCT)', online: true, avatar: 'images/event_voices.jpg' },
       { key: 'sofia', id: 'fr-sofia', name: 'Sofia Terán', statusText: 'Asistiendo a Festival Indie (02 NOV)', online: true, avatar: 'images/event_portraits.jpg' },
-      { key: 'roberto', id: 'fr-roberto', name: 'Roberto Paz', statusText: 'Asistiendo a Las Bodas de Fígaro', online: false, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' }
+      { key: 'roberto', id: 'fr-roberto', name: 'Roberto Paz', statusText: 'Asistiendo a Las Bodas de Fígaro', online: false, avatar: '' }
     ];
     return allFriendsCatalog.filter(f => f.key !== currentKey);
   }
@@ -2060,7 +2075,7 @@ const App = (() => {
       role: 'espectador',
       memberSince: 'JUNIO 2023',
       city: 'QUITO, EC',
-      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200',
+      avatar: '',
       bio: 'Explorador cultural y asistente habitual a conciertos de jazz, rutas nocturnas de teatro y exposiciones independientes en Quito.',
       tags: ['ENTUSIASTA DEL JAZZ', 'EXPLORADOR URBANO', 'CINE DE AUTOR'],
       stats: {
@@ -2406,7 +2421,7 @@ const App = (() => {
       role: 'espectador',
       memberSince: 'FEBRERO 2023',
       city: 'QUITO, EC',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+      avatar: '',
       tags: ['ARTES ESCÉNICAS', 'FOTOGRAFÍA'],
       stats: {
         events: 16,
@@ -2481,7 +2496,7 @@ const App = (() => {
     if (userProfilesData[key]) {
       activeProfileKey = key;
     } else {
-      activeProfileKey = 'mateo';
+      activeProfileKey = 'self';
     }
     activeProfileTab = 'eventos';
     navigate('user');
@@ -2489,7 +2504,7 @@ const App = (() => {
     const mainEl = document.getElementById('main');
     if (mainEl) mainEl.scrollTop = 0;
     const targetUser = userProfilesData[activeProfileKey];
-    if (targetUser && activeProfileKey !== 'mateo') {
+    if (targetUser && activeProfileKey !== 'self') {
       showToast(`👤 Viendo perfil público de ${targetUser.name}`);
     }
   };
@@ -2771,7 +2786,7 @@ const App = (() => {
       profile.avatar = newAvatar;
 
       // Sincronizar con la sesión activa (currentUser) y almacenamiento local
-      if (currentUser && (activeProfileKey === 'mateo' || currentUser.name === newName || currentUser.role === 'espectador')) {
+      if (currentUser && (activeProfileKey === 'self' || activeProfileKey === 'mateo' || currentUser.name === newName || currentUser.role === 'espectador')) {
         currentUser.name = newName;
         currentUser.avatar = newAvatar;
         currentUser.city = newCity;
@@ -2925,28 +2940,196 @@ const App = (() => {
   }
 
   // ============================================================
+  // RESOLUCIÓN DE PERFIL DE USUARIO (LIMPIO PARA NUEVAS CUENTAS)
+  // ============================================================
+  function getUserProfileForDisplay(key) {
+    const isSelf = (!key || key === 'self' || (currentUser && currentUser.role !== 'invitado' && (key === currentUser.id || key === 'self')));
+
+    if (isSelf) {
+      const name = (currentUser && currentUser.name && currentUser.name !== 'Visitante (Sin Iniciar Sesión)')
+        ? currentUser.name
+        : 'Nuevo Usuario';
+      const cleanAvatar = (currentUser && currentUser.avatar && !currentUser.avatar.includes('images.unsplash.com'))
+        ? currentUser.avatar
+        : '';
+      const cleanCity = (currentUser && currentUser.city) ? currentUser.city : 'QUITO, EC';
+      const cleanBio = (currentUser && currentUser.bio) ? currentUser.bio : '';
+
+      let tags = [];
+      if (currentUser && currentUser.tags && currentUser.tags.length) {
+        tags = currentUser.tags;
+      } else if (currentUser && currentUser.preferences && currentUser.preferences.categories) {
+        tags = [...currentUser.preferences.categories, ...(currentUser.preferences.zones || [])];
+      }
+
+      // 1. Próximas asistencias: exclusivamente provenientes de RSVPs reales o compras del usuario
+      const upcomingEvents = [];
+      if (typeof userInteractions === 'object' && userInteractions !== null) {
+        Object.keys(userInteractions).forEach(evId => {
+          if (userInteractions[evId] && userInteractions[evId].has_rsvp) {
+            const ev = apiEvents.find(e => String(e.id) === String(evId));
+            if (ev) {
+              upcomingEvents.push({
+                id: 'rsvp-' + ev.id,
+                category: (ev.category || 'CULTURA').toUpperCase(),
+                status: 'CONFIRMADO',
+                title: (ev.title || '').toUpperCase(),
+                venue: (ev.space_name || ev.venue || 'QUITO').toUpperCase(),
+                date: ev.date ? `${ev.date}${ev.time ? ' • ' + ev.time : ''}` : 'PRÓXIMAMENTE',
+                ticketCode: 'RSVP #' + String(ev.id).slice(-4).toUpperCase(),
+                eventId: ev.id,
+                seat: 'Asistencia Confirmada'
+              });
+            }
+          }
+        });
+      }
+
+      // 2. Cargar datos específicos guardados localmente para este usuario (vacíos por default)
+      let storedSpaces = [];
+      let storedHistory = [];
+      let storedCommunities = [
+        {
+          id: 'com-postpunk',
+          name: 'QUITO POST-PUNK & DARKWAVE',
+          badge: 'MÚSICA',
+          members: 1280,
+          meetups: 'Encuentro mensual en Teatro Bolívar',
+          joined: false,
+          description: 'Comunidad dedicada a la difusión del post-punk, darkwave y synthpop ecuatoriano e internacional.'
+        },
+        {
+          id: 'com-cineclub',
+          name: 'CINE CLUB CENTRO',
+          badge: 'CINE',
+          members: 856,
+          meetups: 'Proyecciones cada jueves en La Mariscal',
+          joined: false,
+          description: 'Debates cinematográficos, ciclos de directores independientes y estrenos alternativos en Quito.'
+        },
+        {
+          id: 'com-jazz',
+          name: 'JAZZ & VINILOS QUITO',
+          badge: 'JAZZ',
+          members: 540,
+          meetups: 'Jam sessions cada 15 días en Guápulo',
+          joined: false,
+          description: 'Coleccionistas de vinilos, jam sessions acústicas e intercambio de prensajes selectos.'
+        },
+        {
+          id: 'com-arte',
+          name: 'ARTE CONTEMPORÁNEO UIO',
+          badge: 'ARTE',
+          members: 420,
+          meetups: 'Ruta de galerías en La Floresta',
+          joined: false,
+          description: 'Red de exploradores de arte conceptual, instalaciones urbanas y muestras de diseño emergente.'
+        }
+      ];
+      let storedPoints = 0;
+      let storedFriends = [];
+
+      if (currentUser && currentUser.id) {
+        try {
+          const customData = JSON.parse(localStorage.getItem('kawsay_profile_data_' + currentUser.id) || '{}');
+          if (Array.isArray(customData.spaces)) storedSpaces = customData.spaces;
+          if (Array.isArray(customData.history)) storedHistory = customData.history;
+          if (Array.isArray(customData.communities)) storedCommunities = customData.communities;
+          if (typeof customData.pointsK === 'number') storedPoints = customData.pointsK;
+          if (Array.isArray(customData.friends)) storedFriends = customData.friends;
+          if (Array.isArray(customData.upcoming)) {
+            customData.upcoming.forEach(u => {
+              if (!upcomingEvents.find(x => x.eventId === u.eventId)) upcomingEvents.push(u);
+            });
+          }
+        } catch(e) {}
+      }
+
+      // 3. Recomendaciones: solo si el usuario configuró intereses, de lo contrario vacío
+      let recommendations = [];
+      if (tags.length && apiEvents && apiEvents.length) {
+        const lowerTags = tags.map(t => String(t).toLowerCase());
+        recommendations = apiEvents.filter(ev => {
+          const cat = String(ev.category || '').toLowerCase();
+          const title = String(ev.title || '').toLowerCase();
+          return lowerTags.some(t => cat.includes(t) || title.includes(t));
+        }).slice(0, 4).map((ev, idx) => ({
+          id: 'rec-' + ev.id,
+          title: (ev.title || '').toUpperCase(),
+          category: (ev.category || 'EVENTO').toUpperCase(),
+          venue: ev.space_name || ev.venue || 'Quito',
+          date: ev.date || 'Próximamente',
+          price: ev.price ? (typeof ev.price === 'number' ? `$${ev.price.toFixed(2)}` : ev.price) : 'Gratis',
+          affinity: `${98 - idx * 3}% AFINIDAD`,
+          image: ev.image || 'images/event_voices.jpg',
+          eventId: ev.id
+        }));
+      }
+
+      const memberDate = (currentUser && currentUser.created_at)
+        ? new Date(currentUser.created_at).toLocaleDateString('es-EC', { month: 'long', year: 'numeric' }).toUpperCase()
+        : 'OCTUBRE 2026';
+
+      const profile = {
+        id: (currentUser && currentUser.id) ? currentUser.id : 'usr-self',
+        name: name.toUpperCase(),
+        handle: (currentUser && currentUser.email) ? currentUser.email.split('@')[0].toUpperCase() : 'USUARIO',
+        role: (currentUser && currentUser.role) ? currentUser.role : 'espectador',
+        memberSince: memberDate,
+        city: cleanCity.toUpperCase(),
+        avatar: cleanAvatar,
+        bio: cleanBio,
+        tags: tags,
+        stats: {
+          events: upcomingEvents.length + storedHistory.length,
+          spaces: storedSpaces.length,
+          pointsK: storedPoints || (currentUser && currentUser.pointsK) || 0,
+          friends: storedFriends.length || (currentUser && currentUser.friendsCount) || 0
+        },
+        upcoming: upcomingEvents,
+        spaces: storedSpaces,
+        history: storedHistory,
+        communities: storedCommunities,
+        friends: storedFriends,
+        recommendations: recommendations
+      };
+
+      return { profile, isSelf: true };
+    }
+
+    // Visitar perfil público de otro usuario
+    const target = userProfilesData[key] || userProfilesData['carlos'] || {
+      id: 'usr-' + key,
+      name: key.toUpperCase(),
+      handle: key.toUpperCase(),
+      role: 'espectador',
+      memberSince: '2026',
+      city: 'QUITO, EC',
+      avatar: '',
+      bio: '',
+      tags: [],
+      stats: { events: 0, spaces: 0, pointsK: 0, friends: 0 },
+      upcoming: [],
+      spaces: [],
+      history: [],
+      communities: [],
+      friends: [],
+      recommendations: []
+    };
+
+    return { profile: { ...target }, isSelf: false };
+  }
+
+  // ============================================================
   // RENDER PRINCIPAL DE LA VISTA DE PERFIL DE ESPECTADOR
   // ============================================================
   function renderUserProfileView(view) {
-    const profile = userProfilesData[activeProfileKey] || userProfilesData['mateo'];
-    const isSelf = (activeProfileKey === 'mateo');
+    const { profile, isSelf } = getUserProfileForDisplay(activeProfileKey);
 
-    // Sincronizar datos de la sesión activa con el perfil personal de espectador
-    if (isSelf && currentUser && currentUser.role !== 'invitado') {
-      if (currentUser.name && currentUser.name !== 'Visitante (Sin Iniciar Sesión)') {
-        profile.name = currentUser.name.toUpperCase();
-      }
-      if (currentUser.avatar) profile.avatar = currentUser.avatar;
-      if (currentUser.city) profile.city = currentUser.city;
-      if (currentUser.bio) profile.bio = currentUser.bio;
-      if (currentUser.tags && currentUser.tags.length) profile.tags = currentUser.tags;
-    }
-
-    // Coherencia y consistencia lógica en los contadores estadísticos
-    const totalEvents = (profile.upcoming && profile.history) ? (profile.upcoming.length + profile.history.length) : profile.stats.events;
-    const totalSpaces = (profile.spaces && profile.spaces.length) ? profile.spaces.length : profile.stats.spaces;
+    const totalEvents = profile.stats.events;
+    const totalSpaces = profile.stats.spaces;
     const totalPoints = profile.stats.pointsK;
-    const friendsCount = profile.stats.friends || (friendsState ? friendsState.totalConnections : 128);
+    const friendsCount = profile.stats.friends;
 
     view.innerHTML = `
       <div class="public-profile-wrapper">
@@ -2992,9 +3175,13 @@ const App = (() => {
                 </div>
                 ${profile.bio ? `
                   <p style="font-size: 13px; color: #a1a1aa; line-height: 1.5; margin-bottom: 12px; max-width: 580px;">${profile.bio}</p>
-                ` : ''}
+                ` : (isSelf ? `
+                  <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 12px; font-style: italic; max-width: 580px;">Aún no has agregado una biografía cultural. Puedes añadirla en 'Editar Perfil'.</p>
+                ` : '')}
                 <div class="public-profile-tags" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                  ${profile.tags.map(tag => `<span class="public-profile-tag-pill" data-tag="${tag}">${tag}</span>`).join('')}
+                  ${profile.tags && profile.tags.length ? profile.tags.map(tag => `<span class="public-profile-tag-pill" data-tag="${tag}">${tag}</span>`).join('') : `
+                    <span style="font-size: 12px; color: #718096; font-style: italic;">Sin intereses seleccionados</span>
+                  `}
                   ${isSelf ? `
                     <button class="public-profile-tag-pill" id="btn-quick-edit-prefs" style="background: rgba(204, 255, 0, 0.08); border: 1px dashed rgba(204, 255, 0, 0.5); color: var(--accent); cursor: pointer; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;" title="Modificar intereses y zonas de Quito">
                       ⚙️ Modificar Opciones
@@ -3049,69 +3236,95 @@ const App = (() => {
             <!-- Próximas Asistencias / Boletos Activos -->
             <section style="margin-bottom: 40px;">
               <h2 class="profile-section-title">PRÓXIMAS ASISTENCIAS</h2>
-              <div class="profile-attendance-grid">
-                ${profile.upcoming.map(ticket => `
-                  <div class="profile-ticket-card" data-event-id="${ticket.eventId}">
-                    <div>
-                      <div class="profile-ticket-top">
-                        <span class="profile-ticket-badge">${ticket.category}</span>
-                        <span class="profile-ticket-confirmed">${ticket.status}</span>
+              ${profile.upcoming && profile.upcoming.length > 0 ? `
+                <div class="profile-attendance-grid">
+                  ${profile.upcoming.map(ticket => `
+                    <div class="profile-ticket-card" data-event-id="${ticket.eventId}">
+                      <div>
+                        <div class="profile-ticket-top">
+                          <span class="profile-ticket-badge">${ticket.category}</span>
+                          <span class="profile-ticket-confirmed">${ticket.status}</span>
+                        </div>
+                        <h3 class="profile-ticket-title">${ticket.title}</h3>
+                        <div class="profile-ticket-meta">${ticket.venue} • ${ticket.date}</div>
                       </div>
-                      <h3 class="profile-ticket-title">${ticket.title}</h3>
-                      <div class="profile-ticket-meta">${ticket.venue} • ${ticket.date}</div>
-                    </div>
 
-                    <div class="profile-ticket-bottom">
-                      <div class="profile-ticket-code btn-ticket-qr" data-ticket-id="${ticket.id}" style="cursor: pointer;" title="Mostrar QR del boleto">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm13-2h2v2h-2zm-2 2h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm-2-6h2v2h-2zm2 2h2v2h-2z"/>
-                        </svg>
-                        <span>${ticket.ticketCode}</span>
+                      <div class="profile-ticket-bottom">
+                        <div class="profile-ticket-code btn-ticket-qr" data-ticket-id="${ticket.id}" style="cursor: pointer;" title="Mostrar QR del boleto">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm13-2h2v2h-2zm-2 2h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm-2-6h2v2h-2zm2 2h2v2h-2z"/>
+                          </svg>
+                          <span>${ticket.ticketCode}</span>
+                        </div>
+                        <span class="profile-ticket-details-btn" data-event-id="${ticket.eventId}">VER DETALLES</span>
                       </div>
-                      <span class="profile-ticket-details-btn" data-event-id="${ticket.eventId}">VER DETALLES</span>
                     </div>
-                  </div>
-                `).join('')}
-              </div>
+                  `).join('')}
+                </div>
+              ` : `
+                <div class="profile-empty-card" style="background: #10141d; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; padding: 42px 24px; text-align: center;">
+                  <div style="font-size: 38px; margin-bottom: 12px;">🎟️</div>
+                  <h3 style="font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 6px; letter-spacing: 0.5px;">AÚN NO TIENES EVENTOS PROGRAMADOS</h3>
+                  <p style="font-size: 13px; color: #8892b0; max-width: 480px; margin: 0 auto 18px auto; line-height: 1.5;">
+                    Explora la cartelera cultural de Quito, reserva tus boletos o confirma tu asistencia para que aparezcan aquí.
+                  </p>
+                  <button class="btn-profile-empty-action" id="btn-empty-explore-events" style="background: var(--accent); color: #000; font-family: var(--font-mono); font-size: 11px; font-weight: 900; padding: 10px 22px; border-radius: 6px; border: none; cursor: pointer; letter-spacing: 0.5px;">
+                    EXPLORAR CARTELERA
+                  </button>
+                </div>
+              `}
             </section>
 
             <!-- Espacios que Sigues -->
             <section style="margin-bottom: 40px;" id="section-espacios-seguidos">
               <div class="profile-spaces-header">
                 <h2 class="profile-section-title" style="margin-bottom: 0;">ESPACIOS QUE SIGUES</h2>
-                <span class="profile-spaces-link-all" id="btn-see-all-spaces">VER TODOS</span>
+                ${profile.spaces && profile.spaces.length > 0 ? `<span class="profile-spaces-link-all" id="btn-see-all-spaces">VER TODOS</span>` : ''}
               </div>
 
-              <div class="profile-spaces-grid">
-                ${profile.spaces.map(sp => `
-                  <div class="profile-space-card" data-space-id="${sp.id}">
-                    ${sp.verified ? `
-                      <div class="profile-space-badge-verified" title="Espacio Verificado">✓</div>
-                    ` : ''}
-                    <div>
-                      <h3 class="profile-space-title">${sp.name}</h3>
-                      <div class="profile-space-sector">${sp.sector}</div>
-                    </div>
-
-                    <div class="profile-space-bottom">
-                      <div class="profile-space-rating">
-                        <span style="color: var(--accent);">★</span> ${sp.rating}
+              ${profile.spaces && profile.spaces.length > 0 ? `
+                <div class="profile-spaces-grid">
+                  ${profile.spaces.map(sp => `
+                    <div class="profile-space-card" data-space-id="${sp.id}">
+                      ${sp.verified ? `
+                        <div class="profile-space-badge-verified" title="Espacio Verificado">✓</div>
+                      ` : ''}
+                      <div>
+                        <h3 class="profile-space-title">${sp.name}</h3>
+                        <div class="profile-space-sector">${sp.sector}</div>
                       </div>
-                      <div>${sp.eventsBadge}</div>
-                    </div>
-                  </div>
-                `).join('')}
 
-                <!-- Tarjeta Explorar Más -->
-                <div class="profile-space-more-card" id="btn-profile-explore-more">
-                  <div class="profile-space-more-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-                    </svg>
+                      <div class="profile-space-bottom">
+                        <div class="profile-space-rating">
+                          <span style="color: var(--accent);">★</span> ${sp.rating}
+                        </div>
+                        <div>${sp.eventsBadge}</div>
+                      </div>
+                    </div>
+                  `).join('')}
+
+                  <!-- Tarjeta Explorar Más -->
+                  <div class="profile-space-more-card" id="btn-profile-explore-more">
+                    <div class="profile-space-more-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                      </svg>
+                    </div>
+                    <div class="profile-space-more-text">EXPLORAR MÁS</div>
                   </div>
-                  <div class="profile-space-more-text">EXPLORAR MÁS</div>
                 </div>
-              </div>
+              ` : `
+                <div class="profile-empty-card" style="background: #10141d; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; padding: 36px 24px; text-align: center;">
+                  <div style="font-size: 34px; margin-bottom: 10px;">🏛️</div>
+                  <h3 style="font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 6px;">NO SIGUES NINGÚN ESPACIO AÚN</h3>
+                  <p style="font-size: 13px; color: #8892b0; max-width: 480px; margin: 0 auto 16px auto; line-height: 1.5;">
+                    Sigue teatros, salas independientes, galerías y centros culturales para recibir avisos sobre sus nuevos eventos.
+                  </p>
+                  <button class="btn-profile-empty-action" id="btn-empty-explore-spaces" style="background: #182232; color: var(--accent); border: 1px solid rgba(204, 255, 0, 0.4); font-family: var(--font-mono); font-size: 11px; font-weight: 800; padding: 9px 20px; border-radius: 6px; cursor: pointer;">
+                    DESCUBRIR ESPACIOS CULTURALES
+                  </button>
+                </div>
+              `}
             </section>
           </div>
 
@@ -3119,31 +3332,41 @@ const App = (() => {
           <div class="profile-tab-content ${activeProfileTab === 'pasados' ? 'active' : ''}" id="tab-content-pasados">
             <section style="margin-bottom: 50px;">
               <h2 class="profile-section-title">HISTORIAL DE ASISTENCIA & RESEÑAS</h2>
-              <div class="profile-history-stack">
-                ${profile.history.map(item => `
-                  <div class="profile-history-item" data-event-id="${item.eventId}">
-                    <div class="profile-history-left">
-                      <img class="profile-history-thumb" src="${item.image}" alt="${item.title}">
-                      <div>
-                        <div class="profile-history-title">${item.title}</div>
-                        <div class="profile-history-meta">${item.meta} • ${item.rating ? '★ '.repeat(item.rating) : 'Sin calificar'}</div>
-                        ${item.review ? `<div style="font-size: 11px; color: #a1a1aa; margin-top: 4px; font-style: italic;">"${item.review}"</div>` : ''}
+              ${profile.history && profile.history.length > 0 ? `
+                <div class="profile-history-stack">
+                  ${profile.history.map(item => `
+                    <div class="profile-history-item" data-event-id="${item.eventId}">
+                      <div class="profile-history-left">
+                        <img class="profile-history-thumb" src="${item.image}" alt="${item.title}">
+                        <div>
+                          <div class="profile-history-title">${item.title}</div>
+                          <div class="profile-history-meta">${item.meta} • ${item.rating ? '★ '.repeat(item.rating) : 'Sin calificar'}</div>
+                          ${item.review ? `<div style="font-size: 11px; color: #a1a1aa; margin-top: 4px; font-style: italic;">"${item.review}"</div>` : ''}
+                        </div>
+                      </div>
+                      <div class="profile-history-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                        <div class="profile-history-price">${item.price}</div>
+                        <div style="display: flex; gap: 8px;">
+                          <button class="btn-leave-review" data-hist-id="${item.id}" style="background: #1f1f24; border: 1px solid #333; color: var(--accent); font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                            ⭐ RESEÑA
+                          </button>
+                          <button class="btn-view-hist-event" data-event-id="${item.eventId}" style="background: transparent; border: 1px solid #333; color: #aaa; font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                            VER EVENTO
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div class="profile-history-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-                      <div class="profile-history-price">${item.price}</div>
-                      <div style="display: flex; gap: 8px;">
-                        <button class="btn-leave-review" data-hist-id="${item.id}" style="background: #1f1f24; border: 1px solid #333; color: var(--accent); font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
-                          ⭐ RESEÑA
-                        </button>
-                        <button class="btn-view-hist-event" data-event-id="${item.eventId}" style="background: transparent; border: 1px solid #333; color: #aaa; font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
-                          VER EVENTO
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
+                  `).join('')}
+                </div>
+              ` : `
+                <div class="profile-empty-card" style="background: #10141d; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; padding: 42px 24px; text-align: center;">
+                  <div style="font-size: 38px; margin-bottom: 12px;">📜</div>
+                  <h3 style="font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 6px;">SIN HISTORIAL DE EVENTOS</h3>
+                  <p style="font-size: 13px; color: #8892b0; max-width: 460px; margin: 0 auto; line-height: 1.5;">
+                    Los eventos a los que asistas y califiques se guardarán aquí junto a tus reseñas y puntos K ganados.
+                  </p>
+                </div>
+              `}
             </section>
           </div>
 
@@ -3192,31 +3415,44 @@ const App = (() => {
               </button>
             </div>
 
-            <div class="profile-friends-grid">
-              ${getProfileFriends(activeProfileKey).map(f => `
-                <div class="profile-friend-card">
-                  <div class="profile-friend-top" data-profile-key="${f.key}" style="cursor: pointer;" title="Ver perfil público de ${f.name}">
-                    <img class="profile-friend-avatar" src="${f.avatar}" alt="${f.name}">
-                    <div>
-                      <div class="profile-friend-name" data-profile-key="${f.key}">${f.name}</div>
-                      <div class="profile-friend-meta">${f.statusText || 'Conectado a la red cultural'}</div>
+            ${getProfileFriends(activeProfileKey).length > 0 ? `
+              <div class="profile-friends-grid">
+                ${getProfileFriends(activeProfileKey).map(f => `
+                  <div class="profile-friend-card">
+                    <div class="profile-friend-top" data-profile-key="${f.key}" style="cursor: pointer;" title="Ver perfil público de ${f.name}">
+                      ${renderUserAvatar(f, { size: 44, fontSize: '15px' })}
+                      <div>
+                        <div class="profile-friend-name" data-profile-key="${f.key}">${f.name}</div>
+                        <div class="profile-friend-meta">${f.statusText || 'Conectado a la red cultural'}</div>
+                      </div>
+                    </div>
+
+                    <div class="profile-friend-actions">
+                      <button class="btn-profile-friend-action primary" data-action="view-profile" data-profile-key="${f.key}">
+                        VER PERFIL
+                      </button>
+                      <button class="btn-profile-friend-action" data-action="message" data-name="${f.name}">
+                        MENSAJE
+                      </button>
+                      <button class="btn-profile-friend-action" data-action="invite" data-name="${f.name}">
+                        INVITAR
+                      </button>
                     </div>
                   </div>
-
-                  <div class="profile-friend-actions">
-                    <button class="btn-profile-friend-action primary" data-action="view-profile" data-profile-key="${f.key}">
-                      VER PERFIL
-                    </button>
-                    <button class="btn-profile-friend-action" data-action="message" data-name="${f.name}">
-                      MENSAJE
-                    </button>
-                    <button class="btn-profile-friend-action" data-action="invite" data-name="${f.name}">
-                      INVITAR
-                    </button>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
+                `).join('')}
+              </div>
+            ` : `
+              <div class="profile-empty-card" style="background: #10141d; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; padding: 42px 24px; text-align: center;">
+                <div style="font-size: 38px; margin-bottom: 12px;">👋</div>
+                <h3 style="font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 6px;">AÚN NO TIENES CONEXIONES</h3>
+                <p style="font-size: 13px; color: #8892b0; max-width: 460px; margin: 0 auto 18px auto; line-height: 1.5;">
+                  Conéctate con otros miembros de KAWSAY para compartir recomendaciones, ver qué eventos les interesan y asistir juntos.
+                </p>
+                <button id="btn-empty-find-friends" style="background: var(--accent); color: #000; font-family: var(--font-mono); font-size: 11px; font-weight: 900; padding: 9px 20px; border-radius: 6px; border: none; cursor: pointer;">
+                  + DESCUBRIR PERSONAS
+                </button>
+              </div>
+            `}
           </div>
 
           <!-- PESTAÑA 5: RECOMENDACIONES -->
@@ -3237,32 +3473,47 @@ const App = (() => {
               ` : ''}
             </div>
             <h2 class="profile-section-title">SELECCIÓN PERSONALIZADA PARA TI</h2>
-            <div class="profile-recom-grid">
-              ${(profile.recommendations || []).map(rec => `
-                <div class="profile-recom-card">
-                  <div class="profile-recom-img-wrap">
-                    <img class="profile-recom-img" src="${rec.image}" alt="${rec.title}">
-                    <span class="profile-recom-match-badge">${rec.affinity}</span>
-                  </div>
-
-                  <div class="profile-recom-body">
-                    <div>
-                      <div class="profile-recom-category">${rec.category}</div>
-                      <h3 class="profile-recom-title">${rec.title}</h3>
-                      <div class="profile-recom-meta">${rec.venue} • ${rec.date} • ${rec.price}</div>
+            ${(profile.recommendations && profile.recommendations.length > 0) ? `
+              <div class="profile-recom-grid">
+                ${profile.recommendations.map(rec => `
+                  <div class="profile-recom-card">
+                    <div class="profile-recom-img-wrap">
+                      <img class="profile-recom-img" src="${rec.image}" alt="${rec.title}">
+                      <span class="profile-recom-match-badge">${rec.affinity}</span>
                     </div>
 
-                    <div class="profile-recom-actions">
-                      <button class="btn-recom-buy" data-event-id="${rec.eventId}" data-event-title="${rec.title}">
-                        COMPRAR ENTRADA
-                      </button>
-                      <button class="btn-recom-details" data-event-id="${rec.eventId}">
-                        DETALLES
-                      </button>
+                    <div class="profile-recom-body">
+                      <div>
+                        <div class="profile-recom-category">${rec.category}</div>
+                        <h3 class="profile-recom-title">${rec.title}</h3>
+                        <div class="profile-recom-meta">${rec.venue} • ${rec.date} • ${rec.price}</div>
+                      </div>
+
+                      <div class="profile-recom-actions">
+                        <button class="btn-recom-buy" data-event-id="${rec.eventId}" data-event-title="${rec.title}">
+                          COMPRAR ENTRADA
+                        </button>
+                        <button class="btn-recom-details" data-event-id="${rec.eventId}">
+                          DETALLES
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              `).join('')}
+                `).join('')}
+              </div>
+            ` : `
+              <div class="profile-empty-card" style="background: #10141d; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; padding: 42px 24px; text-align: center;">
+                <div style="font-size: 38px; margin-bottom: 12px;">🎯</div>
+                <h3 style="font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 6px;">PERSONALIZA TU ALGORITMO CULTURAL</h3>
+                <p style="font-size: 13px; color: #8892b0; max-width: 480px; margin: 0 auto 18px auto; line-height: 1.5;">
+                  Configura tus disciplinas artísticas favoritas y zonas de Quito para ver recomendaciones personalizadas aquí.
+                </p>
+                <button id="btn-empty-pick-prefs" style="background: var(--accent); color: #000; font-family: var(--font-mono); font-size: 11px; font-weight: 900; padding: 9px 20px; border-radius: 6px; border: none; cursor: pointer;">
+                  ⚙️ CONFIGURAR PREFERENCIAS
+                </button>
+              </div>
+            `}
+          </div>
             </div>
           </div>
 
@@ -3347,7 +3598,7 @@ const App = (() => {
     const btnBackSelf = view.querySelector('#btn-back-to-myprofile');
     if (btnBackSelf) {
       btnBackSelf.addEventListener('click', () => {
-        activeProfileKey = 'mateo';
+        activeProfileKey = 'self';
         activeProfileTab = 'eventos';
         window.scrollTo({ top: 0, behavior: 'smooth' });
         const mainEl = document.getElementById('main');
@@ -3573,6 +3824,19 @@ const App = (() => {
       });
     });
 
+    // Listeners para botones de acción en estados vacíos (perfiles nuevos)
+    const btnEmptyExploreEvents = view.querySelector('#btn-empty-explore-events');
+    if (btnEmptyExploreEvents) btnEmptyExploreEvents.addEventListener('click', () => navigate('home'));
+
+    const btnEmptyExploreSpaces = view.querySelector('#btn-empty-explore-spaces');
+    if (btnEmptyExploreSpaces) btnEmptyExploreSpaces.addEventListener('click', () => navigate('spaces-map'));
+
+    const btnEmptyFindFriends = view.querySelector('#btn-empty-find-friends');
+    if (btnEmptyFindFriends) btnEmptyFindFriends.addEventListener('click', () => openFindMorePeopleModal());
+
+    const btnEmptyPickPrefs = view.querySelector('#btn-empty-pick-prefs');
+    if (btnEmptyPickPrefs) btnEmptyPickPrefs.addEventListener('click', () => openEditPreferencesModal());
+
     // 11. Footer links
     const fAgenda = view.querySelector('#pfooter-agenda');
     if (fAgenda) fAgenda.addEventListener('click', () => navigate('calendar-month'));
@@ -3582,7 +3846,7 @@ const App = (() => {
     if (fComunidad) fComunidad.addEventListener('click', () => navigate('friends'));
     const fPerfil = view.querySelector('#pfooter-perfil');
     if (fPerfil) fPerfil.addEventListener('click', () => {
-      activeProfileKey = 'mateo';
+      activeProfileKey = 'self';
       renderUserProfileView(view);
     });
     const fPagos = view.querySelector('#pfooter-pagos');
@@ -3849,8 +4113,8 @@ const App = (() => {
       return f.name.toLowerCase().includes(query) || (f.statusText && f.statusText.toLowerCase().includes(query));
     });
 
-    const activeUserHandle = currentUser.username || (currentUser.name ? currentUser.name.toUpperCase().replace(/\s+/g, '_') : 'MATEO_88');
-    const activeAvatar = currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+    const activeUserHandle = currentUser.username || (currentUser.name ? currentUser.name.toUpperCase().replace(/\s+/g, '_') : 'USUARIO');
+    const activeAvatar = (currentUser.avatar && !currentUser.avatar.includes('images.unsplash.com')) ? currentUser.avatar : '';
 
     view.innerHTML = `
       <div class="friends-view-wrapper">
@@ -3875,7 +4139,7 @@ const App = (() => {
           </nav>
 
           <div class="friends-user-badge" id="friends-top-user" title="Ver mi Perfil de Espectador">
-            <img src="${activeAvatar}" alt="${currentUser.name || 'Mateo'}">
+            ${activeAvatar ? `<img src="${activeAvatar}" alt="${currentUser.name || 'Usuario'}">` : renderUserAvatar(currentUser, { size: 30, fontSize: '11px' })}
             <span>${activeUserHandle}</span>
           </div>
         </header>
@@ -9477,7 +9741,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     }
 
     if (view === 'user' && currentUser.role === 'invitado') {
-      const spectatorUser = { id: 'usr-espectador-1', name: 'Mateo Velasco', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200' };
+      const spectatorUser = { id: 'usr-espectador-1', name: 'Mateo Velasco', username: 'MATEO_88', role: 'espectador', avatar: '' };
       currentUser = spectatorUser;
       renderSidebar();
       renderTopbar();
@@ -9485,7 +9749,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
 
     if (view === 'friends') {
       if (currentUser.role === 'invitado') {
-        const spectatorUser = usersList.find(u => u.role === 'espectador') || { id: 'usr-espectador-1', name: 'Mateo Sandoval', username: 'MATEO_88', role: 'espectador', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' };
+        const spectatorUser = usersList.find(u => u.role === 'espectador') || { id: 'usr-espectador-1', name: 'Mateo Sandoval', username: 'MATEO_88', role: 'espectador', avatar: '' };
         currentUser = spectatorUser;
         showToast('👤 Modo Espectador Activado: Explorando Red de Amigos (@MATEO_88)');
         renderSidebar();
