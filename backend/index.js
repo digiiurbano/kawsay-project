@@ -4,6 +4,7 @@ if (typeof process.loadEnvFile === 'function') {
 
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
 const { db, initDb } = require('./db');
 const { registerAuthRoutes, sendWelcomeEmail } = require('../lib/authRoutes');
@@ -12,7 +13,8 @@ const app = express();
 const PORT = process.env.PORT || 3005;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 // Servir archivos estáticos del frontend (index.html, styles.css, app.js, images, etc.)
 app.use(express.static(path.resolve(__dirname, '../frontend'), {
@@ -22,6 +24,48 @@ app.use(express.static(path.resolve(__dirname, '../frontend'), {
     res.setHeader('Expires', '0');
   }
 }));
+
+// Endpoint para subir imágenes de eventos/espacios (Base64 -> disco local)
+app.post('/api/upload', (req, res) => {
+  try {
+    const rawData = req.body.image || req.body.file;
+    const filename = req.body.filename;
+    if (!rawData) {
+      return res.status(400).json({ error: 'No se envió ningún archivo o imagen.' });
+    }
+
+    const matches = rawData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (matches && matches.length === 3) {
+      const mime = matches[1];
+      const ext = mime.split('/')[1] ? mime.split('/')[1].replace('jpeg', 'jpg') : 'jpg';
+      const cleanName = (filename || 'archivo').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeFilename = `${cleanName}_${Date.now()}.${ext}`;
+      const uploadsDir = path.resolve(__dirname, '../frontend/images/uploads');
+
+      try {
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const filePath = path.join(uploadsDir, safeFilename);
+        const buffer = Buffer.from(matches[2], 'base64');
+        fs.writeFileSync(filePath, buffer);
+        return res.json({
+          url: `images/uploads/${safeFilename}`,
+          message: 'Archivo subido y guardado exitosamente.'
+        });
+      } catch (fsErr) {
+        return res.json({
+          url: rawData,
+          message: 'Archivo procesado en memoria.'
+        });
+      }
+    }
+
+    res.json({ url: rawData, message: 'URL recibida exitosamente.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ==========================================
 // API ENDPOINTS
@@ -449,8 +493,9 @@ app.put('/api/events/:id', (req, res) => {
   });
 });
 
-// Eliminar Evento (Gestor/Admin)
+// Eliminar Evento (Gestor/Admin/Artista/Espacio)
 app.delete('/api/events/:id', (req, res) => {
+  db.run(`DELETE FROM user_interactions WHERE event_id = ?`, [req.params.id], () => {});
   db.run(`DELETE FROM events WHERE id = ?`, [req.params.id], function(err) {
     if (err) return res.status(500).json({ error: err.message });
     if (this.changes === 0) return res.status(404).json({ error: 'Evento no encontrado' });
@@ -459,8 +504,18 @@ app.delete('/api/events/:id', (req, res) => {
 });
 
 // 4. Espacios Culturales
+// 4. Espacios Culturales
 app.get('/api/spaces', (req, res) => {
-  db.all(`SELECT * FROM spaces`, [], (err, rows) => {
+  const statusFilter = req.query.status;
+  let sql = `SELECT * FROM spaces`;
+  const params = [];
+  if (statusFilter && statusFilter !== 'all') {
+    sql += ` WHERE status = ?`;
+    params.push(statusFilter);
+  }
+  sql += ` ORDER BY name ASC`;
+
+  db.all(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     const formatted = rows.map(r => {
       if (r.categories && typeof r.categories === 'string' && r.categories.startsWith('[')) {
@@ -484,35 +539,81 @@ app.get('/api/spaces/:id', (req, res) => {
 });
 
 app.post('/api/spaces', (req, res) => {
-  const { name, type, image, owner_id, sector, address, hours, categories, description, capacity } = req.body;
+  const {
+    name, type, image, owner_id, sector, address, hours, categories,
+    description, capacity, google_maps_url, lat, lng, permits_file, permits_filename, role
+  } = req.body;
+
   if (!name || !type) {
     return res.status(400).json({ error: 'Nombre y tipo de espacio son obligatorios' });
   }
+
   const id = 'sp-' + Date.now();
   const img = image || 'images/space_nave01.jpg';
   const owner = owner_id || 'usr-espacio-1';
   const catStr = Array.isArray(categories) ? JSON.stringify(categories) : (categories || '');
+  const isAutoApproved = role === 'admin' || role === 'gestor';
+  const initialStatus = isAutoApproved ? 'approved' : 'pending';
 
   const sql = `
-    INSERT INTO spaces (id, name, type, image, owner_id, sector, address, hours, categories, description, capacity)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO spaces (
+      id, name, type, image, owner_id, sector, address, hours,
+      categories, description, capacity, status, google_maps_url,
+      lat, lng, permits_file, permits_filename
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   const params = [
     id, name, type, img, owner,
     sector || 'Quito', address || 'Quito, Ecuador',
     hours || 'Lun-Sáb: 09:00 - 20:00', catStr,
     description || `Espacio cultural ${name} en Quito.`,
-    capacity || 200
+    capacity || 200,
+    initialStatus,
+    google_maps_url || '',
+    lat || -0.215,
+    lng || -78.495,
+    permits_file || '',
+    permits_filename || ''
   ];
 
   db.run(sql, params, function(err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ message: 'Espacio cultural creado exitosamente', id });
+    res.status(201).json({
+      message: initialStatus === 'approved'
+        ? 'Espacio cultural creado y publicado exitosamente'
+        : '🏛️ Solicitud de registro recibida. Tu espacio ha sido enviado a moderación para aprobación del administrador.',
+      id,
+      status: initialStatus
+    });
+  });
+});
+
+// Moderación y Aprobación de Espacios por el Administrador
+app.put('/api/spaces/:id/status', (req, res) => {
+  const { status } = req.body;
+  if (!status || !['approved', 'pending', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'Estado inválido. Debe ser approved, pending o rejected.' });
+  }
+
+  db.run(`UPDATE spaces SET status = ? WHERE id = ?`, [status, req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Espacio no encontrado' });
+    res.json({
+      message: status === 'approved'
+        ? '🏛️ Espacio cultural aprobado exitosamente y publicado en el mapa de Quito.'
+        : `Estado del espacio actualizado a ${status}.`,
+      status
+    });
   });
 });
 
 app.put('/api/spaces/:id', (req, res) => {
-  const { name, type, image, sector, address, hours, categories, description, capacity } = req.body;
+  const {
+    name, type, image, sector, address, hours, categories, description,
+    capacity, google_maps_url, lat, lng, permits_file, permits_filename, status
+  } = req.body;
+
   if (!name || !type) {
     return res.status(400).json({ error: 'Nombre y tipo de espacio son obligatorios' });
   }
@@ -520,7 +621,14 @@ app.put('/api/spaces/:id', (req, res) => {
 
   const sql = `
     UPDATE spaces
-    SET name = ?, type = ?, image = ?, sector = ?, address = ?, hours = ?, categories = ?, description = ?, capacity = ?
+    SET name = ?, type = ?, image = ?, sector = ?, address = ?, hours = ?,
+        categories = ?, description = ?, capacity = ?,
+        google_maps_url = COALESCE(?, google_maps_url),
+        lat = COALESCE(?, lat),
+        lng = COALESCE(?, lng),
+        permits_file = COALESCE(?, permits_file),
+        permits_filename = COALESCE(?, permits_filename),
+        status = COALESCE(?, status)
     WHERE id = ?
   `;
   const params = [
@@ -528,6 +636,7 @@ app.put('/api/spaces/:id', (req, res) => {
     sector || 'Quito', address || 'Quito, Ecuador',
     hours || 'Lun-Sáb: 09:00 - 20:00', catStr,
     description || '', capacity || 200,
+    google_maps_url, lat, lng, permits_file, permits_filename, status,
     req.params.id
   ];
 

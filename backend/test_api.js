@@ -84,7 +84,47 @@ async function runTests() {
     });
     console.log("✅ POST /api/interactions (Favorito):", interactRes.statusCode, interactRes.data);
 
-    console.log("🎉 ¡Todos los tests de backend y base de datos local SQLite pasaron con éxito!");
+    // 8. Test POST /api/spaces (Registro de espacio con Google Maps, aforo y permisos)
+    const newSpacePayload = {
+      name: 'Galería La Candelaria',
+      type: 'GALERÍA & COWORK',
+      sector: 'Centro Histórico',
+      capacity: 350,
+      address: 'Calle Junín E2-45 y Montúfar',
+      google_maps_url: 'https://maps.app.goo.gl/kawsaytest123',
+      lat: -0.2205,
+      lng: -78.5135,
+      hours: 'Lun–Sáb: 09:00–20:00',
+      categories: ['Arte Contemporáneo', 'Exposiciones', 'Talleres'],
+      image: 'images/space_galeria.jpg',
+      description: 'Espacio de creación plástica y exposiciones patrimoniales.',
+      permits_file: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwKL0tpZHMgWzUgMCBSXQovQ291bnQgMQovVHlwZSAvUGFnZXMKPj4KZW5kb2JqCg==',
+      permits_filename: 'LUAE_Bomberos_Candelaria_2026.pdf',
+      role: 'espacio',
+      owner_id: 'usr-espacio-1'
+    };
+    const createSpaceRes = await makeRequest('/api/spaces', 'POST', newSpacePayload);
+    console.log("✅ POST /api/spaces (Registro):", createSpaceRes.statusCode, createSpaceRes.data);
+
+    if (createSpaceRes.data && createSpaceRes.data.id) {
+      const spaceId = createSpaceRes.data.id;
+
+      // 9. Verificar que el espacio nuevo se registró como 'pending'
+      const checkPendingRes = await makeRequest('/api/spaces?status=pending');
+      const list = Array.isArray(checkPendingRes.data) ? checkPendingRes.data : [];
+      const foundPending = list.find(s => s.id === spaceId);
+      console.log(`✅ GET /api/spaces?status=pending: Encontrado espacio pendiente: ${foundPending ? foundPending.name : 'No'}, Aforo: ${foundPending ? foundPending.capacity : 'N/A'}`);
+
+      // 10. Admin aprueba el espacio
+      const approveSpaceRes = await makeRequest(`/api/spaces/${spaceId}/status`, 'PUT', { status: 'approved' });
+      console.log("✅ PUT /api/spaces/:id/status (Aprobación Admin):", approveSpaceRes.statusCode, approveSpaceRes.data);
+
+      // 11. Eliminar espacio de prueba
+      const deleteSpaceRes = await makeRequest(`/api/spaces/${spaceId}`, 'DELETE');
+      console.log("✅ DELETE /api/spaces/:id (Limpieza):", deleteSpaceRes.statusCode, deleteSpaceRes.data);
+    }
+
+    console.log("🎉 ¡Todos los tests de backend, espacios y moderación pasaron con éxito!");
     process.exit(0);
   } catch (err) {
     console.error("❌ Fallaron los tests de la API:", err);

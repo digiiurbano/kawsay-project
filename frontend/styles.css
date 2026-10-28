@@ -1723,24 +1723,39 @@ body.sidebar-open-mobile .sidebar-mobile-backdrop {
   cursor: pointer;
 }
 
-/* Targetas con acciones (Favoritos & RSVP) */
+/* Targetas con acciones (Favoritos, RSVP, Editar y Eliminar) */
 .event-card-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 5px;
   margin-top: 8px;
   padding-top: 6px;
   border-top: 1px solid rgba(255,255,255,0.06);
+}
+.card-mgmt-actions,
+.card-user-actions {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  align-items: center;
+}
+.card-user-actions {
+  justify-content: space-between;
 }
 .btn-card-action {
   background: var(--surface3);
   border: 1px solid var(--border);
   color: var(--white);
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.btn-card-action:hover {
+  background: var(--surface2);
+  border-color: rgba(255,255,255,0.25);
 }
 .btn-card-action.active {
   background: var(--accent);
@@ -1751,6 +1766,23 @@ body.sidebar-open-mobile .sidebar-mobile-backdrop {
   background: #e53935;
   color: #fff;
   border-color: #e53935;
+}
+.btn-card-action.btn-card-edit {
+  color: var(--gold);
+}
+.btn-card-action.btn-card-edit:hover {
+  background: rgba(234, 179, 8, 0.18);
+  border-color: var(--gold);
+  color: #fff;
+}
+.btn-card-action.btn-card-delete {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.btn-card-action.btn-card-delete:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  color: #fff;
 }
 
 /* ============================================================
@@ -7098,4 +7130,107 @@ p, .event-card-desc { font-size: 14px !important; }
   box-shadow: 0 0 16px rgba(180, 247, 50, 0.45);
   transform: scale(1.06);
 }
+
+/* ========================================================
+   SUBIDA DE IMÁGENES Y AFICHES PARA CARTELERA CULTURAL
+   ======================================================== */
+.ev-img-preset-btn {
+  transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ev-img-preset-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent, #d9f99d) !important;
+  box-shadow: 0 4px 12px rgba(217, 249, 157, 0.25);
+}
+
+#ev-image-dropzone:hover {
+  border-color: var(--accent, #d9f99d) !important;
+  background: rgba(30, 41, 59, 0.9) !important;
+}
+
+#btn-browse-event-image:hover {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+/* ========================================================
+   ANIMACIONES FLUIDAS DE ELIMINACIÓN (SIN TRABAS)
+   ======================================================== */
+.card-deleting,
+.event-card.card-deleting,
+.space-card.card-deleting {
+  opacity: 0 !important;
+  transform: scale(0.88) translateY(-10px) !important;
+  pointer-events: none !important;
+  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+tr.row-deleting {
+  opacity: 0 !important;
+  transform: translateX(-30px) !important;
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.25s ease !important;
+  pointer-events: none !important;
+}
+
+/* Modal Confirmación de Eliminación Kawsay */
+#modal-confirm-delete {
+  z-index: 1000005 !important;
+}
+
+#modal-confirm-delete .modal-box {
+  max-width: 500px !important;
+  width: 92vw !important;
+  background: #090d16 !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  box-shadow: 0 25px 60px -15px rgba(239, 68, 68, 0.3), 0 0 0 1px rgba(239, 68, 68, 0.2) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  animation: deleteModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes deleteModalPop {
+  0% { transform: scale(0.94) translateY(12px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.confirm-delete-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 16px 0;
+}
+
+.confirm-delete-preview-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.confirm-delete-warning-box {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 12px;
+  color: #fca5a5;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+
 

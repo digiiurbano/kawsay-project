@@ -27,7 +27,8 @@ const App = (() => {
     plus: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y1="12"/></svg>`,
     lock: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
     key: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>`,
-    logOut: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`
+    logOut: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+    trash: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`
   };
 
   // ---- Dynamic State ----
@@ -192,6 +193,41 @@ const App = (() => {
   let activeDetailEvent = null;
   let editingEventId = null;
 
+  // Persistencia de IDs eliminados para garantizar que jamás reaparezcan al recargar
+  function getDeletedEventIds() {
+    try {
+      const data = localStorage.getItem('kawsay_deleted_event_ids');
+      return data ? JSON.parse(data) : [];
+    } catch (e) { return []; }
+  }
+
+  function addDeletedEventId(id) {
+    try {
+      const ids = getDeletedEventIds();
+      if (!ids.includes(String(id))) {
+        ids.push(String(id));
+        localStorage.setItem('kawsay_deleted_event_ids', JSON.stringify(ids));
+      }
+    } catch (e) {}
+  }
+
+  function getDeletedSpaceIds() {
+    try {
+      const data = localStorage.getItem('kawsay_deleted_space_ids');
+      return data ? JSON.parse(data) : [];
+    } catch (e) { return []; }
+  }
+
+  function addDeletedSpaceId(id) {
+    try {
+      const ids = getDeletedSpaceIds();
+      if (!ids.includes(String(id))) {
+        ids.push(String(id));
+        localStorage.setItem('kawsay_deleted_space_ids', JSON.stringify(ids));
+      }
+    } catch (e) {}
+  }
+
   // ---- Calendar State (Dynamic real date calculation) ----
   const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const todayDateObj = new Date();
@@ -228,7 +264,7 @@ const App = (() => {
     return str;
   }
 
-  const convocatoriasList = [
+  let convocatoriasList = [
     {
       id: 'conv-001',
       title: 'FONDO DE FOMENTO A LAS ARTES QUITO 2026',
@@ -604,9 +640,13 @@ const App = (() => {
     // 0. Inicializar portal de Acceso Anticipado / Modo En Construcción
     initConstructionGate();
 
-    // 1. Inicializar inmediatamente apiEvents y apiSpaces con datos locales KAWSAY
-    apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: e.status || 'approved' })), ...convocatoriasList];
-    apiSpaces = KAWSAY_DATA.spaces;
+    // 1. Inicializar inmediatamente apiEvents y apiSpaces con datos locales KAWSAY (excluyendo eliminados)
+    const initDeletedEvents = getDeletedEventIds();
+    const initDeletedSpaces = getDeletedSpaceIds();
+
+    apiEvents = [...KAWSAY_DATA.weekEvents.map(e => ({ ...e, status: e.status || 'approved' })), ...convocatoriasList]
+      .filter(e => !initDeletedEvents.includes(String(e.id)));
+    apiSpaces = KAWSAY_DATA.spaces.filter(s => !initDeletedSpaces.includes(String(s.id)));
 
     // 2. Renderizar interfaz e instalar delegación global de eventos de inmediato (0ms de latencia)
     initSidebarState();
@@ -639,36 +679,40 @@ const App = (() => {
 
     // 3. Intentar sincronizar con la API en segundo plano sin congelar la interfaz
     loadInitialData().then(() => {
-      if (currentView === 'admin') {
-        const viewEl = document.getElementById('view-admin');
-        if (viewEl) renderAdminDashboardView(viewEl);
-      } else if (currentView === 'artist') {
-        const viewEl = document.getElementById('view-artist');
-        if (viewEl) renderArtistStudioView(viewEl);
-      } else if (currentView === 'space') {
-        const viewEl = document.getElementById('view-space');
-        if (viewEl) renderSpaceStudioView(viewEl);
-      } else if (currentView === 'user') {
-        const viewEl = document.getElementById('view-user');
-        if (viewEl) renderUserProfileView(viewEl);
-      } else if (currentView === 'spaces-map') {
-        const viewEl = document.getElementById('view-spaces-map');
-        if (viewEl) renderSpacesMapView(viewEl);
-      } else if (currentView === 'friends') {
-        const viewEl = document.getElementById('view-friends');
-        if (viewEl) renderFriendsView(viewEl);
-      } else if (currentView === 'home') {
-        renderHomeView();
-      } else if (currentView === 'calendar-month') {
-        renderMonthView();
-      } else if (currentView === 'calendar-week') {
-        renderWeekView();
-      }
-      renderSidebar();
-      renderTopbar();
+      refreshCurrentView();
     }).catch(err => {
       console.warn("📌 Sincronización en segundo plano: usando base local KAWSAY.");
     });
+  }
+
+  function refreshCurrentView() {
+    if (currentView === 'admin') {
+      const viewEl = document.getElementById('view-admin');
+      if (viewEl) renderAdminDashboardView(viewEl);
+    } else if (currentView === 'artist') {
+      const viewEl = document.getElementById('view-artist');
+      if (viewEl) renderArtistStudioView(viewEl);
+    } else if (currentView === 'space') {
+      const viewEl = document.getElementById('view-space');
+      if (viewEl) renderSpaceStudioView(viewEl);
+    } else if (currentView === 'user') {
+      const viewEl = document.getElementById('view-user');
+      if (viewEl) renderUserProfileView(viewEl);
+    } else if (currentView === 'spaces-map') {
+      const viewEl = document.getElementById('view-spaces-map');
+      if (viewEl) renderSpacesMapView(viewEl);
+    } else if (currentView === 'friends') {
+      const viewEl = document.getElementById('view-friends');
+      if (viewEl) renderFriendsView(viewEl);
+    } else if (currentView === 'home') {
+      renderHomeView();
+    } else if (currentView === 'calendar-month') {
+      renderMonthView();
+    } else if (currentView === 'calendar-week') {
+      renderWeekView();
+    }
+    renderSidebar();
+    renderTopbar();
   }
 
   // ============================================================
@@ -679,7 +723,7 @@ const App = (() => {
       const [uRes, eRes, sRes, stRes] = await Promise.allSettled([
         fetchWithTimeout(`${API_BASE}/users`),
         fetchWithTimeout(`${API_BASE}/events?status=all`),
-        fetchWithTimeout(`${API_BASE}/spaces`),
+        fetchWithTimeout(`${API_BASE}/spaces?status=all`),
         fetchWithTimeout(`${API_BASE}/stats`)
       ]);
 
@@ -690,21 +734,28 @@ const App = (() => {
 
       if (eRes.status === 'fulfilled' && eRes.value.ok) {
         const fetchedEvents = await eRes.value.json();
-        if (fetchedEvents && fetchedEvents.length > 0) {
-          apiEvents = fetchedEvents;
+        if (Array.isArray(fetchedEvents)) {
+          const deletedIds = getDeletedEventIds();
+          apiEvents = fetchedEvents.filter(e => !deletedIds.includes(String(e.id)));
         }
       }
 
-      // Fusionar convocatorias en el array global de eventos si no están presentes
-      convocatoriasList.forEach(conv => {
-        if (!apiEvents.some(e => e.id === conv.id)) {
-          apiEvents.push(conv);
-        }
-      });
+      // Fusionar convocatorias en el array global de eventos si no están presentes y no han sido eliminadas
+      if (typeof convocatoriasList !== 'undefined' && Array.isArray(convocatoriasList)) {
+        const deletedIds = getDeletedEventIds();
+        convocatoriasList.forEach(conv => {
+          if (!deletedIds.includes(String(conv.id)) && !apiEvents.some(e => e.id === conv.id)) {
+            apiEvents.push(conv);
+          }
+        });
+      }
 
       if (sRes.status === 'fulfilled' && sRes.value.ok) {
         const fetchedSpaces = await sRes.value.json();
-        if (fetchedSpaces && fetchedSpaces.length > 0) apiSpaces = fetchedSpaces;
+        if (fetchedSpaces && fetchedSpaces.length > 0) {
+          const deletedSpaceIds = getDeletedSpaceIds();
+          apiSpaces = fetchedSpaces.filter(s => !deletedSpaceIds.includes(String(s.id)));
+        }
       }
 
       if (stRes.status === 'fulfilled' && stRes.value.ok) {
@@ -1381,6 +1432,7 @@ const App = (() => {
     }
 
     const pendingEvents = apiEvents.filter(e => e.status === 'pending');
+    const pendingSpaces = apiSpaces.filter(s => s.status === 'pending');
 
     view.innerHTML = `
       <!-- Banner Ejecutivo de Administración -->
@@ -1430,8 +1482,8 @@ const App = (() => {
               <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); font-weight:800;">🏛️ ESPACIOS & RECINTOS</div>
               <span style="font-size:10px; background:rgba(96,165,250,0.15); color:#60a5fa; border:1px solid #60a5fa; padding:2px 8px; border-radius:10px; font-family:var(--font-mono); font-weight:800;">Ver desglose ↗</span>
             </div>
-            <div class="admin-kpi-val" style="color:#60a5fa;">24</div>
-            <div class="admin-kpi-sub">Centros Culturales en Quito</div>
+            <div class="admin-kpi-val" style="color:#60a5fa;">${apiSpaces.length}</div>
+            <div class="admin-kpi-sub">${apiSpaces.filter(s => s.status === 'approved' || !s.status).length} Verificados · ${pendingSpaces.length} Pendientes</div>
           </div>
           <div class="admin-kpi-card" data-kpi="tickets" title="Haz clic para abrir el monitoreo de boletaje y QR">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -1452,7 +1504,7 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- SECCIÓN: MODERACIÓN PENDIENTE -->
+      <!-- SECCIÓN: MODERACIÓN PENDIENTE DE CARTELERAS -->
       <section class="section">
         <div class="section-header">
           <h2 class="section-title" style="font-size:22px; font-weight:900; color:#ef4444; display:flex; align-items:center; gap:8px;">
@@ -1493,6 +1545,103 @@ const App = (() => {
                         <button class="btn-action-preview" data-id="${ev.id}" style="background:var(--surface3); color:#fff; font-weight:800; padding:6px 10px; border-radius:6px; border:1px solid var(--border); cursor:pointer; font-size:11px;" title="Ver ficha técnica y detalles completos">👁️ REVISAR</button>
                         <button class="btn-action-approve" data-id="${ev.id}" style="background:var(--accent); color:#000; font-weight:900; padding:6px 12px; border-radius:6px; border:none; cursor:pointer; font-size:11px;">APROBAR ✅</button>
                         <button class="btn-action-reject" data-id="${ev.id}" style="background:#ef4444; color:#fff; font-weight:800; padding:6px 12px; border-radius:6px; border:none; cursor:pointer; font-size:11px;">RECHAZAR ❌</button>
+                        <button class="btn-action-delete-event" data-id="${ev.id}" style="background:#450a0a; color:#f87171; font-weight:800; padding:6px 10px; border-radius:6px; border:1px solid #991b1b; cursor:pointer; font-size:11px;" title="Eliminar permanentemente de la cartelera">🗑️ ELIMINAR</button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+      </section>
+
+      <!-- SECCIÓN: REVISIÓN Y APROBACIÓN DE ESPACIOS CULTURALES -->
+      <section class="section" style="margin-top:24px;">
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h2 class="section-title" style="font-size:22px; font-weight:900; color:var(--gold); display:flex; align-items:center; gap:8px;">
+              🏛️ REVISIÓN Y APROBACIÓN DE ESPACIOS CULTURALES (${pendingSpaces.length} PENDIENTES)
+            </h2>
+            <p style="color:var(--grey1); font-size:13px; margin:4px 0 0 0;">
+              Valida la información del lugar, ubicación en Google Maps, aforo máximo y permisos de funcionamiento (LUAE/Bomberos) antes de activarlos en el mapa oficial.
+            </p>
+          </div>
+          <button id="btn-admin-register-space" style="background:#1e293b; color:var(--gold); border:1px solid var(--gold); font-family:var(--font-mono); font-weight:800; font-size:11px; padding:8px 14px; border-radius:6px; cursor:pointer;">
+            + REGISTRAR ESPACIO DIRECTO
+          </button>
+        </div>
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; overflow-x:auto;">
+          ${pendingSpaces.length === 0 ? `
+            <div style="text-align:center; padding:24px; color:var(--accent); font-family:var(--font-mono); background:rgba(198,241,53,0.04); border-radius:8px; border:1px dashed rgba(198,241,53,0.25);">
+              ✅ No hay espacios culturales pendientes de aprobación. Todos los recintos en Quito están verificados y activos en el mapa.
+            </div>
+          ` : `
+            <table class="admin-table" style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th>ESPACIO / RECINTO</th>
+                  <th>SECTOR & DIRECCIÓN</th>
+                  <th>AFORO</th>
+                  <th>UBICACIÓN GOOGLE MAPS</th>
+                  <th>PERMISOS (LUAE/BOMBEROS)</th>
+                  <th style="text-align:right;">ACCIONES DE APROBACIÓN</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${pendingSpaces.map(sp => `
+                  <tr class="admin-pending-space-row" data-id="${sp.id}">
+                    <td>
+                      <div style="display:flex; align-items:center; gap:12px; min-width:200px;">
+                        <img src="${sp.image || 'images/space_nave01.jpg'}" style="width:48px; height:48px; border-radius:8px; object-fit:cover; border:1px solid var(--border);" alt="${sp.name}">
+                        <div>
+                          <strong style="color:#fff; font-size:14px; display:block;">${sp.name}</strong>
+                          <span style="color:var(--gold); font-size:10px; font-family:var(--font-mono); font-weight:800;">${(sp.type || 'ESPACIO CULTURAL').toUpperCase()}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div style="font-size:12px; color:#fff; font-weight:700;">${sp.sector || 'Quito'}</div>
+                      <div style="font-size:11px; color:var(--grey1);">${sp.address || 'Sin dirección'}</div>
+                    </td>
+                    <td>
+                      <span style="font-family:var(--font-mono); font-weight:900; font-size:12px; color:var(--accent); background:rgba(198,241,53,0.12); padding:4px 8px; border-radius:6px; border:1px solid rgba(198,241,53,0.25); white-space:nowrap;">
+                        👥 ${sp.capacity || 200} pers.
+                      </span>
+                    </td>
+                    <td>
+                      ${sp.google_maps_url ? `
+                        <a href="${sp.google_maps_url}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:6px; color:#60a5fa; font-size:11px; font-family:var(--font-mono); font-weight:800; text-decoration:none; background:rgba(96,165,250,0.12); padding:6px 10px; border-radius:6px; border:1px solid rgba(96,165,250,0.3); white-space:nowrap;">
+                          📍 Ver en Maps ↗
+                        </a>
+                      ` : `
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((sp.name || '') + ' ' + (sp.address || '') + ' Quito')}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:6px; color:var(--grey1); font-size:11px; font-family:var(--font-mono); text-decoration:none; background:rgba(255,255,255,0.05); padding:6px 10px; border-radius:6px; border:1px solid var(--border); white-space:nowrap;">
+                          🗺️ Buscar en Maps ↗
+                        </a>
+                      `}
+                    </td>
+                    <td>
+                      ${sp.permits_file ? `
+                        <button class="btn-action-view-permit" data-id="${sp.id}" data-file="${encodeURIComponent(sp.permits_file)}" data-filename="${encodeURIComponent(sp.permits_filename || 'Permiso_LUAE')}" data-spacename="${encodeURIComponent(sp.name)}" style="display:inline-flex; align-items:center; gap:6px; background:rgba(234,179,8,0.15); color:var(--gold); font-size:11px; font-family:var(--font-mono); font-weight:800; padding:6px 10px; border-radius:6px; border:1px solid var(--gold); cursor:pointer; white-space:nowrap;">
+                          📄 Ver Permiso
+                        </button>
+                      ` : `
+                        <span style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:4px; white-space:nowrap;">
+                          ⚠️ No adjuntado
+                        </span>
+                      `}
+                    </td>
+                    <td style="text-align:right;">
+                      <div style="display:inline-flex; gap:6px; align-items:center;">
+                        <button class="btn-action-approve-space" data-id="${sp.id}" style="background:var(--accent); color:#000; font-weight:900; padding:6px 12px; border-radius:6px; border:none; cursor:pointer; font-size:11px; white-space:nowrap;">
+                          APROBAR ✅
+                        </button>
+                        <button class="btn-action-reject-space" data-id="${sp.id}" style="background:#ef4444; color:#fff; font-weight:800; padding:6px 12px; border-radius:6px; border:none; cursor:pointer; font-size:11px; white-space:nowrap;">
+                          RECHAZAR ❌
+                        </button>
+                        <button class="btn-action-delete-space" data-id="${sp.id}" style="background:#450a0a; color:#f87171; font-weight:800; padding:6px 10px; border-radius:6px; border:1px solid #991b1b; cursor:pointer; font-size:11px;" title="Eliminar espacio">
+                          🗑️
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1628,6 +1777,45 @@ const App = (() => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         await setEventStatus(btn.dataset.id, 'rejected');
+      });
+    });
+
+    view.querySelectorAll('.btn-action-delete-event').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await deleteEvent(btn.dataset.id);
+      });
+    });
+
+    // Acciones de Aprobación de Espacios Culturales
+    const btnAdminRegisterSpace = view.querySelector('#btn-admin-register-space');
+    if (btnAdminRegisterSpace) {
+      btnAdminRegisterSpace.addEventListener('click', () => {
+        openSpaceCreateModal();
+      });
+    }
+
+    view.querySelectorAll('.btn-action-approve-space').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await setSpaceStatus(btn.dataset.id, 'approved');
+      });
+    });
+
+    view.querySelectorAll('.btn-action-reject-space').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await setSpaceStatus(btn.dataset.id, 'rejected');
+      });
+    });
+
+    view.querySelectorAll('.btn-action-view-permit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fileUrl = decodeURIComponent(btn.dataset.file || '');
+        const filename = decodeURIComponent(btn.dataset.filename || 'Permiso_LUAE');
+        const spaceName = decodeURIComponent(btn.dataset.spacename || 'Espacio Cultural');
+        openViewPermitModal(fileUrl, filename, spaceName);
       });
     });
 
@@ -1810,9 +1998,12 @@ const App = (() => {
   // ============================================================
   function renderSpacesMapView(view) {
     view.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border);">
-        <h1 style="font-size: 32px; font-weight: 900; text-transform: uppercase;">EXPLORAR ESPACIOS</h1>
-        <div style="display: flex; gap: 8px; align-items: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 12px;">
+        <h1 style="font-size: 32px; font-weight: 900; text-transform: uppercase; margin: 0;">EXPLORAR ESPACIOS</h1>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <button id="btn-map-register-top" style="background: var(--accent); color: #000; font-family: var(--font-mono); font-weight: 900; font-size: 11px; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 0 15px rgba(198, 241, 53, 0.25);">
+            + REGISTRAR MI ESPACIO
+          </button>
           <span style="font-family: var(--font-mono); font-size: 11px; color: var(--grey1);">MOTOR DE MAPA:</span>
           <span style="font-family: var(--font-mono); font-size: 11px; color: var(--accent); font-weight: 800; background: rgba(198, 241, 53, 0.1); padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(198, 241, 53, 0.3);">GOOGLE MAPS HD</span>
         </div>
@@ -1845,38 +2036,49 @@ const App = (() => {
 
         <!-- Lista de Espacios -->
         <div id="spaces-map-list" style="width: 400px; overflow-y: auto; background: var(--surface); padding: 20px; display: flex; flex-direction: column; gap: 16px;">
-          ${apiSpaces.map(sp => `
-            <div data-space-id="${sp.id}" class="space-map-card" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; gap: 16px; cursor: pointer; transition: transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--accent)';" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='var(--border)';">
-              <img src="${sp.image}" style="width: 120px; height: 100px; border-radius: 8px; object-fit: cover;" alt="${sp.name}">
-              <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                    <span style="color: var(--accent); font-family: var(--font-mono); font-size: 9px; font-weight: 900; letter-spacing: 0.5px;">${(sp.type || 'ESPACIO CULTURAL').toUpperCase()}</span>
-                    <span style="color: var(--accent); font-family: var(--font-mono); font-size: 11px; font-weight: 900;">${sp.rating || '4.8'} ★</span>
+          ${(() => {
+            const visibleSpaces = apiSpaces.filter(sp => sp.status === 'approved' || !sp.status || (currentUser && sp.owner_id === currentUser.id) || currentUser.role === 'admin');
+            return visibleSpaces.map(sp => `
+              <div data-space-id="${sp.id}" class="space-map-card" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; gap: 16px; cursor: pointer; transition: transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--accent)';" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='var(--border)';">
+                <img src="${sp.image || 'images/space_nave01.jpg'}" style="width: 120px; height: 100px; border-radius: 8px; object-fit: cover;" alt="${sp.name}">
+                <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                  <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; gap:6px;">
+                      <span style="color: var(--accent); font-family: var(--font-mono); font-size: 9px; font-weight: 900; letter-spacing: 0.5px;">${(sp.type || 'ESPACIO CULTURAL').toUpperCase()}</span>
+                      ${sp.status === 'pending' ? `
+                        <span style="color:var(--gold); font-family:var(--font-mono); font-size:9px; font-weight:800; background:rgba(234,179,8,0.15); padding:1px 6px; border-radius:4px; border:1px solid rgba(234,179,8,0.3); white-space:nowrap;">⏳ REVISIÓN</span>
+                      ` : `
+                        <span style="color: var(--accent); font-family: var(--font-mono); font-size: 11px; font-weight: 900;">${sp.rating || '4.8'} ★</span>
+                      `}
+                    </div>
+                    <h3 style="font-size: 16px; font-weight: 900; line-height: 1.2; margin-bottom: 4px;">${sp.name}</h3>
+                    <div style="font-size: 11px; color: var(--grey1);">${sp.sector || 'Quito'} · ${sp.capacity ? `👥 ${sp.capacity} pers.` : ''}</div>
                   </div>
-                  <h3 style="font-size: 16px; font-weight: 900; line-height: 1.2; margin-bottom: 4px;">${sp.name}</h3>
-                  <div style="font-size: 11px; color: var(--grey1);">${sp.sector || 'Quito'}</div>
-                </div>
-                <div>
-                  <div style="font-family: var(--font-mono); font-size: 8px; color: var(--grey1); margin-bottom: 2px;">PRÓXIMO EVENTO</div>
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 11px; font-weight: 800;">PROGRAMACIÓN CONTINUA</span>
-                    <span style="font-family: var(--font-mono); font-size: 9px; color: var(--grey1);">HOY</span>
+                  <div>
+                    ${sp.google_maps_url ? `
+                      <a href="${sp.google_maps_url}" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 9px; color: #60a5fa; text-decoration: none; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 4px;" onclick="event.stopPropagation();">
+                        📍 Google Maps ↗
+                      </a>
+                    ` : ''}
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="font-size: 11px; font-weight: 800;">PROGRAMACIÓN CONTINUA</span>
+                      <span style="font-family: var(--font-mono); font-size: 9px; color: var(--grey1);">HOY</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          `).join('')}
+            `).join('');
+          })()}
         </div>
       </div>
       
       <div style="padding: 12px 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 10px; color: var(--grey1);">
         <div style="display: flex; align-items: center; gap: 20px;">
-          <span>${apiSpaces.length} ESPACIOS ENCONTRADOS</span>
-          <span style="color: #fff; display: flex; align-items: center; gap: 6px;"><span style="display:inline-block; width:8px; height:8px; background:var(--accent); border-radius:50%;"></span> ${apiSpaces.length} ACTIVOS AHORA</span>
+          <span>${apiSpaces.filter(s => s.status === 'approved' || !s.status).length} ESPACIOS ACTIVOS EN QUITO</span>
+          <span style="color: #fff; display: flex; align-items: center; gap: 6px;"><span style="display:inline-block; width:8px; height:8px; background:var(--accent); border-radius:50%;"></span> CATASTRO CULTURAL</span>
         </div>
         <div style="display: flex; gap: 16px;">
-          <span style="cursor: pointer; color: var(--accent); font-weight: 700;" onclick="openCreateSpaceModal()">+ REGISTRAR MI ESPACIO</span>
+          <span id="btn-map-register-space" style="cursor: pointer; color: var(--accent); font-weight: 700;">+ REGISTRAR MI ESPACIO</span>
           <span style="cursor: pointer;">SOPORTE TÉCNICO</span>
         </div>
       </div>
@@ -1970,17 +2172,27 @@ const App = (() => {
         });
 
         // Crear marcadores con coordenadas precisas
-        apiSpaces.forEach((sp, idx) => {
-          let coords = spaceCoords[sp.id];
+        const mapSpaces = apiSpaces.filter(sp => sp.status === 'approved' || !sp.status || (currentUser && sp.owner_id === currentUser.id) || currentUser.role === 'admin');
+        mapSpaces.forEach((sp, idx) => {
+          let coords = (sp.lat && sp.lng) ? { lat: Number(sp.lat), lng: Number(sp.lng), sector: sp.sector } : spaceCoords[sp.id];
           if (!coords) {
             coords = { lat: -0.215 + ((idx % 4) * 0.008 - 0.016), lng: -78.495 + ((idx % 3) * 0.008 - 0.012), sector: 'all' };
           }
 
           const popupHtml = `
-            <div style="font-family: var(--font-sans); min-width: 190px; padding: 4px;">
-              <div style="font-family: var(--font-mono); font-size: 9px; color: var(--accent); font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">${sp.type || 'ESPACIO CULTURAL'}</div>
+            <div style="font-family: var(--font-sans); min-width: 200px; padding: 4px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--accent); font-weight: 800; text-transform: uppercase;">${sp.type || 'ESPACIO CULTURAL'}</span>
+                ${sp.status === 'pending' ? `<span style="font-size:8px; background:rgba(234,179,8,0.2); color:var(--gold); padding:1px 4px; border-radius:4px;">REVISIÓN</span>` : ''}
+              </div>
               <div style="font-size: 14px; font-weight: 900; color: #fff; margin-bottom: 4px;">${sp.name}</div>
-              <div style="font-size: 11px; color: #9ca3af; margin-bottom: 10px;">📍 ${sp.address || sp.sector || 'Quito'}</div>
+              <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px;">📍 ${sp.address || sp.sector || 'Quito'}</div>
+              ${sp.capacity ? `<div style="font-size: 10px; font-family:var(--font-mono); color: var(--accent); margin-bottom: 8px;">👥 Aforo: ${sp.capacity} personas</div>` : ''}
+              ${sp.google_maps_url ? `
+                <a href="${sp.google_maps_url}" target="_blank" rel="noopener noreferrer" style="display:block; text-align:center; color:#60a5fa; font-size:10px; font-family:var(--font-mono); font-weight:800; text-decoration:none; margin-bottom:8px; background:rgba(96,165,250,0.1); padding:4px 8px; border-radius:4px; border:1px solid rgba(96,165,250,0.25);">
+                  📍 Abrir en Google Maps ↗
+                </a>
+              ` : ''}
               <button onclick="window.navigateSpaceDetail('${sp.id}')" style="width: 100%; background: var(--accent); color: #000; border: none; padding: 7px 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; font-weight: 800; cursor: pointer;">
                 VER ESPACIO →
               </button>
@@ -4676,7 +4888,7 @@ const App = (() => {
     if (!currentUser || currentUser.role === 'invitado' || currentUser.role === 'espectador') {
       return false;
     }
-    if (currentUser.role === 'admin') {
+    if (currentUser.role === 'admin' || currentUser.role === 'gestor') {
       return true;
     }
     if (currentUser.role === 'artista' || currentUser.role === 'espacio') {
@@ -4722,19 +4934,26 @@ const App = (() => {
 
         <div class="event-card-actions">
           ${showEdit ? `
-            <button class="btn-card-action" data-action="edit" data-id="${ev.id}" title="Modificar Evento" style="color:var(--gold); font-weight:900; display:inline-flex; align-items:center; gap:4px;">
-              ${ICONS.edit} Editar
-            </button>
+            <div class="card-mgmt-actions">
+              <button class="btn-card-action btn-card-edit" data-action="edit" data-id="${ev.id}" title="Modificar Evento" style="flex:1; color:var(--gold); font-weight:900; display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:5px 6px;">
+                ${ICONS.edit} Editar
+              </button>
+              <button class="btn-card-action btn-card-delete" data-action="delete" data-id="${ev.id}" title="Eliminar Evento de Cartelera" style="flex:1; color:#ef4444; font-weight:900; display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:5px 6px; border-color:rgba(239,68,68,0.35);">
+                ${ICONS.trash} Eliminar
+              </button>
+            </div>
           ` : ''}
-          <button class="btn-card-action ${inter.is_favorite ? 'fav-active' : ''}" data-action="fav" data-id="${ev.id}" style="display:inline-flex; align-items:center; gap:4px;">
-            ${inter.is_favorite ? ICONS.heartFill : ICONS.heart} ${inter.is_favorite ? 'Guardado' : 'Favorito'}
-          </button>
-          <button class="btn-card-action ${inter.has_rsvp ? 'active' : ''}" data-action="rsvp" data-id="${ev.id}" style="display:inline-flex; align-items:center; gap:4px;">
-            ${inter.has_rsvp ? ICONS.check : ICONS.user} ${inter.has_rsvp ? 'Asistiré' : 'Asistir'}
-          </button>
-          <button class="btn-card-action" data-action="add-cart" data-title="${ev.title}" data-price="${ev.price}" title="Agregar al Carrito" style="display:inline-flex; align-items:center;">
-            ${ICONS.cart}
-          </button>
+          <div class="card-user-actions">
+            <button class="btn-card-action ${inter.is_favorite ? 'fav-active' : ''}" data-action="fav" data-id="${ev.id}" style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:5px 6px;">
+              ${inter.is_favorite ? ICONS.heartFill : ICONS.heart} ${inter.is_favorite ? 'Guardado' : 'Favorito'}
+            </button>
+            <button class="btn-card-action ${inter.has_rsvp ? 'active' : ''}" data-action="rsvp" data-id="${ev.id}" style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:5px 6px;">
+              ${inter.has_rsvp ? ICONS.check : ICONS.user} ${inter.has_rsvp ? 'Asistiré' : 'Asistir'}
+            </button>
+            <button class="btn-card-action" data-action="add-cart" data-title="${ev.title}" data-price="${ev.price}" title="Agregar al Carrito" style="display:inline-flex; align-items:center; justify-content:center; padding:5px 8px;">
+              ${ICONS.cart}
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -4768,6 +4987,11 @@ const App = (() => {
 
         if (act === 'edit') {
           openEditEventModal(eventId);
+          return;
+        }
+
+        if (act === 'delete') {
+          await deleteEvent(eventId);
           return;
         }
 
@@ -5516,6 +5740,16 @@ const App = (() => {
               ${inter.has_rsvp ? ICONS.check : ICONS.user} ASISTIRÉ
             </button>
           </div>
+          ${canEditEvent(ev) ? `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+              <button class="btn-secondary-action" id="btn-detail-edit-event" style="background:#1e293b; color:var(--gold); border:1px solid rgba(234,179,8,0.4); font-weight:800; padding:10px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer;">
+                ${ICONS.edit} EDITAR EVENTO
+              </button>
+              <button class="btn-secondary-action" id="btn-detail-delete-event" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.4); font-weight:800; padding:10px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer;">
+                ${ICONS.trash} ELIMINAR EVENTO
+              </button>
+            </div>
+          ` : ''}
         </div><!-- /offcanvas-action-bar -->
 
       </div><!-- /offcanvas-left RIGHT -->
@@ -5621,6 +5855,13 @@ const App = (() => {
       });
     }
 
+    const deleteBtn = $('#btn-detail-delete-event');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        await deleteEvent(ev.id);
+      });
+    }
+
     $('#btn-detail-fav').addEventListener('click', async () => {
       if (currentUser.role === 'invitado') { openAuthModal(); return; }
       try {
@@ -5659,6 +5900,258 @@ const App = (() => {
     showModal('#modal-event-detail');
   }
 
+  let currentCreateEventStep = 1;
+
+  function setCreateEventStep(stepNum) {
+    currentCreateEventStep = Math.max(1, Math.min(4, stepNum));
+    for (let i = 1; i <= 4; i++) {
+      const pane = document.getElementById(`event-step-pane-${i}`);
+      if (pane) pane.style.display = (i === currentCreateEventStep) ? 'block' : 'none';
+    }
+    document.querySelectorAll('.btn-event-step').forEach(btn => {
+      const s = parseInt(btn.dataset.step);
+      if (s === currentCreateEventStep) {
+        btn.style.background = 'var(--accent)';
+        btn.style.color = '#000';
+      } else {
+        btn.style.background = '#1e293b';
+        btn.style.color = '#94a3b8';
+      }
+    });
+    const btnPrev = document.getElementById('btn-event-step-prev');
+    const btnNext = document.getElementById('btn-event-step-next');
+    if (btnPrev) btnPrev.style.display = (currentCreateEventStep > 1) ? 'block' : 'none';
+    if (btnNext) btnNext.style.display = (currentCreateEventStep < 4) ? 'block' : 'none';
+    const quickSave = document.getElementById('btn-event-quick-save');
+    if (quickSave) {
+      quickSave.style.display = (editingEventId && currentCreateEventStep < 4) ? 'inline-block' : 'none';
+    }
+  }
+
+  function setupCreateEventVenueSelect() {
+    const venueSelect = $('#ev-venue-select');
+    if (venueSelect) {
+      const currentVal = venueSelect.value;
+      venueSelect.innerHTML = `<option value="">-- Seleccionar Espacio Registrado --</option>` +
+        apiSpaces.map(sp => `<option value="${sp.name}">${sp.name} (${sp.sector || 'Quito'})</option>`).join('') +
+        `<option value="__custom__">➕ Escribir otro recinto manualmente</option>`;
+
+      if (currentVal) venueSelect.value = currentVal;
+
+      venueSelect.onchange = () => {
+        if (venueSelect.value && venueSelect.value !== '__custom__') {
+          if ($('#ev-venue')) $('#ev-venue').value = venueSelect.value;
+          const matchedSp = apiSpaces.find(s => s.name === venueSelect.value);
+          if (matchedSp && matchedSp.sector && $('#ev-sector')) {
+            $('#ev-sector').value = matchedSp.sector;
+          }
+          if ($('#ev-venue')) $('#ev-venue').dispatchEvent(new Event('input'));
+        }
+      };
+    }
+  }
+
+  function bindEventWizardControls() {
+    document.querySelectorAll('.btn-event-step').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        setCreateEventStep(parseInt(btn.dataset.step));
+      };
+    });
+    const btnPrev = document.getElementById('btn-event-step-prev');
+    if (btnPrev) {
+      btnPrev.onclick = (e) => {
+        e.preventDefault();
+        if (currentCreateEventStep > 1) setCreateEventStep(currentCreateEventStep - 1);
+      };
+    }
+    const btnNext = document.getElementById('btn-event-step-next');
+    if (btnNext) {
+      btnNext.onclick = (e) => {
+        e.preventDefault();
+        if (currentCreateEventStep < 4) setCreateEventStep(currentCreateEventStep + 1);
+      };
+    }
+  }
+
+  function handleEventImageUpload(file) {
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('⚠️ La imagen no debe superar los 15MB.');
+      return;
+    }
+
+    showToast('⏳ Procesando y optimizando imagen...');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1600;
+        const maxH = 1200;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        setEventImageSource(optimizedDataUrl, file.name || 'afiche.jpg');
+
+        fetch(`${API_BASE}/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: optimizedDataUrl, filename: file.name })
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (data && data.url) {
+              setEventImageSource(data.url, file.name || 'afiche.jpg');
+              showToast('📸 Afiche subido y guardado con éxito.');
+            }
+          })
+          .catch(() => {
+            showToast('📸 Afiche cargado en memoria local.');
+          });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function setEventImageSource(url, displayName = '') {
+    const input = $('#ev-image');
+    if (input) {
+      input.value = url;
+      input.dispatchEvent(new Event('input'));
+    }
+
+    const prevImg = $('#prev-img');
+    if (prevImg) prevImg.src = url;
+
+    const promptBox = $('#ev-upload-prompt');
+    const previewBox = $('#ev-upload-preview-box');
+    const thumbImg = $('#ev-thumb-img');
+    const thumbName = $('#ev-thumb-name');
+    const badge = $('#ev-image-badge');
+
+    if (promptBox && previewBox && thumbImg) {
+      promptBox.style.display = 'none';
+      previewBox.style.display = 'flex';
+      thumbImg.src = url;
+      if (thumbName) thumbName.textContent = displayName || (url.length > 30 ? url.substring(0, 27) + '...' : url);
+    }
+    if (badge) badge.style.display = 'inline';
+
+    document.querySelectorAll('.ev-img-preset-btn').forEach(btn => {
+      btn.style.borderColor = (btn.dataset.url === url) ? 'var(--accent)' : 'transparent';
+    });
+  }
+
+  function resetEventImageUI(initialUrl = '') {
+    const promptBox = $('#ev-upload-prompt');
+    const previewBox = $('#ev-upload-preview-box');
+    const thumbImg = $('#ev-thumb-img');
+    const thumbName = $('#ev-thumb-name');
+    const badge = $('#ev-image-badge');
+    const fileInput = $('#ev-image-file-input');
+    if (fileInput) fileInput.value = '';
+
+    if (initialUrl && initialUrl.trim()) {
+      if (promptBox) promptBox.style.display = 'none';
+      if (previewBox) previewBox.style.display = 'flex';
+      if (thumbImg) thumbImg.src = initialUrl;
+      if (thumbName) thumbName.textContent = initialUrl.length > 30 ? initialUrl.substring(0, 27) + '...' : initialUrl;
+      if (badge) badge.style.display = 'inline';
+    } else {
+      if (promptBox) promptBox.style.display = 'flex';
+      if (previewBox) previewBox.style.display = 'none';
+      if (badge) badge.style.display = 'none';
+    }
+
+    document.querySelectorAll('.ev-img-preset-btn').forEach(btn => {
+      btn.style.borderColor = (btn.dataset.url === initialUrl) ? 'var(--accent)' : 'transparent';
+    });
+  }
+
+  function bindEventImageUploadControls() {
+    const fileInput = $('#ev-image-file-input');
+    const dropzone = $('#ev-image-dropzone');
+    const btnBrowse = $('#btn-browse-event-image');
+    const btnChange = $('#btn-change-event-image');
+
+    if (btnBrowse && fileInput) {
+      btnBrowse.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.click();
+      };
+    }
+
+    if (btnChange && fileInput) {
+      btnChange.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.click();
+      };
+    }
+
+    if (dropzone && fileInput) {
+      dropzone.onclick = (e) => {
+        if (e.target.closest('#btn-browse-event-image, #btn-change-event-image')) return;
+        fileInput.click();
+      };
+
+      dropzone.ondragover = (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'var(--accent)';
+        dropzone.style.background = 'rgba(217, 249, 157, 0.08)';
+      };
+
+      dropzone.ondragleave = () => {
+        dropzone.style.borderColor = '#475569';
+        dropzone.style.background = '#0f172a';
+      };
+
+      dropzone.ondrop = (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = '#475569';
+        dropzone.style.background = '#0f172a';
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleEventImageUpload(e.dataTransfer.files[0]);
+        }
+      };
+    }
+
+    if (fileInput) {
+      fileInput.onchange = () => {
+        if (fileInput.files && fileInput.files[0]) {
+          handleEventImageUpload(fileInput.files[0]);
+        }
+      };
+    }
+
+    document.querySelectorAll('.ev-img-preset-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const url = btn.dataset.url;
+        if (url) {
+          const imgEl = btn.querySelector('img');
+          setEventImageSource(url, imgEl ? imgEl.getAttribute('alt') || 'Galería KAWSAY' : 'Galería');
+          showToast(`🖼️ Afiche seleccionado: ${imgEl ? imgEl.getAttribute('alt') || 'Galería' : 'Galería'}`);
+        }
+      };
+    });
+  }
+
   function openEditEventModal(eventId) {
     if (currentUser.role === 'invitado' || currentUser.role === 'espectador') {
       currentUser = usersList.find(u => u.role === 'artista') || usersList[2];
@@ -5673,6 +6166,8 @@ const App = (() => {
     editingEventId = eventId;
     $('#modal-create-title').textContent = `✏️ MODIFICAR CARTELERA: ${ev.title.toUpperCase()}`;
     if ($('#btn-submit-billboard')) $('#btn-submit-billboard').textContent = '💾 GUARDAR Y ACTUALIZAR CAMBIOS EN VIVO';
+    if ($('#btn-modal-delete-event')) $('#btn-modal-delete-event').style.display = 'flex';
+    if ($('#btn-event-quick-save')) $('#btn-event-quick-save').style.display = 'inline-block';
 
     $('#ev-title').value = ev.title || '';
     if ($('#ev-subtitle')) $('#ev-subtitle').value = ev.full_title || '';
@@ -5681,9 +6176,25 @@ const App = (() => {
     if ($('#ev-date')) $('#ev-date').value = ev.date || '2026-10-30';
     if ($('#ev-time')) $('#ev-time').value = ev.time || '20:00';
     if ($('#ev-venue')) $('#ev-venue').value = ev.venue || '';
+    if ($('#ev-sector')) $('#ev-sector').value = ev.sector || 'Centro Histórico';
+    if ($('#ev-capacity')) $('#ev-capacity').value = ev.capacity || 200;
+    if ($('#ev-cast')) $('#ev-cast').value = ev.cast || '';
     if ($('#ev-price')) $('#ev-price').value = ev.price || '$15';
     if ($('#ev-desc')) $('#ev-desc').value = ev.description || '';
     if ($('#ev-image')) $('#ev-image').value = ev.image || '';
+
+    setupCreateEventVenueSelect();
+    const venueSelect = $('#ev-venue-select');
+    if (venueSelect && ev.venue) {
+      const match = Array.from(venueSelect.options).find(opt => opt.value === ev.venue);
+      if (match) venueSelect.value = ev.venue;
+    }
+
+    bindEventWizardControls();
+    setCreateEventStep(1);
+
+    bindEventImageUploadControls();
+    resetEventImageUI(ev.image || 'images/hero_concierto.jpg');
 
     const event = new Event('input');
     $('#ev-title').dispatchEvent(event);
@@ -6659,7 +7170,7 @@ const App = (() => {
 
           <div style="display:grid; grid-template-columns: 1fr 340px; gap:24px; margin-top:16px;">
             
-            <form id="create-event-form" style="max-height: 520px; overflow-y: auto; padding-right: 10px;">
+            <form id="create-event-form" novalidate style="max-height: 520px; overflow-y: auto; padding-right: 10px;">
               <!-- Barra de Pasos / Wizard -->
               <div class="event-step-bar" style="display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid #1e293b; padding-bottom:10px;">
                 <button type="button" class="btn-event-step active" data-step="1" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:var(--accent); color:#000; border:none; border-radius:6px; cursor:pointer;">
@@ -6770,8 +7281,79 @@ const App = (() => {
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label">URL AFICHE / BANNER (PROPORCIÓN 16:9 RECOMENDADA)</label>
-                  <input class="form-input" id="ev-image" type="text" placeholder="URL de la imagen del afiche (16:9)..." value="${currentUser.role === 'espacio' ? 'images/space_teatro.jpg' : 'images/hero_concierto.jpg'}">
+                  <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>AFICHE / BANNER DEL ESPECTÁCULO (16:9)</span>
+                    <span id="ev-image-badge" style="font-size:10px; color:var(--accent); font-weight:800; font-family:var(--font-mono); display:none;">✓ AFICHE CARGADO</span>
+                  </label>
+
+                  <!-- Caja de Subida desde Dispositivo -->
+                  <div id="ev-image-dropzone" style="background:#0f172a; border:2px dashed #475569; border-radius:10px; padding:16px; text-align:center; cursor:pointer; transition:all 0.2s; position:relative;">
+                    <input type="file" id="ev-image-file-input" accept="image/*" style="display:none;">
+                    
+                    <div id="ev-upload-prompt" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                      <div style="font-size:26px;">📁</div>
+                      <div style="font-size:13px; font-weight:800; color:#fff;">
+                        Haz clic aquí para subir afiche desde tu computadora
+                      </div>
+                      <button type="button" id="btn-browse-event-image" style="padding:8px 16px; font-size:11px; font-weight:900; background:var(--accent); color:#000; border:none; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <span>📷</span> SELECCIONAR IMAGEN
+                      </button>
+                      <div style="font-size:10px; color:#94a3b8; font-family:var(--font-mono);">
+                        Formatos: JPG, PNG, WEBP (optimización automática para web)
+                      </div>
+                    </div>
+
+                    <!-- Miniatura de confirmación tras subir o seleccionar -->
+                    <div id="ev-upload-preview-box" style="display:none; align-items:center; justify-content:space-between; gap:12px; background:#1e293b; padding:8px 12px; border-radius:8px; border:1px solid #334155;">
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        <img id="ev-thumb-img" src="" alt="Thumbnail" style="width:54px; height:34px; object-fit:cover; border-radius:4px; border:1px solid #64748b;">
+                        <div style="text-align:left;">
+                          <div id="ev-thumb-name" style="font-size:11px; font-weight:800; color:#fff; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">afiche_cargado.jpg</div>
+                          <div style="font-size:9px; color:var(--accent); font-family:var(--font-mono);">✓ Listo para cartelera</div>
+                        </div>
+                      </div>
+                      <button type="button" id="btn-change-event-image" style="padding:6px 12px; font-size:10px; font-weight:800; background:#334155; color:#fff; border:1px solid #475569; border-radius:4px; cursor:pointer;">
+                        🔄 CAMBIAR FOTO
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Galería de Afiches Rápidos -->
+                  <div style="margin-top:10px;">
+                    <div style="font-size:10px; font-weight:800; color:#94a3b8; font-family:var(--font-mono); margin-bottom:6px;">
+                      O SELECCIONA UN AFICHE DE LA GALERÍA KAWSAY:
+                    </div>
+                    <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:6px;" id="ev-image-preset-list">
+                      <div class="ev-img-preset-btn" data-url="images/event_jazz.jpg" style="position:relative; cursor:pointer; border-radius:6px; overflow:hidden; border:2px solid transparent; height:46px; transition:border 0.2s;">
+                        <img src="images/event_jazz.jpg" style="width:100%; height:100%; object-fit:cover;" alt="Jazz">
+                        <span style="position:absolute; bottom:2px; left:2px; font-size:8px; background:rgba(0,0,0,0.75); color:#fff; padding:1px 4px; border-radius:2px; font-family:var(--font-mono);">Jazz</span>
+                      </div>
+                      <div class="ev-img-preset-btn" data-url="images/space_teatro.jpg" style="position:relative; cursor:pointer; border-radius:6px; overflow:hidden; border:2px solid transparent; height:46px; transition:border 0.2s;">
+                        <img src="images/space_teatro.jpg" style="width:100%; height:100%; object-fit:cover;" alt="Teatro">
+                        <span style="position:absolute; bottom:2px; left:2px; font-size:8px; background:rgba(0,0,0,0.75); color:#fff; padding:1px 4px; border-radius:2px; font-family:var(--font-mono);">Teatro</span>
+                      </div>
+                      <div class="ev-img-preset-btn" data-url="images/event_mural.jpg" style="position:relative; cursor:pointer; border-radius:6px; overflow:hidden; border:2px solid transparent; height:46px; transition:border 0.2s;">
+                        <img src="images/event_mural.jpg" style="width:100%; height:100%; object-fit:cover;" alt="Mural">
+                        <span style="position:absolute; bottom:2px; left:2px; font-size:8px; background:rgba(0,0,0,0.75); color:#fff; padding:1px 4px; border-radius:2px; font-family:var(--font-mono);">Mural</span>
+                      </div>
+                      <div class="ev-img-preset-btn" data-url="images/event_cinema.jpg" style="position:relative; cursor:pointer; border-radius:6px; overflow:hidden; border:2px solid transparent; height:46px; transition:border 0.2s;">
+                        <img src="images/event_cinema.jpg" style="width:100%; height:100%; object-fit:cover;" alt="Cine">
+                        <span style="position:absolute; bottom:2px; left:2px; font-size:8px; background:rgba(0,0,0,0.75); color:#fff; padding:1px 4px; border-radius:2px; font-family:var(--font-mono);">Cine</span>
+                      </div>
+                      <div class="ev-img-preset-btn" data-url="images/hero_concierto.jpg" style="position:relative; cursor:pointer; border-radius:6px; overflow:hidden; border:2px solid transparent; height:46px; transition:border 0.2s;">
+                        <img src="images/hero_concierto.jpg" style="width:100%; height:100%; object-fit:cover;" alt="En Vivo">
+                        <span style="position:absolute; bottom:2px; left:2px; font-size:8px; background:rgba(0,0,0,0.75); color:#fff; padding:1px 4px; border-radius:2px; font-family:var(--font-mono);">En Vivo</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Campo de URL directa (Avanzado / Opcional) -->
+                  <div style="margin-top:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <span style="font-size:10px; color:#94a3b8; font-family:var(--font-mono);">O PEGAR URL DE IMAGEN DIRECTA:</span>
+                    </div>
+                    <input class="form-input" id="ev-image" type="text" placeholder="URL de la imagen del afiche (16:9)..." value="${currentUser.role === 'espacio' ? 'images/space_teatro.jpg' : 'images/hero_concierto.jpg'}">
+                  </div>
                 </div>
               </div>
 
@@ -6789,12 +7371,18 @@ const App = (() => {
                 <button class="btn-submit" id="btn-submit-billboard" type="submit" style="width:100%; font-size:14px; font-weight:900; background:var(--accent); color:#000; padding:14px; border:none; border-radius:6px; cursor:pointer;">
                   🚀 PUBLICAR EVENTO EN LA CARTELERA
                 </button>
+                <button type="button" id="btn-modal-delete-event" style="width:100%; margin-top:10px; font-size:12px; font-weight:900; background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid #ef4444; padding:12px; border-radius:6px; cursor:pointer; display:none; align-items:center; justify-content:center; gap:6px;">
+                  ${ICONS.trash} ELIMINAR ESTE EVENTO DE LA CARTELERA
+                </button>
               </div>
 
               <!-- Navegación de Pasos (Anterior / Siguiente) -->
-              <div style="display:flex; justify-content:space-between; margin-top:16px; border-top:1px solid #1e293b; padding-top:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; border-top:1px solid #1e293b; padding-top:12px; gap:8px;">
                 <button type="button" id="btn-event-step-prev" style="padding:10px 18px; font-size:11px; font-weight:800; background:#1e293b; color:#fff; border:1px solid #334155; border-radius:6px; cursor:pointer; display:none;">
                   ← PASO ANTERIOR
+                </button>
+                <button type="submit" id="btn-event-quick-save" style="padding:10px 18px; font-size:11px; font-weight:900; background:#10b981; color:#000; border:none; border-radius:6px; cursor:pointer; display:none; margin-left:auto;">
+                  💾 GUARDAR CAMBIOS
                 </button>
                 <button type="button" id="btn-event-step-next" style="padding:10px 18px; font-size:11px; font-weight:800; background:var(--gold); color:#000; border:none; border-radius:6px; cursor:pointer; margin-left:auto;">
                   PASO SIGUIENTE →
@@ -6840,61 +7428,71 @@ const App = (() => {
 
       <!-- MODAL REGISTRO DE ESPACIO CULTURAL -->
       <div class="modal-overlay" id="modal-create-space">
-        <div class="modal-box" style="max-width: 650px; width: 90vw; background:#0f172a; border:1px solid #334155; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">
+        <div class="modal-box" style="max-width: 680px; width: 92vw; max-height: 90vh; overflow-y: auto; background:#0f172a; border:1px solid #334155; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">
           <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px;">
             <div>
-              <div class="modal-title" style="font-size:20px; font-weight:900; color:#ffffff; display:flex; align-items:center; gap:8px;">
-                🏛️ REGISTRAR NUEVO ESPACIO CULTURAL EN QUITO
+              <div class="modal-title" id="modal-create-space-title" style="font-size:20px; font-weight:900; color:#ffffff; display:flex; align-items:center; gap:8px;">
+                🏛️ REGISTRAR MI ESPACIO CULTURAL EN QUITO
               </div>
               <p style="font-size:12px; color:var(--grey1); font-family:var(--font-mono); margin-top:3px;">
-                Registra tu recinto, galería, club de vinilos o teatro en la base de datos oficial de KAWSAY.
+                Completa los datos técnicos, aforo, ubicación en Google Maps y adjunta tus permisos para verificación oficial.
               </p>
             </div>
             <button class="modal-close" id="modal-create-space-close" style="color:#94a3b8;">×</button>
           </div>
 
-          <form id="create-space-form" style="display:flex; flex-direction:column; gap:14px; margin-top:16px;">
+          <form id="create-space-form" novalidate style="display:flex; flex-direction:column; gap:14px; margin-top:16px;">
             <!-- Barra de Pasos / Wizard Espacio -->
             <div class="space-step-bar" style="display:flex; gap:6px; margin-bottom:12px; border-bottom:1px solid #1e293b; padding-bottom:10px;">
-              <button type="button" class="btn-space-step active" data-step="1" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:var(--accent); color:#000; border:none; border-radius:6px; cursor:pointer;">
+              <button type="button" class="btn-space-step active" data-step="1" style="flex:1; padding:8px 4px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:var(--accent); color:#000; border:none; border-radius:6px; cursor:pointer;">
                 1. BÁSICOS
               </button>
-              <button type="button" class="btn-space-step" data-step="2" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
-                2. UBICACIÓN & AFORO
+              <button type="button" class="btn-space-step" data-step="2" style="flex:1; padding:8px 4px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
+                2. MAPS & AFORO
               </button>
-              <button type="button" class="btn-space-step" data-step="3" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
-                3. HORARIOS
+              <button type="button" class="btn-space-step" data-step="3" style="flex:1; padding:8px 4px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
+                3. FOTO PORTADA
               </button>
-              <button type="button" class="btn-space-step" data-step="4" style="flex:1; padding:8px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
-                4. PORTADA & PUBLICAR
+              <button type="button" class="btn-space-step" data-step="4" style="flex:1; padding:8px 4px; font-size:10px; font-weight:800; font-family:var(--font-mono); background:#1e293b; color:#94a3b8; border:none; border-radius:6px; cursor:pointer;">
+                4. PERMISOS & ENVIAR
               </button>
             </div>
 
             <!-- PASO 1: BÁSICOS -->
             <div class="space-step-pane" id="space-step-pane-1" style="display:block;">
               <div class="form-group" style="margin-bottom:12px;">
-                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">NOMBRE DEL ESPACIO / RECINTO</label>
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">NOMBRE DEL ESPACIO / RECINTO CULTURAL *</label>
                 <input class="form-input" id="sp-name" type="text" placeholder="Ej: Centro Cultural La Casa Rosa" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
               </div>
+              <div class="form-row" style="display:flex; gap:12px; margin-bottom:12px;">
+                <div class="form-group" style="flex:1;">
+                  <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">TIPO / CATEGORÍA DEL LUGAR</label>
+                  <select class="form-select" id="sp-type" style="background:#1e293b; border:1px solid #334155; color:#fff;">
+                    <option value="ESPACIO CULTURAL">Espacio Cultural / Multidisciplinario</option>
+                    <option value="ARTES ESCÉNICAS">Teatro / Sala Escénica</option>
+                    <option value="GALERÍA & COWORK">Galería de Arte / Exposición</option>
+                    <option value="CLUB DE VINILOS">Club de Vinilos / Sala Musical</option>
+                    <option value="MUSEO URBANO">Museo / Centro Patrimonial</option>
+                    <option value="CAFÉ CULTURAL">Café Cultural / Librería</option>
+                  </select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                  <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">HORARIOS DE ATENCIÓN</label>
+                  <input class="form-input" id="sp-hours" type="text" placeholder="Ej: Mar–Sáb: 10:00–22:00" value="Mar–Sáb: 10:00–22:00" style="background:#1e293b; border:1px solid #334155; color:#fff;">
+                </div>
+              </div>
               <div class="form-group">
-                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">TIPO / CATEGORÍA</label>
-                <select class="form-select" id="sp-type" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
-                  <option value="ESPACIO CULTURAL">Espacio Cultural / Multidisciplinario</option>
-                  <option value="ARTES ESCÉNICAS">Teatro / Artes Escénicas</option>
-                  <option value="GALERÍA & COWORK">Galería de Arte / Exposición</option>
-                  <option value="CLUB DE VINILOS">Club de Vinilos / Música</option>
-                  <option value="MUSEO URBANO">Museo / Centro Histórico</option>
-                  <option value="CAFÉ CULTURAL">Café Cultural / Librería</option>
-                </select>
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DISCIPLINAS ARTÍSTICAS (SEPARADAS POR COMA)</label>
+                <input class="form-input" id="sp-categories" type="text" placeholder="Música, Teatro, Artes Visuales, Cine, Danza" value="Música, Teatro, Artes Visuales" style="background:#1e293b; border:1px solid #334155; color:#fff;">
               </div>
             </div>
 
-            <!-- PASO 2: UBICACIÓN & AFORO -->
+            <!-- PASO 2: UBICACIÓN GOOGLE MAPS & AFORO -->
             <div class="space-step-pane" id="space-step-pane-2" style="display:none;">
-              <div class="form-row" style="margin-bottom:12px;">
+              <div class="form-row" style="display:flex; gap:12px; margin-bottom:12px;">
                 <div class="form-group" style="flex:1;">
-                  <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">SECTOR EN QUITO</label>
-                  <select class="form-select" id="sp-sector" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+                  <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">SECTOR EN QUITO *</label>
+                  <select class="form-select" id="sp-sector" style="background:#1e293b; border:1px solid #334155; color:#fff;">
                     <option value="La Floresta">La Floresta</option>
                     <option value="Centro Histórico">Centro Histórico</option>
                     <option value="La Mariscal">La Mariscal</option>
@@ -6905,43 +7503,145 @@ const App = (() => {
                   </select>
                 </div>
                 <div class="form-group" style="flex:1;">
-                  <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">AFORO / CAPACIDAD MÁXIMA</label>
-                  <input class="form-input" id="sp-capacity" type="number" placeholder="Ej: 200" value="200" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+                  <label class="form-label" style="color:var(--accent); font-size:11px; font-weight:900;">👥 AFORO MÁXIMO PERMITIDO *</label>
+                  <input class="form-input" id="sp-capacity" type="number" min="1" max="100000" placeholder="Ej: 200" value="200" required style="background:#1e293b; border:1px solid var(--accent); color:#fff; font-weight:800;">
+                  <span style="font-size:10px; color:var(--grey1); font-family:var(--font-mono);">Capacidad de asistentes declarada en bomberos.</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:12px;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DIRECCIÓN EXACTA EN QUITO *</label>
+                <input class="form-input" id="sp-address" type="text" placeholder="Ej: Calle Galavis E9-35 e Isabel La Católica" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+              </div>
+
+              <div class="form-group" style="margin-bottom:12px; background:rgba(96,165,250,0.06); padding:14px; border-radius:10px; border:1px solid rgba(96,165,250,0.25);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+                  <label class="form-label" style="color:#60a5fa; font-size:11px; font-weight:900; margin:0; display:flex; align-items:center; gap:6px;">
+                    📍 ENLACE DE UBICACIÓN & PIN EN EL MAPA
+                  </label>
+                  <div style="display:flex; gap:6px;">
+                    <button type="button" id="btn-use-my-location" style="background:#1e293b; color:var(--accent); border:1px solid var(--accent); font-size:10px; font-family:var(--font-mono); font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                      🎯 Mi ubicación
+                    </button>
+                    <button type="button" id="btn-search-gmaps" style="background:#1e293b; color:#60a5fa; border:1px solid #60a5fa; font-size:10px; font-family:var(--font-mono); font-weight:800; padding:4px 8px; border-radius:4px; cursor:pointer;">
+                      🗺️ Buscar en Google Maps ↗
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Input enlace Google Maps -->
+                <input class="form-input" id="sp-maps-url" type="url" placeholder="Pega tu enlace de Google Maps o fíjalo con el pin inferior" style="background:#0f172a; border:1px solid #334155; color:#fff; margin-bottom:8px;">
+                
+                <!-- Mapa Interactivo con Pin para ubicar el recinto -->
+                <div style="position:relative; margin-bottom:8px;">
+                  <div id="space-pin-map" style="width:100%; height:230px; border-radius:8px; border:1px solid #334155; position:relative; overflow:hidden; background:#0f172a;"></div>
+                  <div style="position:absolute; bottom:8px; left:8px; z-index:1000; background:rgba(15,23,42,0.9); backdrop-filter:blur(6px); border:1px solid var(--border); padding:4px 8px; border-radius:4px; font-family:var(--font-mono); font-size:10px; color:var(--grey1); pointer-events:none;">
+                    📍 <span id="pin-coords-hint">Pin fijado:</span> <strong id="pin-coords-val" style="color:var(--accent);">-0.209500, -78.484500</strong>
+                  </div>
+                </div>
+
+                <span style="font-size:10px; color:var(--grey1); font-family:var(--font-mono); display:block;">
+                  👆 <strong>Haz clic en el mapa</strong> o arrastra el marcador 📍 para ubicar la manzana o calle exacta de tu espacio.
+                </span>
+              </div>
+
+              <div class="form-row" style="display:flex; gap:12px;">
+                <div class="form-group" style="flex:1;">
+                  <label class="form-label" style="color:var(--grey1); font-size:10px; font-family:var(--font-mono);">LATITUD GPS</label>
+                  <input class="form-input" id="sp-lat" type="number" step="any" value="-0.2095" style="background:#0f172a; border:1px solid #334155; color:#94a3b8; font-family:var(--font-mono); font-size:11px;">
+                </div>
+                <div class="form-group" style="flex:1;">
+                  <label class="form-label" style="color:var(--grey1); font-size:10px; font-family:var(--font-mono);">LONGITUD GPS</label>
+                  <input class="form-input" id="sp-lng" type="number" step="any" value="-78.4845" style="background:#0f172a; border:1px solid #334155; color:#94a3b8; font-family:var(--font-mono); font-size:11px;">
+                </div>
+              </div>
+            </div>
+
+            <!-- PASO 3: FOTO DE PORTADA & PROPUESTA -->
+            <div class="space-step-pane" id="space-step-pane-3" style="display:none;">
+              <div class="form-group" style="margin-bottom:12px;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">FOTO DE PORTADA DEL ESPACIO CULTURAL</label>
+                
+                <!-- Dropzone para foto del recinto -->
+                <div id="sp-image-dropzone" style="border:2px dashed #475569; border-radius:10px; padding:18px; text-align:center; background:#1e293b; cursor:pointer; transition:border-color 0.2s;">
+                  <div id="sp-image-dropzone-content" style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                    <span style="font-size:28px;">📷</span>
+                    <span style="font-size:12px; font-weight:800; color:#fff;">Arrastra una foto de tu espacio o haz clic aquí</span>
+                    <span style="font-size:10px; color:var(--grey1); font-family:var(--font-mono);">Formatos JPG, PNG, WEBP (Se optimizará automáticamente)</span>
+                  </div>
+                  <div id="sp-image-preview-box" style="display:none; flex-direction:column; align-items:center; gap:8px;">
+                    <img id="sp-image-preview-thumb" src="" style="width:100%; max-height:160px; object-fit:cover; border-radius:6px; border:1px solid var(--border);" alt="Preview">
+                    <span id="sp-image-preview-name" style="font-size:11px; font-family:var(--font-mono); color:var(--accent);"></span>
+                  </div>
+                  <input type="file" id="sp-image-file-input" accept="image/*" style="display:none;">
+                </div>
+                <input class="form-input" id="sp-image" type="text" value="images/space_nave01.jpg" style="background:#0f172a; border:1px solid #334155; color:#94a3b8; font-size:11px; margin-top:8px;">
+              </div>
+
+              <!-- Presets Rápidos -->
+              <div style="margin-bottom:14px;">
+                <label style="color:var(--grey1); font-size:10px; font-family:var(--font-mono); display:block; margin-bottom:6px;">O SELECCIONA UNA FOTO DE NUESTRO ARCHIVO:</label>
+                <div style="display:flex; gap:8px; overflow-x:auto;">
+                  <button type="button" class="btn-preset-space-img" data-img="images/space_nave01.jpg" style="border:1px solid #334155; background:#1e293b; border-radius:6px; padding:4px 8px; font-size:10px; color:#fff; cursor:pointer;">🏢 Sala Nave</button>
+                  <button type="button" class="btn-preset-space-img" data-img="images/space_bunker.jpg" style="border:1px solid #334155; background:#1e293b; border-radius:6px; padding:4px 8px; font-size:10px; color:#fff; cursor:pointer;">🎸 Búnker</button>
+                  <button type="button" class="btn-preset-space-img" data-img="images/space_teatro.jpg" style="border:1px solid #334155; background:#1e293b; border-radius:6px; padding:4px 8px; font-size:10px; color:#fff; cursor:pointer;">🎭 Teatro</button>
+                  <button type="button" class="btn-preset-space-img" data-img="images/space_galeria.jpg" style="border:1px solid #334155; background:#1e293b; border-radius:6px; padding:4px 8px; font-size:10px; color:#fff; cursor:pointer;">🖼️ Galería</button>
                 </div>
               </div>
 
               <div class="form-group">
-                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DIRECCIÓN EXACTA</label>
-                <input class="form-input" id="sp-address" type="text" placeholder="Ej: Calle Galavis E9-35 e Isabel La Católica" required style="background:#1e293b; border:1px solid #334155; color:#fff;">
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DESCRIPCIÓN, EQUIPAMIENTO & PROPUESTA CULTURAL</label>
+                <textarea class="form-textarea" id="sp-desc" rows="3" placeholder="Describe la acústica, escenario, equipamiento técnico o línea editorial del recinto..." style="background:#1e293b; border:1px solid #334155; color:#fff;">Espacio cultural y multidisciplinario en Quito dedicado a la difusión artística independiente, talleres y artes vivas.</textarea>
               </div>
             </div>
 
-            <!-- PASO 3: HORARIOS & DISCIPLINAS -->
-            <div class="space-step-pane" id="space-step-pane-3" style="display:none;">
-              <div class="form-group" style="margin-bottom:12px;">
-                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">HORARIO DE ATENCIÓN</label>
-                <input class="form-input" id="sp-hours" type="text" placeholder="Ej: Mar–Sáb: 10:00–22:00" value="Mar–Sáb: 10:00–22:00" style="background:#1e293b; border:1px solid #334155; color:#fff;">
-              </div>
-              <div class="form-group">
-                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DISCIPLINAS (SEPARADAS POR COMA)</label>
-                <input class="form-input" id="sp-categories" type="text" placeholder="Arte, Música, Teatro" value="Arte, Música, Teatro" style="background:#1e293b; border:1px solid #334155; color:#fff;">
-              </div>
-            </div>
-
-            <!-- PASO 4: PORTADA & PUBLICAR -->
+            <!-- PASO 4: PERMISOS DE FUNCIONAMIENTO & ENVIAR A REVISIÓN -->
             <div class="space-step-pane" id="space-step-pane-4" style="display:none;">
-              <div class="form-group" style="margin-bottom:12px;">
-                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">URL FOTO DE PORTADA (PROPORCIÓN 16:9 RECOMENDADA)</label>
-                <input class="form-input" id="sp-image" type="text" placeholder="URL de la imagen del recinto..." value="images/space_nave01.jpg" style="background:#1e293b; border:1px solid #334155; color:#fff;">
+              <div style="background:rgba(234,179,8,0.1); border:1px solid rgba(234,179,8,0.3); border-radius:8px; padding:12px; margin-bottom:14px;">
+                <div style="display:flex; align-items:center; gap:8px; color:var(--gold); font-size:12px; font-weight:900;">
+                  <span>🛡️</span> MODERACIÓN Y SEGURIDAD MUNICIPAL DE QUITO
+                </div>
+                <p style="font-size:11px; color:#cbd5e1; margin-top:4px; line-height:1.4;">
+                  Para habilitar la venta de boletos y la difusión oficial, KAWSAY valida los permisos de funcionamiento (LUAE, Permiso de Bomberos o Autorización de Uso de Suelo).
+                </p>
               </div>
 
               <div class="form-group" style="margin-bottom:16px;">
-                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">DESCRIPCIÓN / PROPUESTA CULTURAL</label>
-                <textarea class="form-textarea" id="sp-desc" rows="3" placeholder="Resumen de la propuesta del espacio..." style="background:#1e293b; border:1px solid #334155; color:#fff;">Espacio cultural independiente en Quito enfocado en la creación y expresión artística.</textarea>
+                <label class="form-label" style="color:#fff; font-size:11px; font-weight:800;">SUBIR PERMISO DE FUNCIONAMIENTO (PDF O IMAGEN) *</label>
+                
+                <!-- Dropzone para permisos de funcionamiento -->
+                <div id="sp-permits-dropzone" style="border:2px dashed #ca8a04; border-radius:10px; padding:20px; text-align:center; background:#1e293b; cursor:pointer; transition:all 0.2s;">
+                  <div id="sp-permits-dropzone-content" style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                    <span style="font-size:32px;">📑</span>
+                    <span style="font-size:12px; font-weight:800; color:#fff;">Arrastra aquí tu LUAE o Permiso de Bomberos (PDF o JPG/PNG)</span>
+                    <span style="font-size:10px; color:var(--grey1); font-family:var(--font-mono);">Documentos de hasta 15MB</span>
+                  </div>
+                  <div id="sp-permits-file-info" style="display:none; flex-direction:column; align-items:center; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px; background:#0f172a; padding:8px 14px; border-radius:6px; border:1px solid var(--gold);">
+                      <span style="font-size:18px;">📄</span>
+                      <span id="sp-permits-file-name-label" style="font-size:12px; font-weight:800; color:var(--gold); font-family:var(--font-mono);"></span>
+                      <button type="button" id="btn-remove-permit-file" style="background:none; border:none; color:#ef4444; font-size:14px; cursor:pointer; margin-left:6px;" title="Eliminar archivo">✕</button>
+                    </div>
+                    <span style="font-size:10px; color:var(--accent); font-family:var(--font-mono);">✓ Permiso listo para verificación por el administrador</span>
+                  </div>
+                  <input type="file" id="sp-permits-file-input" accept=".pdf,image/*" style="display:none;">
+                </div>
+                
+                <input type="hidden" id="sp-permits-file" value="">
+                <input type="hidden" id="sp-permits-filename" value="">
               </div>
 
-              <button class="btn-submit" id="btn-submit-space-form" type="submit" style="background:var(--gold); color:#000; font-weight:900; font-size:14px; padding:14px; border:none; border-radius:6px; cursor:pointer; width:100%;">
-                ✨ REGISTRAR Y PUBLICAR ESPACIO CULTURAL
+              <div style="background:#1e293b; border-radius:8px; padding:12px; border:1px solid #334155; margin-bottom:14px;">
+                <div style="font-size:11px; font-family:var(--font-mono); color:var(--grey1); margin-bottom:4px;">
+                  PASO FINAL: ENVÍO A REVISIÓN
+                </div>
+                <div style="font-size:12px; color:#fff; font-weight:700;">
+                  Al presionar el botón inferior, tu espacio cultural será recibido por el Administrador. Podrás consultar el estado en tu perfil.
+                </div>
+              </div>
+
+              <button class="btn-submit" id="btn-submit-space-form" type="submit" style="background:var(--gold); color:#000; font-weight:900; font-size:14px; padding:14px; border:none; border-radius:6px; cursor:pointer; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 0 20px rgba(234,179,8,0.3);">
+                🏛️ ENVIAR ESPACIO A MODERACIÓN ADMINISTRATIVA
               </button>
             </div>
 
@@ -6955,6 +7655,77 @@ const App = (() => {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Modal Visor de Permisos de Funcionamiento (Admin) -->
+      <div class="modal-overlay" id="modal-view-permit">
+        <div class="modal-box" style="max-width: 800px; width: 92vw; background:#0f172a; border:1px solid #ca8a04; box-shadow:0 25px 50px -12px rgba(0,0,0,0.8);">
+          <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:12px;">
+            <div>
+              <div class="modal-title" id="modal-view-permit-title" style="font-size:18px; font-weight:900; color:var(--gold); display:flex; align-items:center; gap:8px;">
+                📄 VERIFICACIÓN DE PERMISOS DE FUNCIONAMIENTO (LUAE/BOMBEROS)
+              </div>
+              <p id="modal-view-permit-sub" style="font-size:12px; color:var(--grey1); font-family:var(--font-mono); margin-top:3px;">
+                Recinto cultural en Quito
+              </p>
+            </div>
+            <button class="modal-close" id="modal-view-permit-close" style="color:#94a3b8;">×</button>
+          </div>
+          <div id="modal-view-permit-body" style="margin-top:16px; min-height:350px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#020617; border-radius:8px; border:1px solid #1e293b; padding:16px; overflow:hidden;">
+            <!-- Contenido dinámico del permiso (iframe o img) -->
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; border-top:1px solid #1e293b; padding-top:12px;">
+            <a id="btn-view-permit-external" href="#" target="_blank" rel="noopener noreferrer" style="color:#60a5fa; font-size:11px; font-family:var(--font-mono); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+              ↗ Abrir en ventana completa / Descargar
+            </a>
+            <button type="button" class="btn-secondary" id="btn-view-permit-close-btn" style="padding:8px 18px; font-size:11px; font-weight:800;">
+              CERRAR VISOR
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Confirmación de Eliminación Kawsay (No bloqueante, diseño premium) -->
+      <div class="modal-overlay" id="modal-confirm-delete">
+        <div class="modal-box">
+          <div class="modal-header" style="margin-bottom:12px; border-bottom:1px solid rgba(239,68,68,0.2); padding-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:22px; line-height:1;">🗑️</span>
+              <div>
+                <div class="modal-title" id="confirm-delete-title" style="font-size:16px; font-weight:900; color:#ef4444; letter-spacing:0.5px;">
+                  CONFIRMAR ELIMINACIÓN
+                </div>
+                <div style="font-size:11px; color:var(--grey1); font-family:var(--font-mono);">Acción permanente en la plataforma</div>
+              </div>
+            </div>
+            <button class="modal-close" id="modal-confirm-delete-close" style="color:#94a3b8; font-size:22px; background:none; border:none; cursor:pointer;">×</button>
+          </div>
+
+          <div class="confirm-delete-preview">
+            <img id="confirm-delete-img" class="confirm-delete-preview-img" src="images/evento1.jpg" alt="Preview">
+            <div style="flex:1; min-width:0;">
+              <span id="confirm-delete-badge" style="font-size:10px; font-weight:800; font-family:var(--font-mono); color:var(--accent); text-transform:uppercase; background:rgba(180,247,50,0.1); padding:2px 6px; border-radius:4px; display:inline-block; margin-bottom:4px;">EVENTO CULTURAL</span>
+              <div id="confirm-delete-name" style="font-size:14px; font-weight:900; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Título del espectáculo</div>
+              <div id="confirm-delete-meta" style="font-size:11px; color:var(--grey1); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Fecha y Recinto</div>
+            </div>
+          </div>
+
+          <div class="confirm-delete-warning-box">
+            <span style="font-size:18px; line-height:1;">⚠️</span>
+            <div id="confirm-delete-warning-text">
+              ¿Estás seguro de que deseas eliminar permanentemente este evento de la cartelera cultural? Esta acción no se puede deshacer y retirará el evento de todas las búsquedas públicas y reservas.
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn-secondary" id="btn-cancel-delete" style="padding:10px 18px; font-size:12px; font-weight:800; border-radius:8px; cursor:pointer; background:rgba(255,255,255,0.06); color:#cbd5e1; border:1px solid rgba(255,255,255,0.12);">
+              Cancelar
+            </button>
+            <button type="button" id="btn-execute-delete" style="padding:10px 20px; font-size:12px; font-weight:900; border-radius:8px; cursor:pointer; background:linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color:#fff; border:none; box-shadow:0 4px 14px rgba(239,68,68,0.4); display:inline-flex; align-items:center; gap:6px;">
+              <span>🗑️</span> Sí, Eliminar de la Cartelera
+            </button>
+          </div>
         </div>
       </div>
 
@@ -7787,12 +8558,34 @@ const App = (() => {
     $('#modal-create-close').addEventListener('click', closeCreateModal);
     if ($('#modal-create-space-close')) $('#modal-create-space-close').addEventListener('click', closeSpaceCreateModal);
     $('#create-event-form').addEventListener('submit', handleCreateEventSubmit);
+    bindEventWizardControls();
+    setupCreateEventVenueSelect();
+    bindEventImageUploadControls();
+    const modalDeleteBtn = $('#btn-modal-delete-event');
+    if (modalDeleteBtn) {
+      modalDeleteBtn.addEventListener('click', async () => {
+        const idToDelete = editingEventId;
+        if (idToDelete) {
+          closeCreateModal();
+          await deleteEvent(idToDelete);
+        }
+      });
+    }
     if ($('#create-space-form')) $('#create-space-form').addEventListener('submit', handleCreateSpaceSubmit);
     $('#modal-admin-close').addEventListener('click', closeAdminModal);
     $('#modal-tickets-close').addEventListener('click', closeTicketsModal);
     if ($('#modal-kpi-detail-close')) {
       $('#modal-kpi-detail-close').addEventListener('click', () => hideModal('#modal-kpi-detail'));
     }
+    $('#modal-confirm-delete-close')?.addEventListener('click', closeConfirmDeleteModal);
+    $('#btn-cancel-delete')?.addEventListener('click', closeConfirmDeleteModal);
+    $('#btn-execute-delete')?.addEventListener('click', async () => {
+      if (typeof activeDeleteHandler === 'function') {
+        const handler = activeDeleteHandler;
+        activeDeleteHandler = null;
+        await handler();
+      }
+    });
     $('#btn-add-ticket-cart').addEventListener('click', () => {
       addToCart('Entrada General Quito Cultural', 15);
       closeTicketsModal();
@@ -7865,11 +8658,11 @@ const App = (() => {
     const el = (typeof selector === 'string') ? $(selector) : selector;
     if (!el) return;
 
-    // Close all other modals/offcanvas panels first, keeping modal-auth open underneath if opening legal terms/privacy
-    const isLegalDialog = el.id === 'modal-terms' || el.id === 'modal-privacy' || el.id === 'modal-email-confirm';
+    // Close all other modals/offcanvas panels first, keeping parent modal open underneath if opening legal or confirm dialog
+    const isOverlayDialog = el.id === 'modal-terms' || el.id === 'modal-privacy' || el.id === 'modal-email-confirm' || el.id === 'modal-confirm-delete';
     $$('.modal-overlay, .offcanvas-overlay').forEach(m => {
       if (m !== el) {
-        if (isLegalDialog && m.id === 'modal-auth') return;
+        if (isOverlayDialog && (m.id === 'modal-auth' || m.id === 'modal-event-detail' || m.id === 'modal-create')) return;
         hideModal(m);
       }
     });
@@ -8717,6 +9510,101 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
   let editingSpaceId = null;
   let currentCreateSpaceStep = 1;
 
+  const quitoSectorCoordinates = {
+    'La Floresta': { lat: -0.2095, lng: -78.4845 },
+    'Centro Histórico': { lat: -0.2205, lng: -78.5135 },
+    'La Mariscal': { lat: -0.2028, lng: -78.4912 },
+    'Cumbayá': { lat: -0.2045, lng: -78.4350 },
+    'Guápulo': { lat: -0.2030, lng: -78.4770 },
+    'Norte de Quito': { lat: -0.1800, lng: -78.4850 },
+    'Sur de Quito': { lat: -0.2600, lng: -78.5200 }
+  };
+
+  let spacePinMap = null;
+  let spacePinMarker = null;
+
+  function initOrUpdateSpacePinMap() {
+    const mapContainer = document.getElementById('space-pin-map');
+    if (!mapContainer || typeof L === 'undefined') return;
+
+    let lat = parseFloat(document.getElementById('sp-lat')?.value);
+    let lng = parseFloat(document.getElementById('sp-lng')?.value);
+    if (isNaN(lat) || isNaN(lng) || lat === 0) {
+      const sectorVal = document.getElementById('sp-sector')?.value || 'La Floresta';
+      const sectorDef = quitoSectorCoordinates[sectorVal] || { lat: -0.2095, lng: -78.4845 };
+      lat = sectorDef.lat;
+      lng = sectorDef.lng;
+    }
+
+    const pinIcon = L.divIcon({
+      html: `<div style="width:34px; height:34px; background:var(--accent); border-radius:50%; border:3px solid #000; box-shadow:0 0 16px var(--accent); display:flex; align-items:center; justify-content:center; color:#000; font-size:18px; font-weight:bold; cursor:grab;">📍</div>`,
+      className: '',
+      iconSize: [34, 34],
+      iconAnchor: [17, 32]
+    });
+
+    const updatePinLocation = (newLat, newLng) => {
+      const fixedLat = Number(newLat).toFixed(6);
+      const fixedLng = Number(newLng).toFixed(6);
+      const latInput = document.getElementById('sp-lat');
+      const lngInput = document.getElementById('sp-lng');
+      const mapsUrlInput = document.getElementById('sp-maps-url');
+      const coordsText = document.getElementById('pin-coords-val');
+
+      if (latInput) latInput.value = fixedLat;
+      if (lngInput) lngInput.value = fixedLng;
+      if (coordsText) coordsText.textContent = `${fixedLat}, ${fixedLng}`;
+
+      if (mapsUrlInput && (!mapsUrlInput.value || mapsUrlInput.value.includes('google.com/maps?q='))) {
+        mapsUrlInput.value = `https://www.google.com/maps?q=${fixedLat},${fixedLng}`;
+      }
+    };
+
+    if (!spacePinMap) {
+      if (mapContainer._leaflet_id) {
+        mapContainer._leaflet_id = null;
+        mapContainer.innerHTML = '';
+      }
+
+      spacePinMap = L.map('space-pin-map', {
+        zoomControl: true,
+        attributionControl: false
+      }).setView([lat, lng], 15);
+
+      L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        subdomains: '0123',
+        maxZoom: 20,
+        className: 'google-maps-dark-tiles'
+      }).addTo(spacePinMap);
+
+      spacePinMarker = L.marker([lat, lng], {
+        icon: pinIcon,
+        draggable: true
+      }).addTo(spacePinMap);
+
+      spacePinMarker.on('dragend', (e) => {
+        const pos = e.target.getLatLng();
+        updatePinLocation(pos.lat, pos.lng);
+        showToast(`📍 Pin fijado en: ${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}`);
+      });
+
+      spacePinMap.on('click', (e) => {
+        spacePinMarker.setLatLng(e.latlng);
+        updatePinLocation(e.latlng.lat, e.latlng.lng);
+        showToast(`📍 Pin ubicado en: ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+      });
+    } else {
+      spacePinMap.invalidateSize();
+      if (spacePinMarker) {
+        spacePinMarker.setLatLng([lat, lng]);
+      }
+      spacePinMap.setView([lat, lng], 15);
+    }
+
+    const coordsText = document.getElementById('pin-coords-val');
+    if (coordsText) coordsText.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  }
+
   function setCreateSpaceStep(stepNum) {
     currentCreateSpaceStep = stepNum;
     for (let i = 1; i <= 4; i++) {
@@ -8737,22 +9625,319 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     const btnNext = document.getElementById('btn-space-step-next');
     if (btnPrev) btnPrev.style.display = (stepNum > 1) ? 'block' : 'none';
     if (btnNext) btnNext.style.display = (stepNum < 4) ? 'block' : 'none';
+
+    if (stepNum === 2) {
+      setTimeout(() => {
+        initOrUpdateSpacePinMap();
+      }, 80);
+    }
+  }
+
+  function advanceSpaceStep() {
+    if (currentCreateSpaceStep === 1) {
+      const nameInput = document.getElementById('sp-name');
+      if (!nameInput || !nameInput.value.trim()) {
+        showToast('⚠️ Por favor ingresa el nombre de tu espacio cultural.');
+        if (nameInput) nameInput.focus();
+        return;
+      }
+    } else if (currentCreateSpaceStep === 2) {
+      const addrInput = document.getElementById('sp-address');
+      const capInput = document.getElementById('sp-capacity');
+      if (!addrInput || !addrInput.value.trim()) {
+        showToast('⚠️ Por favor ingresa la dirección exacta de tu recinto.');
+        if (addrInput) addrInput.focus();
+        return;
+      }
+      if (!capInput || parseInt(capInput.value) <= 0) {
+        showToast('⚠️ Por favor ingresa un aforo máximo válido.');
+        if (capInput) capInput.focus();
+        return;
+      }
+    }
+    if (currentCreateSpaceStep < 4) {
+      setCreateSpaceStep(currentCreateSpaceStep + 1);
+    }
+  }
+
+  function handleSpaceImageUpload(file) {
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('⚠️ La imagen no debe superar los 15MB.');
+      return;
+    }
+
+    showToast('⏳ Optimizando imagen de portada...');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1600;
+        const maxH = 1200;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const spImgInput = document.getElementById('sp-image');
+        if (spImgInput) spImgInput.value = optimizedDataUrl;
+
+        const thumb = document.getElementById('sp-image-preview-thumb');
+        const previewBox = document.getElementById('sp-image-preview-box');
+        const dropContent = document.getElementById('sp-image-dropzone-content');
+        const nameLabel = document.getElementById('sp-image-preview-name');
+        if (thumb) thumb.src = optimizedDataUrl;
+        if (nameLabel) nameLabel.textContent = `✓ ${file.name} (${Math.round(optimizedDataUrl.length * 0.75 / 1024)} KB)`;
+        if (previewBox) previewBox.style.display = 'flex';
+        if (dropContent) dropContent.style.display = 'none';
+
+        fetch(`${API_BASE}/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: optimizedDataUrl, filename: file.name })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.url && spImgInput) spImgInput.value = data.url;
+          showToast('📸 Foto de portada cargada exitosamente.');
+        })
+        .catch(() => {
+          showToast('📸 Foto lista en memoria para guardar.');
+        });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleSpacePermitsUpload(file) {
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('⚠️ El documento no debe superar los 15MB.');
+      return;
+    }
+
+    showToast('⏳ Procesando documento de permiso...');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      const fileInputHidden = document.getElementById('sp-permits-file');
+      const filenameHidden = document.getElementById('sp-permits-filename');
+      const fileInfo = document.getElementById('sp-permits-file-info');
+      const dropContent = document.getElementById('sp-permits-dropzone-content');
+      const nameLabel = document.getElementById('sp-permits-file-name-label');
+
+      if (fileInputHidden) fileInputHidden.value = dataUrl;
+      if (filenameHidden) filenameHidden.value = file.name;
+      if (nameLabel) nameLabel.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
+      if (fileInfo) fileInfo.style.display = 'flex';
+      if (dropContent) dropContent.style.display = 'none';
+
+      fetch(`${API_BASE}/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: dataUrl, filename: file.name })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.url && fileInputHidden) fileInputHidden.value = data.url;
+        showToast('📄 Permiso de funcionamiento cargado para verificación.');
+      })
+      .catch(() => {
+        showToast('📄 Permiso listo para revisión administrativa.');
+      });
+    };
+    reader.readAsDataURL(file);
   }
 
   function bindSpaceStepEvents() {
     setCreateSpaceStep(1);
+
+    // Navegación de pestañas
     document.querySelectorAll('.btn-space-step').forEach(btn => {
       btn.onclick = () => setCreateSpaceStep(parseInt(btn.dataset.step));
     });
-    if ($('#btn-space-step-prev')) {
-      $('#btn-space-step-prev').onclick = () => {
+
+    // Botones Anterior / Siguiente
+    const btnPrev = document.getElementById('btn-space-step-prev');
+    if (btnPrev) {
+      btnPrev.onclick = () => {
         if (currentCreateSpaceStep > 1) setCreateSpaceStep(currentCreateSpaceStep - 1);
       };
     }
-    if ($('#btn-space-step-next')) {
-      $('#btn-space-step-next').onclick = () => {
-        if (currentCreateSpaceStep < 4) setCreateSpaceStep(currentCreateSpaceStep + 1);
+    const btnNext = document.getElementById('btn-space-step-next');
+    if (btnNext) {
+      btnNext.onclick = advanceSpaceStep;
+    }
+
+    // Actualización de coordenadas por sector y pin interactivo
+    const sectorSelect = document.getElementById('sp-sector');
+    const latInput = document.getElementById('sp-lat');
+    const lngInput = document.getElementById('sp-lng');
+    const coordsValText = document.getElementById('pin-coords-val');
+    const mapsUrlInput = document.getElementById('sp-maps-url');
+
+    if (sectorSelect) {
+      sectorSelect.onchange = () => {
+        const sectorVal = sectorSelect.value;
+        const coords = quitoSectorCoordinates[sectorVal] || { lat: -0.2095, lng: -78.4845 };
+        if (latInput) latInput.value = coords.lat.toFixed(6);
+        if (lngInput) lngInput.value = coords.lng.toFixed(6);
+        if (coordsValText) coordsValText.textContent = `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
+
+        if (spacePinMap && spacePinMarker) {
+          spacePinMarker.setLatLng([coords.lat, coords.lng]);
+          spacePinMap.flyTo([coords.lat, coords.lng], 15, { duration: 0.8 });
+        }
+        if (mapsUrlInput && (!mapsUrlInput.value || mapsUrlInput.value.includes('google.com/maps?q='))) {
+          mapsUrlInput.value = `https://www.google.com/maps?q=${coords.lat.toFixed(6)},${coords.lng.toFixed(6)}`;
+        }
       };
+    }
+
+    // Sincronización manual de lat/lng hacia el pin
+    const handleManualCoordChange = () => {
+      const manualLat = parseFloat(latInput?.value);
+      const manualLng = parseFloat(lngInput?.value);
+      if (!isNaN(manualLat) && !isNaN(manualLng) && spacePinMap && spacePinMarker) {
+        spacePinMarker.setLatLng([manualLat, manualLng]);
+        spacePinMap.panTo([manualLat, manualLng]);
+        if (coordsValText) coordsValText.textContent = `${manualLat.toFixed(6)}, ${manualLng.toFixed(6)}`;
+      }
+    };
+    if (latInput) latInput.oninput = handleManualCoordChange;
+    if (lngInput) lngInput.oninput = handleManualCoordChange;
+
+    // Botón Mi Ubicación Actual (Geolocalización GPS)
+    const btnMyLocation = document.getElementById('btn-use-my-location');
+    if (btnMyLocation) {
+      btnMyLocation.onclick = () => {
+        if (!navigator.geolocation) {
+          showToast('⚠️ Tu navegador no soporta geolocalización GPS.');
+          return;
+        }
+        showToast('📡 Obteniendo tu ubicación satelital...');
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const uLat = pos.coords.latitude;
+            const uLng = pos.coords.longitude;
+            if (latInput) latInput.value = uLat.toFixed(6);
+            if (lngInput) lngInput.value = uLng.toFixed(6);
+            if (coordsValText) coordsValText.textContent = `${uLat.toFixed(6)}, ${uLng.toFixed(6)}`;
+            if (spacePinMap && spacePinMarker) {
+              spacePinMarker.setLatLng([uLat, uLng]);
+              spacePinMap.flyTo([uLat, uLng], 17, { duration: 1 });
+            }
+            if (mapsUrlInput && (!mapsUrlInput.value || mapsUrlInput.value.includes('google.com/maps?q='))) {
+              mapsUrlInput.value = `https://www.google.com/maps?q=${uLat.toFixed(6)},${uLng.toFixed(6)}`;
+            }
+            showToast('🎯 Pin fijado en tu ubicación GPS actual.');
+          },
+          () => {
+            showToast('⚠️ No se pudo obtener la ubicación (permiso denegado). Puedes hacer clic en el mapa para ubicar el pin.');
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      };
+    }
+
+    // Botón Buscar en Google Maps
+    const btnSearchGmaps = document.getElementById('btn-search-gmaps');
+    if (btnSearchGmaps) {
+      btnSearchGmaps.onclick = () => {
+        const spName = document.getElementById('sp-name') ? document.getElementById('sp-name').value : '';
+        const spAddr = document.getElementById('sp-address') ? document.getElementById('sp-address').value : '';
+        const spSec = document.getElementById('sp-sector') ? document.getElementById('sp-sector').value : '';
+        const query = [spName, spAddr, spSec, 'Quito, Ecuador'].filter(Boolean).join(' ');
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
+        showToast('🗺️ Abriendo Google Maps para ubicar tu espacio.');
+      };
+    }
+
+    // Upload de imagen de portada
+    const imgDropzone = document.getElementById('sp-image-dropzone');
+    const imgFileInput = document.getElementById('sp-image-file-input');
+    if (imgDropzone && imgFileInput) {
+      imgDropzone.onclick = (e) => {
+        if (e.target.tagName !== 'INPUT') imgFileInput.click();
+      };
+      imgFileInput.onchange = (e) => {
+        if (e.target.files && e.target.files[0]) handleSpaceImageUpload(e.target.files[0]);
+      };
+      imgDropzone.ondragover = (e) => { e.preventDefault(); imgDropzone.style.borderColor = 'var(--accent)'; };
+      imgDropzone.ondragleave = () => { imgDropzone.style.borderColor = '#475569'; };
+      imgDropzone.ondrop = (e) => {
+        e.preventDefault();
+        imgDropzone.style.borderColor = '#475569';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) handleSpaceImageUpload(e.dataTransfer.files[0]);
+      };
+    }
+
+    // Presets rápidos de fotos
+    document.querySelectorAll('.btn-preset-space-img').forEach(btn => {
+      btn.onclick = () => {
+        const imgUrl = btn.dataset.img;
+        const spImgInput = document.getElementById('sp-image');
+        if (spImgInput) spImgInput.value = imgUrl;
+        const thumb = document.getElementById('sp-image-preview-thumb');
+        const previewBox = document.getElementById('sp-image-preview-box');
+        const dropContent = document.getElementById('sp-image-dropzone-content');
+        if (thumb) thumb.src = imgUrl;
+        if (previewBox) previewBox.style.display = 'flex';
+        if (dropContent) dropContent.style.display = 'none';
+        showToast('🖼️ Imagen de portada preestablecida seleccionada.');
+      };
+    });
+
+    // Upload de permisos de funcionamiento
+    const permitDropzone = document.getElementById('sp-permits-dropzone');
+    const permitFileInput = document.getElementById('sp-permits-file-input');
+    const btnRemovePermit = document.getElementById('btn-remove-permit-file');
+    if (permitDropzone && permitFileInput) {
+      permitDropzone.onclick = (e) => {
+        if (e.target.id === 'btn-remove-permit-file' || e.target.closest('#btn-remove-permit-file')) return;
+        if (e.target.tagName !== 'INPUT') permitFileInput.click();
+      };
+      permitFileInput.onchange = (e) => {
+        if (e.target.files && e.target.files[0]) handleSpacePermitsUpload(e.target.files[0]);
+      };
+      permitDropzone.ondragover = (e) => { e.preventDefault(); permitDropzone.style.borderColor = 'var(--gold)'; };
+      permitDropzone.ondragleave = () => { permitDropzone.style.borderColor = '#ca8a04'; };
+      permitDropzone.ondrop = (e) => {
+        e.preventDefault();
+        permitDropzone.style.borderColor = '#ca8a04';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) handleSpacePermitsUpload(e.dataTransfer.files[0]);
+      };
+    }
+    if (btnRemovePermit) {
+      btnRemovePermit.onclick = (e) => {
+        e.stopPropagation();
+        const fileInputHidden = document.getElementById('sp-permits-file');
+        const filenameHidden = document.getElementById('sp-permits-filename');
+        const fileInfo = document.getElementById('sp-permits-file-info');
+        const dropContent = document.getElementById('sp-permits-dropzone-content');
+        if (fileInputHidden) fileInputHidden.value = '';
+        if (filenameHidden) filenameHidden.value = '';
+        if (fileInfo) fileInfo.style.display = 'none';
+        if (dropContent) dropContent.style.display = 'flex';
+        showToast('Documento de permiso removido.');
+      };
+    }
+
+    // Modal submit listener
+    const form = document.getElementById('create-space-form');
+    if (form) {
+      form.onsubmit = handleCreateSpaceSubmit;
     }
   }
 
@@ -8760,18 +9945,45 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     if (currentUser.role === 'invitado') { openAuthModal(); return; }
     editingSpaceId = null;
     const titleEl = document.getElementById('modal-create-space-title');
-    if (titleEl) titleEl.textContent = '🏛️ REGISTRAR NUEVO ESPACIO CULTURAL EN QUITO';
+    if (titleEl) titleEl.textContent = '🏛️ REGISTRAR MI ESPACIO CULTURAL EN QUITO';
     const form = document.getElementById('create-space-form');
     if (form) form.reset();
+
     if ($('#sp-name')) $('#sp-name').value = '';
     if ($('#sp-type')) $('#sp-type').value = 'ESPACIO CULTURAL';
     if ($('#sp-sector')) $('#sp-sector').value = 'La Floresta';
     if ($('#sp-capacity')) $('#sp-capacity').value = 200;
     if ($('#sp-address')) $('#sp-address').value = 'Calle Galavis E9-35 e Isabel La Católica';
+    if ($('#sp-maps-url')) $('#sp-maps-url').value = '';
+    if ($('#sp-lat')) $('#sp-lat').value = '-0.2095';
+    if ($('#sp-lng')) $('#sp-lng').value = '-78.4845';
     if ($('#sp-hours')) $('#sp-hours').value = 'Mar–Sáb: 10:00–22:00';
     if ($('#sp-categories')) $('#sp-categories').value = 'Arte Contemporáneo, Exposiciones, Música';
     if ($('#sp-image')) $('#sp-image').value = 'images/space_nave01.jpg';
-    if ($('#sp-desc')) $('#sp-desc').value = 'Laboratorio de creación y espacio cultural independiente en Quito.';
+    if ($('#sp-desc')) $('#sp-desc').value = 'Espacio cultural independiente en Quito enfocado en la creación artística.';
+    if ($('#sp-permits-file')) $('#sp-permits-file').value = '';
+    if ($('#sp-permits-filename')) $('#sp-permits-filename').value = '';
+    if (document.getElementById('pin-coords-val')) {
+      document.getElementById('pin-coords-val').textContent = '-0.209500, -78.484500';
+    }
+
+    const previewBox = document.getElementById('sp-image-preview-box');
+    const dropContent = document.getElementById('sp-image-dropzone-content');
+    if (previewBox) previewBox.style.display = 'none';
+    if (dropContent) dropContent.style.display = 'flex';
+
+    const permitInfo = document.getElementById('sp-permits-file-info');
+    const permitDrop = document.getElementById('sp-permits-dropzone-content');
+    if (permitInfo) permitInfo.style.display = 'none';
+    if (permitDrop) permitDrop.style.display = 'flex';
+
+    const submitBtn = document.getElementById('btn-submit-space-form');
+    if (submitBtn) {
+      submitBtn.textContent = (currentUser.role === 'admin')
+        ? '🏛️ PUBLICAR ESPACIO CULTURAL INMEDIATAMENTE'
+        : '🏛️ ENVIAR ESPACIO A MODERACIÓN ADMINISTRATIVA';
+    }
+
     bindSpaceStepEvents();
     showModal('#modal-create-space');
   }
@@ -8782,19 +9994,51 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     if (!sp) return;
     editingSpaceId = spaceId;
     const titleEl = document.getElementById('modal-create-space-title');
-    if (titleEl) titleEl.textContent = `✏️ EDITAR PERFIL DE MI ESPACIO: ${sp.name}`;
+    if (titleEl) titleEl.textContent = `✏️ EDITAR PERFIL DE MI RECINTO: ${sp.name}`;
+
     if ($('#sp-name')) $('#sp-name').value = sp.name || '';
     if ($('#sp-type')) $('#sp-type').value = sp.type || 'ESPACIO CULTURAL';
     if ($('#sp-sector')) $('#sp-sector').value = sp.sector || 'La Floresta';
     if ($('#sp-capacity')) $('#sp-capacity').value = sp.capacity || 200;
     if ($('#sp-address')) $('#sp-address').value = sp.address || '';
+    if ($('#sp-maps-url')) $('#sp-maps-url').value = sp.google_maps_url || '';
+    if ($('#sp-lat')) $('#sp-lat').value = sp.lat || -0.2095;
+    if ($('#sp-lng')) $('#sp-lng').value = sp.lng || -78.4845;
+    if (document.getElementById('pin-coords-val') && sp.lat && sp.lng) {
+      document.getElementById('pin-coords-val').textContent = `${Number(sp.lat).toFixed(6)}, ${Number(sp.lng).toFixed(6)}`;
+    }
     if ($('#sp-hours')) $('#sp-hours').value = sp.hours || 'Mar–Sáb: 10:00–22:00';
+
     let catText = sp.categories;
     if (Array.isArray(catText)) catText = catText.join(', ');
     try { if (typeof catText === 'string' && catText.startsWith('[')) catText = JSON.parse(catText).join(', '); } catch(e){}
     if ($('#sp-categories')) $('#sp-categories').value = catText || 'Arte, Música, Teatro';
     if ($('#sp-image')) $('#sp-image').value = sp.image || 'images/space_nave01.jpg';
     if ($('#sp-desc')) $('#sp-desc').value = sp.description || '';
+    if ($('#sp-permits-file')) $('#sp-permits-file').value = sp.permits_file || '';
+    if ($('#sp-permits-filename')) $('#sp-permits-filename').value = sp.permits_filename || '';
+
+    const previewBox = document.getElementById('sp-image-preview-box');
+    const dropContent = document.getElementById('sp-image-dropzone-content');
+    const thumb = document.getElementById('sp-image-preview-thumb');
+    if (sp.image) {
+      if (thumb) thumb.src = sp.image;
+      if (previewBox) previewBox.style.display = 'flex';
+      if (dropContent) dropContent.style.display = 'none';
+    }
+
+    const permitInfo = document.getElementById('sp-permits-file-info');
+    const permitDrop = document.getElementById('sp-permits-dropzone-content');
+    const nameLabel = document.getElementById('sp-permits-file-name-label');
+    if (sp.permits_file) {
+      if (nameLabel) nameLabel.textContent = sp.permits_filename || 'Permiso_LUAE_cargado';
+      if (permitInfo) permitInfo.style.display = 'flex';
+      if (permitDrop) permitDrop.style.display = 'none';
+    }
+
+    const submitBtn = document.getElementById('btn-submit-space-form');
+    if (submitBtn) submitBtn.textContent = '💾 GUARDAR CAMBIOS DEL RECINTO';
+
     bindSpaceStepEvents();
     showModal('#modal-create-space');
   }
@@ -8808,22 +10052,123 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     openSpaceCreateModal();
   }
 
+  function openViewPermitModal(fileUrl, filename, spaceName) {
+    if (!fileUrl) {
+      showToast('⚠️ No se ha adjuntado ningún documento de permiso.');
+      return;
+    }
+    const modal = document.getElementById('modal-view-permit');
+    const titleEl = document.getElementById('modal-view-permit-title');
+    const subEl = document.getElementById('modal-view-permit-sub');
+    const bodyEl = document.getElementById('modal-view-permit-body');
+    const extLink = document.getElementById('btn-view-permit-external');
+    const closeBtn = document.getElementById('modal-view-permit-close');
+    const closeBottomBtn = document.getElementById('btn-view-permit-close-btn');
+
+    if (titleEl) titleEl.textContent = `📄 PERMISO: ${spaceName}`;
+    if (subEl) subEl.textContent = `Archivo adjunto: ${filename}`;
+    if (extLink) extLink.href = fileUrl;
+
+    const isPdf = fileUrl.toLowerCase().includes('application/pdf') || fileUrl.toLowerCase().endsWith('.pdf') || (filename && filename.toLowerCase().endsWith('.pdf'));
+
+    if (bodyEl) {
+      if (isPdf) {
+        bodyEl.innerHTML = `
+          <div style="width:100%; height:480px; display:flex; flex-direction:column; gap:8px;">
+            <iframe src="${fileUrl}" style="width:100%; height:100%; border:none; border-radius:6px; background:#fff;"></iframe>
+          </div>
+        `;
+      } else {
+        bodyEl.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; width:100%;">
+            <img src="${fileUrl}" style="max-width:100%; max-height:480px; object-fit:contain; border-radius:6px; box-shadow:0 10px 25px rgba(0,0,0,0.5);" alt="Permiso de Funcionamiento">
+          </div>
+        `;
+      }
+    }
+
+    if (closeBtn) closeBtn.onclick = closeViewPermitModal;
+    if (closeBottomBtn) closeBottomBtn.onclick = closeViewPermitModal;
+
+    showModal('#modal-view-permit');
+  }
+
+  function closeViewPermitModal() {
+    hideModal('#modal-view-permit');
+  }
+
+  async function setSpaceStatus(spaceId, status) {
+    try {
+      const target = apiSpaces.find(s => String(s.id) === String(spaceId));
+      if (target) target.status = status;
+
+      const res = await fetch(`${API_BASE}/spaces/${spaceId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        showToast(status === 'approved' ? '🏛️ Espacio Cultural APROBADO y publicado en el mapa de Quito.' : '❌ Espacio Cultural RECHAZADO.');
+      } else {
+        showToast(status === 'approved' ? '🏛️ Espacio APROBADO.' : '❌ Espacio RECHAZADO.');
+      }
+    } catch (e) {
+      const target = apiSpaces.find(s => String(s.id) === String(spaceId));
+      if (target) target.status = status;
+      showToast(status === 'approved' ? '🏛️ Espacio APROBADO.' : '❌ Espacio RECHAZADO.');
+    }
+    await loadInitialData();
+    renderTopbar();
+    if (currentView === 'admin') {
+      const viewEl = document.getElementById('view-admin');
+      if (viewEl) renderAdminDashboardView(viewEl);
+    } else if (currentView === 'spaces-map') {
+      const viewEl = document.getElementById('view-spaces-map');
+      if (viewEl) renderSpacesMapView(viewEl);
+    } else if (currentView === 'space') {
+      const viewEl = document.getElementById('view-space');
+      if (viewEl) renderSpaceStudioView(viewEl);
+    }
+  }
+
   async function handleCreateSpaceSubmit(e) {
     e.preventDefault();
+    const nameVal = $('#sp-name') ? $('#sp-name').value.trim() : '';
+    const addrVal = $('#sp-address') ? $('#sp-address').value.trim() : '';
+    const capVal = $('#sp-capacity') ? parseInt($('#sp-capacity').value) : 200;
+
+    if (!nameVal) {
+      setCreateSpaceStep(1);
+      showToast('⚠️ Por favor ingresa el nombre de tu espacio cultural.');
+      return;
+    }
+    if (!addrVal) {
+      setCreateSpaceStep(2);
+      showToast('⚠️ Por favor ingresa la dirección exacta de tu recinto.');
+      return;
+    }
+
     const catsInput = $('#sp-categories') ? $('#sp-categories').value : '';
     const catArray = catsInput.split(',').map(c => c.trim()).filter(Boolean);
 
     const spaceData = {
-      name: $('#sp-name').value,
-      type: $('#sp-type').value,
-      sector: $('#sp-sector').value,
-      capacity: parseInt($('#sp-capacity').value) || 200,
-      address: $('#sp-address').value,
-      hours: $('#sp-hours').value,
+      name: nameVal,
+      type: $('#sp-type') ? $('#sp-type').value : 'ESPACIO CULTURAL',
+      sector: $('#sp-sector') ? $('#sp-sector').value : 'La Floresta',
+      capacity: capVal || 200,
+      address: addrVal,
+      google_maps_url: $('#sp-maps-url') ? $('#sp-maps-url').value.trim() : '',
+      lat: $('#sp-lat') ? parseFloat($('#sp-lat').value) || -0.2095 : -0.2095,
+      lng: $('#sp-lng') ? parseFloat($('#sp-lng').value) || -78.4845 : -78.4845,
+      hours: $('#sp-hours') ? $('#sp-hours').value : 'Mar–Sáb: 10:00–22:00',
       categories: catArray.length ? catArray : ['Arte', 'Cultura'],
-      image: $('#sp-image').value || 'images/space_nave01.jpg',
-      description: $('#sp-desc').value,
-      owner_id: currentUser.id
+      image: $('#sp-image') ? $('#sp-image').value || 'images/space_nave01.jpg' : 'images/space_nave01.jpg',
+      description: $('#sp-desc') ? $('#sp-desc').value : '',
+      permits_file: $('#sp-permits-file') ? $('#sp-permits-file').value : '',
+      permits_filename: $('#sp-permits-filename') ? $('#sp-permits-filename').value : '',
+      owner_id: currentUser.id,
+      role: currentUser.role,
+      status: (currentUser.role === 'admin') ? 'approved' : 'pending'
     };
 
     try {
@@ -8835,7 +10180,11 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         body: JSON.stringify(spaceData)
       });
       if (res.ok) {
-        const toastMsg = editingSpaceId ? `✏️ Espacio "${spaceData.name}" actualizado con éxito.` : `🏛️ Espacio "${spaceData.name}" registrado con éxito.`;
+        const toastMsg = editingSpaceId 
+          ? `✏️ Espacio "${spaceData.name}" actualizado con éxito.` 
+          : (currentUser.role === 'admin' 
+              ? `🏛️ Espacio "${spaceData.name}" registrado y publicado con éxito.` 
+              : `🏛️ ¡Espacio enviado a revisión! El Administrador de KAWSAY revisará la información, ubicación y permisos para su aprobación oficial.`);
         showToast(toastMsg);
         closeSpaceCreateModal();
         editingSpaceId = null;
@@ -8844,7 +10193,10 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         renderSidebar();
         renderTopbar();
         if (currentView === 'home') renderHomeView();
-        else if (currentView === 'space') {
+        else if (currentView === 'spaces-map') {
+          const viewEl = document.getElementById('view-spaces-map');
+          if (viewEl) renderSpacesMapView(viewEl);
+        } else if (currentView === 'space') {
           const viewEl = document.getElementById('view-space');
           if (viewEl) renderSpaceStudioView(viewEl);
         } else if (currentView === 'admin') {
@@ -8860,81 +10212,229 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     }
   }
 
+  let activeDeleteHandler = null;
+
+  function openConfirmDeleteModal(options) {
+    const {
+      title = 'CONFIRMAR ELIMINACIÓN',
+      badge = 'EVENTO CULTURAL',
+      name = 'Elemento seleccionado',
+      meta = '',
+      image = 'images/evento1.jpg',
+      warning = '¿Estás seguro de que deseas eliminar permanentemente este elemento de la cartelera cultural? Esta acción no se puede deshacer.',
+      confirmText = 'Sí, Eliminar de la Cartelera',
+      onConfirm = () => {}
+    } = options;
+
+    const modal = $('#modal-confirm-delete');
+    if (!modal) {
+      if (confirm(`¿Estás seguro de que deseas eliminar permanentemente "${name}"?`)) {
+        onConfirm();
+      }
+      return;
+    }
+
+    const titleEl = $('#confirm-delete-title');
+    const badgeEl = $('#confirm-delete-badge');
+    const nameEl = $('#confirm-delete-name');
+    const metaEl = $('#confirm-delete-meta');
+    const warningEl = $('#confirm-delete-warning-text');
+    const imgEl = $('#confirm-delete-img');
+    const btnExecute = $('#btn-execute-delete');
+
+    if (titleEl) titleEl.textContent = title;
+    if (badgeEl) badgeEl.textContent = badge;
+    if (nameEl) nameEl.textContent = name;
+    if (metaEl) metaEl.textContent = meta;
+    if (warningEl) warningEl.textContent = warning;
+    if (imgEl) {
+      imgEl.src = image || 'images/evento1.jpg';
+      imgEl.onerror = () => { imgEl.src = 'images/evento1.jpg'; };
+    }
+    if (btnExecute) {
+      btnExecute.innerHTML = `<span>🗑️</span> ${confirmText}`;
+    }
+
+    activeDeleteHandler = onConfirm;
+    showModal('#modal-confirm-delete');
+  }
+
+  function closeConfirmDeleteModal() {
+    activeDeleteHandler = null;
+    hideModal('#modal-confirm-delete');
+  }
+
   async function deleteSpace(spaceId) {
-    if (!confirm('¿Estás seguro de que deseas eliminar este espacio cultural?')) return;
-    try {
-      const res = await fetch(`${API_BASE}/spaces/${spaceId}`, { method: 'DELETE' });
-      if (res.ok) {
-        showToast('🗑️ Espacio cultural eliminado.');
-        await loadInitialData();
-        if (currentView === 'space') {
-          const viewEl = document.getElementById('view-space');
-          if (viewEl) renderSpaceStudioView(viewEl);
-        } else if (currentView === 'admin') {
-          const viewEl = document.getElementById('view-admin');
-          if (viewEl) renderAdminDashboardView(viewEl);
-        } else {
-          renderHomeView();
+    const sp = apiSpaces.find(s => String(s.id) === String(spaceId));
+    const name = sp ? sp.name : 'este espacio cultural';
+    const sector = sp ? (sp.sector || 'Quito') : 'Quito';
+    const image = sp ? (sp.image || 'images/space_nave01.jpg') : 'images/space_nave01.jpg';
+
+    openConfirmDeleteModal({
+      title: 'CONFIRMAR ELIMINACIÓN DE RECINTO CULTURAL',
+      badge: sp ? (sp.type || 'ESPACIO CULTURAL') : 'ESPACIO CULTURAL',
+      name: name,
+      meta: `📍 ${sector} · Aforo: ${sp ? (sp.capacity || 200) : 200} pers.`,
+      image: image,
+      warning: `¿Estás seguro de que deseas eliminar permanentemente el espacio "${name}"? Esta acción removerá el recinto del directorio y de todas las salas vinculadas.`,
+      confirmText: 'Sí, Eliminar Espacio',
+      onConfirm: async () => {
+        closeConfirmDeleteModal();
+
+        // 1. Animación suave de salida sin congelar la app
+        addDeletedSpaceId(spaceId);
+        const matchedCards = Array.from(document.querySelectorAll(`.space-card[data-id="${spaceId}"]`));
+        matchedCards.forEach(c => c.classList.add('card-deleting'));
+
+        // 2. Actualizar datos locales al instante
+        apiSpaces = apiSpaces.filter(s => String(s.id) !== String(spaceId));
+        showToast(`🗑️ Espacio cultural "${name}" eliminado.`);
+
+        // 3. Retirar físicamente del DOM tras finalizar la animación
+        setTimeout(() => {
+          matchedCards.forEach(c => {
+            if (c && c.parentNode) c.remove();
+          });
+        }, 320);
+
+        // 4. Sincronizar en segundo plano
+        try {
+          await fetch(`${API_BASE}/spaces/${spaceId}`, { method: 'DELETE' });
+        } catch (e) {
+          console.warn('Error en segundo plano al eliminar espacio:', e);
         }
       }
-    } catch (e) {
-      showToast('Error al eliminar el espacio.');
-    }
+    });
   }
 
   async function deleteEvent(eventId) {
-    if (!confirm('¿Estás seguro de que deseas eliminar este evento de la cartelera?')) return;
-    try {
-      const res = await fetch(`${API_BASE}/events/${eventId}`, { method: 'DELETE' });
-      if (res.ok) {
-        showToast('🗑️ Evento eliminado de la base de datos.');
-        await loadInitialData();
-        if (currentView === 'admin') {
-          const viewEl = document.getElementById('view-admin');
-          if (viewEl) renderAdminDashboardView(viewEl);
-        } else if (currentView === 'artist') {
-          const viewEl = document.getElementById('view-artist');
-          if (viewEl) renderArtistStudioView(viewEl);
-        } else if (currentView === 'space') {
-          const viewEl = document.getElementById('view-space');
-          if (viewEl) renderSpaceStudioView(viewEl);
-        } else {
-          renderHomeView();
+    const ev = apiEvents.find(e => String(e.id) === String(eventId)) ||
+      (typeof KAWSAY_DATA !== 'undefined' && KAWSAY_DATA.weekEvents && KAWSAY_DATA.weekEvents.find(e => String(e.id) === String(eventId))) ||
+      (typeof convocatoriasList !== 'undefined' && convocatoriasList.find(c => String(c.id) === String(eventId)));
+
+    const title = ev ? ev.title : 'este espectáculo';
+    const category = ev ? (ev.category || 'CULTURA') : 'EVENTO CULTURAL';
+    const venue = ev ? (ev.venue || 'Quito') : 'Quito';
+    const date = ev ? (ev.date || '') : '';
+    const image = ev ? (ev.image || 'images/evento1.jpg') : 'images/evento1.jpg';
+
+    openConfirmDeleteModal({
+      title: 'CONFIRMAR ELIMINACIÓN DE ESPECTÁCULO',
+      badge: category,
+      name: title,
+      meta: `${date ? date + ' · ' : ''}🏛️ ${venue}`,
+      image: image,
+      warning: `¿Estás seguro de que deseas eliminar permanentemente el evento "${title}" de la cartelera cultural? Esta acción es irreversible y removerá el espectáculo de todas las búsquedas públicas, reservas y recomendaciones en Quito.`,
+      confirmText: 'Sí, Eliminar de la Cartelera',
+      onConfirm: async () => {
+        closeConfirmDeleteModal();
+        closeEventDetailModal();
+        closeCreateModal();
+
+        // 0. Persistir inmediatamente el ID como eliminado en localStorage para que NUNCA vuelva a aparecer al recargar
+        addDeletedEventId(eventId);
+
+        // 1. Localizar de inmediato todos los elementos en el DOM (tarjetas, filas de tabla, pills de calendario, etc.)
+        const matchedCards = Array.from(document.querySelectorAll(
+          `.event-card[data-id="${eventId}"], .upcoming-event-card[data-id="${eventId}"], .month-event-pill[data-id="${eventId}"]`
+        ));
+        const matchedRows = Array.from(document.querySelectorAll(`tr[data-event-id="${eventId}"]`));
+        
+        // También buscar filas de tabla que contengan un botón de eliminar con ese data-id
+        document.querySelectorAll(`.btn-action-delete-event[data-id="${eventId}"]`).forEach(btn => {
+          const row = btn.closest('tr');
+          if (row && !matchedRows.includes(row)) matchedRows.push(row);
+        });
+
+        // 2. Aplicar animación de salida fluida
+        matchedCards.forEach(c => c.classList.add('card-deleting'));
+        matchedRows.forEach(r => r.classList.add('row-deleting'));
+
+        // 3. Eliminar localmente de inmediato para reactividad instantánea
+        try {
+          apiEvents = apiEvents.filter(e => String(e.id) !== String(eventId));
+          if (typeof KAWSAY_DATA !== 'undefined' && KAWSAY_DATA.weekEvents) {
+            KAWSAY_DATA.weekEvents = KAWSAY_DATA.weekEvents.filter(e => String(e.id) !== String(eventId));
+          }
+          if (typeof convocatoriasList !== 'undefined' && Array.isArray(convocatoriasList)) {
+            convocatoriasList = convocatoriasList.filter(c => String(c.id) !== String(eventId));
+          }
+          if (typeof platformStats !== 'undefined' && platformStats && platformStats.total_events) {
+            platformStats.total_events = Math.max(0, platformStats.total_events - 1);
+          }
+        } catch (filterErr) {
+          console.warn('Advertencia al filtrar estructuras locales:', filterErr);
+        }
+
+        // 4. Toast de confirmación inmediato
+        showToast(`🗑️ Evento "${title}" eliminado de la cartelera.`);
+
+        // 5. Retirar físicamente del DOM tras finalizar la animación de transición (300ms)
+        setTimeout(() => {
+          [...matchedCards, ...matchedRows].forEach(el => {
+            if (el && el.parentNode) {
+              const parent = el.parentNode;
+              el.remove();
+              // Si la grilla o tabla quedó vacía, mostrar estado amigable
+              if (parent.classList && parent.classList.contains('events-grid') && parent.children.length === 0) {
+                parent.innerHTML = `<div style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--grey1);">No hay eventos en esta sección.</div>`;
+              } else if (parent.tagName === 'TBODY' && parent.children.length === 0) {
+                parent.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--grey1);">No hay eventos pendientes de revisión.</td></tr>`;
+              }
+            }
+          });
+        }, 300);
+
+        // 6. Sincronización asíncrona con el backend en segundo plano (sin recargar la página ni congelar la pantalla)
+        try {
+          const res = await fetch(`${API_BASE}/events/${eventId}`, { method: 'DELETE' });
+          if (!res.ok) {
+            console.warn(`Respuesta no-ok al eliminar evento ${eventId}:`, res.status);
+          }
+        } catch (err) {
+          console.warn(`Error en segundo plano al eliminar evento ${eventId}:`, err);
         }
       }
-    } catch (e) {
-      showToast('Error al eliminar el evento.');
-    }
+    });
   }
 
   async function handleCreateEventSubmit(e) {
     e.preventDefault();
+
+    const titleVal = $('#ev-title') ? $('#ev-title').value.trim() : '';
+    if (!titleVal) {
+      showToast('⚠️ Por favor ingresa el título del espectáculo.');
+      setCreateEventStep(1);
+      if ($('#ev-title')) $('#ev-title').focus();
+      return;
+    }
 
     const sectorVal = $('#ev-sector') ? $('#ev-sector').value : 'Centro Histórico';
     const capacityVal = $('#ev-capacity') ? parseInt($('#ev-capacity').value) : 200;
     const castVal = $('#ev-cast') ? $('#ev-cast').value : '';
 
     const eventData = {
-      title: $('#ev-title').value,
-      full_title: $('#ev-subtitle') ? $('#ev-subtitle').value : $('#ev-title').value,
-      description: $('#ev-desc').value,
-      badge: $('#ev-badge') ? $('#ev-badge').value : 'ESTRENO',
-      date: $('#ev-date').value,
-      time: $('#ev-time').value,
-      category: $('#ev-category').value,
-      price: $('#ev-price').value || 'Gratis',
-      venue: $('#ev-venue').value,
-      full_venue: $('#ev-venue').value,
+      title: titleVal,
+      full_title: $('#ev-subtitle') && $('#ev-subtitle').value.trim() ? $('#ev-subtitle').value.trim() : titleVal,
+      description: $('#ev-desc') ? $('#ev-desc').value : '',
+      badge: $('#ev-badge') ? $('#ev-badge').value : 'ESTRENO EXCLUSIVO',
+      date: $('#ev-date') ? $('#ev-date').value : '2026-10-30',
+      time: $('#ev-time') ? $('#ev-time').value : '20:00',
+      category: $('#ev-category') ? $('#ev-category').value : 'Música',
+      price: $('#ev-price') ? $('#ev-price').value || '$15' : '$15',
+      venue: $('#ev-venue') ? $('#ev-venue').value : 'Quito',
+      full_venue: $('#ev-venue') ? $('#ev-venue').value : 'Quito',
       sector: sectorVal,
       capacity: capacityVal,
       cast: castVal,
-      image: $('#ev-image') ? $('#ev-image').value : 'images/hero_concierto.jpg',
+      image: $('#ev-image') && $('#ev-image').value ? $('#ev-image').value : 'images/hero_concierto.jpg',
       organizer_id: currentUser.id,
       role: currentUser.role
     };
 
     const isEditing = Boolean(editingEventId);
-    const url = isEditing ? `${API_BASE}/events/${editingEventId}` : `${API_BASE}/events`;
+    const targetEventId = editingEventId;
+    const url = isEditing ? `${API_BASE}/events/${targetEventId}` : `${API_BASE}/events`;
     const method = isEditing ? 'PUT' : 'POST';
 
     try {
@@ -8956,22 +10456,36 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         editingEventId = null;
         await loadInitialData();
         renderTopbar();
-        if (currentView === 'home') renderHomeView();
-        else if (currentView === 'calendar-week') renderWeekView();
-        else if (currentView === 'calendar-month') renderMonthView();
-        else if (currentView === 'admin') {
-          const viewEl = document.getElementById('view-admin');
-          if (viewEl) renderAdminDashboardView(viewEl);
-        } else if (currentView === 'artist') {
-          const viewEl = document.getElementById('view-artist');
-          if (viewEl) renderArtistStudioView(viewEl);
-        } else if (currentView === 'space') {
-          const viewEl = document.getElementById('view-space');
-          if (viewEl) renderSpaceStudioView(viewEl);
+        refreshCurrentView();
+      } else {
+        if (isEditing && targetEventId) {
+          const idx = apiEvents.findIndex(ev => ev.id === targetEventId);
+          if (idx !== -1) {
+            apiEvents[idx] = { ...apiEvents[idx], ...eventData };
+          }
+          showToast(`Cartelera "${eventData.title}" modificada.`);
+          closeCreateModal();
+          e.target.reset();
+          editingEventId = null;
+          renderTopbar();
+          refreshCurrentView();
         }
       }
     } catch (err) {
-      showToast("Error de comunicación con el backend.");
+      if (isEditing && targetEventId) {
+        const idx = apiEvents.findIndex(ev => ev.id === targetEventId);
+        if (idx !== -1) {
+          apiEvents[idx] = { ...apiEvents[idx], ...eventData };
+        }
+        showToast(`Cartelera "${eventData.title}" modificada localmente.`);
+        closeCreateModal();
+        e.target.reset();
+        editingEventId = null;
+        renderTopbar();
+        refreshCurrentView();
+      } else {
+        showToast("Error de comunicación con el backend.");
+      }
     }
   }
 
@@ -9332,71 +10846,25 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     }
   }
 
-  let currentCreateEventStep = 1;
-
-  function setCreateEventStep(stepNum) {
-    currentCreateEventStep = stepNum;
-    for (let i = 1; i <= 4; i++) {
-      const pane = document.getElementById(`event-step-pane-${i}`);
-      if (pane) pane.style.display = (i === stepNum) ? 'block' : 'none';
-    }
-    document.querySelectorAll('.btn-event-step').forEach(btn => {
-      const s = parseInt(btn.dataset.step);
-      if (s === stepNum) {
-        btn.style.background = 'var(--accent)';
-        btn.style.color = '#000';
-      } else {
-        btn.style.background = '#1e293b';
-        btn.style.color = '#94a3b8';
-      }
-    });
-    const btnPrev = document.getElementById('btn-event-step-prev');
-    const btnNext = document.getElementById('btn-event-step-next');
-    if (btnPrev) btnPrev.style.display = (stepNum > 1) ? 'block' : 'none';
-    if (btnNext) btnNext.style.display = (stepNum < 4) ? 'block' : 'none';
-  }
-
   function openCreateModal() {
     editingEventId = null;
     $('#modal-create-title').textContent = `📜 GENERADOR DE CARTELERA PROFESIONAL (${currentUser.role.toUpperCase()})`;
     if ($('#btn-submit-billboard')) $('#btn-submit-billboard').textContent = '🚀 PUBLICAR CARTELERA EN VIVO';
+    if ($('#btn-modal-delete-event')) $('#btn-modal-delete-event').style.display = 'none';
+    if ($('#btn-event-quick-save')) $('#btn-event-quick-save').style.display = 'none';
 
+    setupCreateEventVenueSelect();
+    bindEventWizardControls();
     setCreateEventStep(1);
 
-    document.querySelectorAll('.btn-event-step').forEach(btn => {
-      btn.onclick = () => setCreateEventStep(parseInt(btn.dataset.step));
-    });
-    if ($('#btn-event-step-prev')) {
-      $('#btn-event-step-prev').onclick = () => {
-        if (currentCreateEventStep > 1) setCreateEventStep(currentCreateEventStep - 1);
-      };
-    }
-    if ($('#btn-event-step-next')) {
-      $('#btn-event-step-next').onclick = () => {
-        if (currentCreateEventStep < 4) setCreateEventStep(currentCreateEventStep + 1);
-      };
-    }
+    bindEventImageUploadControls();
+    resetEventImageUI($('#ev-image') ? $('#ev-image').value : 'images/hero_concierto.jpg');
 
-    const venueSelect = $('#ev-venue-select');
-    if (venueSelect) {
-      venueSelect.innerHTML = `<option value="">-- Seleccionar Espacio Registrado --</option>` +
-        apiSpaces.map(sp => `<option value="${sp.name}">${sp.name} (${sp.sector || 'Quito'})</option>`).join('') +
-        `<option value="__custom__">➕ Escribir otro recinto manualmente</option>`;
-
-      venueSelect.onchange = () => {
-        if (venueSelect.value && venueSelect.value !== '__custom__') {
-          $('#ev-venue').value = venueSelect.value;
-          const matchedSp = apiSpaces.find(s => s.name === venueSelect.value);
-          if (matchedSp && matchedSp.sector && $('#ev-sector')) {
-            $('#ev-sector').value = matchedSp.sector;
-          }
-        }
-      };
-    }
     showModal('#modal-create');
   }
   function closeCreateModal() {
     editingEventId = null;
+    if ($('#btn-event-quick-save')) $('#btn-event-quick-save').style.display = 'none';
     hideModal('#modal-create');
   }
   function openTicketsModal() { showModal('#modal-tickets'); }
@@ -9406,36 +10874,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     const view = document.getElementById('view-convocatorias');
     if (!view) return;
 
-    const convocatoriasList = [
-      {
-        id: 'conv-001',
-        title: 'FONDO DE FOMENTO A LAS ARTES QUITO 2026',
-        category: 'Convocatorias',
-        badge: 'FONDO PÚBLICO',
-        date: '2026-12-01',
-        time: 'Hasta las 23:59',
-        price: 'Premio: $10,000',
-        venue: 'Secretaría de Cultura Quito',
-        description: 'Convocatoria abierta para proyectos independientes de artes escénicas, música y gestión comunitaria en la provincia de Pichincha.',
-        image: 'images/event_mural.jpg',
-        rating_count: 14,
-        rating_sum: 70
-      },
-      {
-        id: 'conv-002',
-        title: 'RESIDENCIA ARTÍSTICA Y EXPOSICIÓN NAVE 01',
-        category: 'Convocatorias',
-        badge: 'RESIDENCIA',
-        date: '2026-11-15',
-        time: 'Hasta las 18:00',
-        price: 'Beca Completa + Taller',
-        venue: 'NAVE 01 Centro Histórico',
-        description: 'Beca de residencia para artistas plásticos y visuales emergentes. Incluye estudio de trabajo, materiales y exposición final.',
-        image: 'images/event_portraits.jpg',
-        rating_count: 9,
-        rating_sum: 45
-      }
-    ];
+    const activeConvocatorias = convocatoriasList.filter(c => !getDeletedEventIds().includes(String(c.id)));
 
     view.innerHTML = `
       <div style="padding: 24px;">
@@ -9450,7 +10889,7 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         </div>
 
         <div class="events-grid stagger">
-          ${convocatoriasList.map(ev => renderEventCard(ev)).join('')}
+          ${activeConvocatorias.map(ev => renderEventCard(ev)).join('')}
         </div>
       </div>
     `;
@@ -9793,7 +11232,10 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
   function bindGlobalEvents() {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        closeConfirmDeleteModal();
         closeCreateModal();
+        closeSpaceCreateModal();
+        closeViewPermitModal();
         closeAdminModal();
         closeCartModal();
         closeTicketsModal();
@@ -9810,6 +11252,9 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         if (e.target.id === 'modal-terms') { hideModal('#modal-terms'); return; }
         if (e.target.id === 'modal-privacy') { hideModal('#modal-privacy'); return; }
         if (e.target.id === 'modal-email-confirm') { hideModal('#modal-email-confirm'); return; }
+        if (e.target.id === 'modal-confirm-delete') { closeConfirmDeleteModal(); return; }
+        if (e.target.id === 'modal-view-permit') { closeViewPermitModal(); return; }
+        if (e.target.id === 'modal-create-space') { closeSpaceCreateModal(); return; }
         hideModal(e.target);
         return;
       }
@@ -9824,6 +11269,77 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
         } else {
           openCreateModal();
         }
+        return;
+      }
+
+      // Delegación para wizard de cartelera (Paso Siguiente / Anterior / Tabs)
+      const stepNextBtn = e.target.closest('#btn-event-step-next');
+      if (stepNextBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentCreateEventStep < 4) setCreateEventStep(currentCreateEventStep + 1);
+        return;
+      }
+
+      const stepPrevBtn = e.target.closest('#btn-event-step-prev');
+      if (stepPrevBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentCreateEventStep > 1) setCreateEventStep(currentCreateEventStep - 1);
+        return;
+      }
+
+      const stepTabBtn = e.target.closest('.btn-event-step');
+      if (stepTabBtn && stepTabBtn.dataset.step) {
+        e.preventDefault();
+        e.stopPropagation();
+        setCreateEventStep(parseInt(stepTabBtn.dataset.step));
+        return;
+      }
+
+      // Delegación para wizard de REGISTRO DE ESPACIO CULTURAL
+      const spaceNextBtn = e.target.closest('#btn-space-step-next');
+      if (spaceNextBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        advanceSpaceStep();
+        return;
+      }
+
+      const spacePrevBtn = e.target.closest('#btn-space-step-prev');
+      if (spacePrevBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentCreateSpaceStep > 1) setCreateSpaceStep(currentCreateSpaceStep - 1);
+        return;
+      }
+
+      const spaceStepTabBtn = e.target.closest('.btn-space-step');
+      if (spaceStepTabBtn && spaceStepTabBtn.dataset.step) {
+        e.preventDefault();
+        e.stopPropagation();
+        setCreateSpaceStep(parseInt(spaceStepTabBtn.dataset.step));
+        return;
+      }
+
+      // Botón Registrar mi Espacio (+ REGISTRAR MI ESPACIO)
+      const regSpaceBtn = e.target.closest('#btn-map-register-top, #btn-map-register-space, #btn-space-register-new, #btn-space-new-space-top');
+      if (regSpaceBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        openSpaceCreateModal();
+        return;
+      }
+
+      // Cierre de modal de espacio y permisos
+      if (e.target.closest('#modal-create-space-close')) {
+        e.preventDefault();
+        closeSpaceCreateModal();
+        return;
+      }
+      if (e.target.closest('#modal-view-permit-close, #btn-view-permit-close-btn')) {
+        e.preventDefault();
+        closeViewPermitModal();
         return;
       }
 
@@ -9862,6 +11378,16 @@ Secretaría de Cultura Quito & Consejo Editorial KAWSAY
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
   }
+
+  // Exposición en window para compatibilidad e invocación directa
+  window.openCreateSpaceModal = openSpaceCreateModal;
+  window.openSpaceCreateModal = openSpaceCreateModal;
+  window.closeSpaceCreateModal = closeSpaceCreateModal;
+  window.openEditSpaceModal = openEditSpaceModal;
+  window.setSpaceStatus = setSpaceStatus;
+  window.openViewPermitModal = openViewPermitModal;
+  window.closeViewPermitModal = closeViewPermitModal;
+  window.advanceSpaceStep = advanceSpaceStep;
 
   return { init };
 })();

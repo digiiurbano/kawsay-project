@@ -64,6 +64,13 @@ function initDb() {
       db.run(`ALTER TABLE spaces ADD COLUMN categories TEXT`, () => {});
       db.run(`ALTER TABLE spaces ADD COLUMN description TEXT`, () => {});
       db.run(`ALTER TABLE spaces ADD COLUMN capacity INTEGER`, () => {});
+      db.run(`ALTER TABLE spaces ADD COLUMN status TEXT`, () => {});
+      db.run(`ALTER TABLE spaces ADD COLUMN google_maps_url TEXT`, () => {});
+      db.run(`ALTER TABLE spaces ADD COLUMN lat REAL`, () => {});
+      db.run(`ALTER TABLE spaces ADD COLUMN lng REAL`, () => {});
+      db.run(`ALTER TABLE spaces ADD COLUMN permits_file TEXT`, () => {});
+      db.run(`ALTER TABLE spaces ADD COLUMN permits_filename TEXT`, () => {});
+      db.run(`ALTER TABLE spaces ADD COLUMN created_at TEXT`, () => {});
 
       // 3. Tabla de Eventos en Cartelera
       db.run(`
@@ -180,16 +187,16 @@ function seedData() {
       usersStmt.finalize();
 
       // Sembrar Espacios
-      const spacesStmt = db.prepare(`INSERT OR REPLACE INTO spaces (id, name, type, image, owner_id, sector, address, hours, categories, description, capacity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+      const spacesStmt = db.prepare(`INSERT OR REPLACE INTO spaces (id, name, type, image, owner_id, sector, address, hours, categories, description, capacity, status, google_maps_url, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
       const initialSpaces = [
-        { id: 'sp-001', name: 'NAVE 01', type: 'ESPACIO CULTURAL', image: 'images/space_nave01.jpg', owner_id: 'usr-espacio-1', sector: 'La Floresta', address: 'Calle Galavis E9-35 y Isabel La Católica', hours: 'Mar–Sáb: 10:00–22:00', categories: '["Arte Contemporáneo", "Exposiciones", "Música"]', description: 'Laboratorio de creación y espacio cultural independiente en La Floresta.', capacity: 250 },
-        { id: 'sp-002', name: 'EL BÚNKER', type: 'CLUB DE VINILOS', image: 'images/space_bunker.jpg', owner_id: 'usr-espacio-1', sector: 'La Mariscal', address: 'Av. Amazonas y Foch', hours: 'Mié–Dom: 18:00–02:00', categories: '["Música Vivo", "Vinilos", "Electrónica"]', description: 'Club underground y tienda de vinilos en el corazón de La Mariscal.', capacity: 180 },
-        { id: 'sp-003', name: 'ESPACIO RADAR', type: 'GALERÍA & COWORK', image: 'images/space_radar.jpg', owner_id: 'usr-espacio-1', sector: 'Cumbayá', address: 'Av. Interoceánica km 11', hours: 'Lun–Vie: 09:00–19:00', categories: '["Galería", "Fotografía", "Diseño"]', description: 'Plataforma para las artes visuales, coworking creativo y diseño contemporáneo.', capacity: 120 },
-        { id: 'sp-004', name: 'TEATRO NACIONAL', type: 'ARTES ESCÉNICAS', image: 'images/space_teatro.jpg', owner_id: 'usr-espacio-1', sector: 'Centro Histórico', address: 'Av. 10 de Agosto y Briceño', hours: 'Lun–Sáb: 09:00–21:00', categories: '["Teatro", "Danza", "Conciertos"]', description: 'Emblemático teatro con capacidad para 500 espectadores y acústica profesional.', capacity: 500 },
-        { id: 'sp-005', name: 'MUSEO URBANO', type: 'HISTORIA & ARTE', image: 'images/space_museo.jpg', owner_id: 'usr-espacio-1', sector: 'Centro Histórico', address: 'Calle García Moreno y Sucre', hours: 'Mar–Dom: 09:00–17:30', categories: '["Patrimonio", "Exposiciones", "Visitas Guíadas"]', description: 'Espacio dedicado a la memoria histórica, arquitectura colonial y arte urbano.', capacity: 400 },
-        { id: 'sp-006', name: 'RADIO KAWSAY', type: 'MEDIA PARTNER', image: 'images/space_radio.jpg', owner_id: 'usr-espacio-1', sector: 'Guápulo', address: 'Camino de Orellana', hours: '24/7 Transmisión Digital', categories: '["Podcast", "Radio", "Entrevistas"]', description: 'Estudio de radiodifusión cultural y contenidos sonoros comunitarios.', capacity: 50 }
+        { id: 'sp-001', name: 'NAVE 01', type: 'ESPACIO CULTURAL', image: 'images/space_nave01.jpg', owner_id: 'usr-espacio-1', sector: 'La Floresta', address: 'Calle Galavis E9-35 y Isabel La Católica', hours: 'Mar–Sáb: 10:00–22:00', categories: '["Arte Contemporáneo", "Exposiciones", "Música"]', description: 'Laboratorio de creación y espacio cultural independiente en La Floresta.', capacity: 250, status: 'approved', google_maps_url: 'https://maps.google.com/?q=-0.2118,-78.4876', lat: -0.2118, lng: -78.4876 },
+        { id: 'sp-002', name: 'EL BÚNKER', type: 'CLUB DE VINILOS', image: 'images/space_bunker.jpg', owner_id: 'usr-espacio-1', sector: 'La Mariscal', address: 'Av. Amazonas y Foch', hours: 'Mié–Dom: 18:00–02:00', categories: '["Música Vivo", "Vinilos", "Electrónica"]', description: 'Club underground y tienda de vinilos en el corazón de La Mariscal.', capacity: 180, status: 'approved', google_maps_url: 'https://maps.google.com/?q=-0.2035,-78.4912', lat: -0.2035, lng: -78.4912 },
+        { id: 'sp-003', name: 'ESPACIO RADAR', type: 'GALERÍA & COWORK', image: 'images/space_radar.jpg', owner_id: 'usr-espacio-1', sector: 'Cumbayá', address: 'Av. Interoceánica km 11', hours: 'Lun–Vie: 09:00–19:00', categories: '["Galería", "Fotografía", "Diseño"]', description: 'Plataforma para las artes visuales, coworking creativo y diseño contemporáneo.', capacity: 120, status: 'approved', google_maps_url: 'https://maps.google.com/?q=-0.2045,-78.4342', lat: -0.2045, lng: -78.4342 },
+        { id: 'sp-004', name: 'TEATRO NACIONAL', type: 'ARTES ESCÉNICAS', image: 'images/space_teatro.jpg', owner_id: 'usr-espacio-1', sector: 'Centro Histórico', address: 'Av. 10 de Agosto y Briceño', hours: 'Lun–Sáb: 09:00–21:00', categories: '["Teatro", "Danza", "Conciertos"]', description: 'Emblemático teatro con capacidad para 500 espectadores y acústica profesional.', capacity: 500, status: 'approved', google_maps_url: 'https://maps.google.com/?q=-0.2155,-78.5025', lat: -0.2155, lng: -78.5025 },
+        { id: 'sp-005', name: 'MUSEO URBANO', type: 'HISTORIA & ARTE', image: 'images/space_museo.jpg', owner_id: 'usr-espacio-1', sector: 'Centro Histórico', address: 'Calle García Moreno y Sucre', hours: 'Mar–Dom: 09:00–17:30', categories: '["Patrimonio", "Exposiciones", "Visitas Guíadas"]', description: 'Espacio dedicado a la memoria histórica, arquitectura colonial y arte urbano.', capacity: 400, status: 'approved', google_maps_url: 'https://maps.google.com/?q=-0.2205,-78.5135', lat: -0.2205, lng: -78.5135 },
+        { id: 'sp-006', name: 'RADIO KAWSAY', type: 'MEDIA PARTNER', image: 'images/space_radio.jpg', owner_id: 'usr-espacio-1', sector: 'Guápulo', address: 'Camino de Orellana', hours: '24/7 Transmisión Digital', categories: '["Podcast", "Radio", "Entrevistas"]', description: 'Estudio de radiodifusión cultural y contenidos sonoros comunitarios.', capacity: 50, status: 'approved', google_maps_url: 'https://maps.google.com/?q=-0.2185,-78.4795', lat: -0.2185, lng: -78.4795 }
       ];
-      initialSpaces.forEach(s => spacesStmt.run(s.id, s.name, s.type, s.image, s.owner_id, s.sector, s.address, s.hours, s.categories, s.description, s.capacity));
+      initialSpaces.forEach(s => spacesStmt.run(s.id, s.name, s.type, s.image, s.owner_id, s.sector, s.address, s.hours, s.categories, s.description, s.capacity, s.status, s.google_maps_url, s.lat, s.lng));
       spacesStmt.finalize();
 
       // Limpiar datos de prueba residuales para arranque limpio
